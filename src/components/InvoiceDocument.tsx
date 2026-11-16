@@ -28,6 +28,8 @@ export interface InvoiceOrder {
   uniqueCode?: number;
   totalAmount: number;
   notes?: string;
+  isPreOrder?: boolean;
+  preOrderNote?: string;
   timeline?: any[];
 }
 
@@ -224,6 +226,11 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
               {/* Totals */}
               <div className="flex flex-col sm:flex-row justify-between gap-4 pt-4">
                 <div className="text-[10px] text-slate-500 leading-relaxed max-w-xs space-y-1">
+                  {order.isPreOrder && (
+                    <div className="mt-1.5 px-2 py-1 rounded border border-forest-600/40 bg-forest-50 text-[9.5px] font-bold text-forest-800">
+                      PRE-ORDER — {order.preOrderNote || '7–15 hari kerja setelah pembayaran diverifikasi'}
+                    </div>
+                  )}
                   {order.notes && (
                     <div>
                       <strong className="text-slate-700">Catatan:</strong> {order.notes}
@@ -347,6 +354,11 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
                     </div>
                   </div>
 
+                  {order.isPreOrder && (
+                    <div className="mt-1.5 px-2 py-1 rounded border border-forest-600/40 bg-forest-50 text-[9.5px] font-bold text-forest-800">
+                      PRE-ORDER — {order.preOrderNote || '7–15 hari kerja setelah pembayaran diverifikasi'}
+                    </div>
+                  )}
                   {order.notes && (
                     <div className="text-[9px] bg-amberbrand-50 border border-amberbrand-200 rounded p-1.5 text-amberbrand-900">
                       Catatan: {order.notes}

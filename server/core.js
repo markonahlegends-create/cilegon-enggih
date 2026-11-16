@@ -13,6 +13,17 @@ import crypto from 'node:crypto';
 import { store, SUPABASE_KEY_TYPE } from './db.js';
 import { SEED_PRODUCTS, SEED_CATEGORIES, SEED_SIZE_CHART } from './seed/catalog.js';
 import {
+  notifySafe,
+  sendTelegramMessage,
+  telegramConfig,
+  templateNewOrder,
+  templatePaymentProof,
+  templatePaid,
+  templateShipped,
+  templateB2B,
+  templateTest
+} from './notify.js';
+import {
   STORE,
   DEFAULT_SETTINGS,
   SEED_ORDERS,
@@ -149,6 +160,19 @@ const readSettings = async () => {
     qris: { ...DEFAULT_SETTINGS.qris, ...(saved.qris || {}) },
     payment: { ...DEFAULT_SETTINGS.payment, ...(saved.payment || {}) },
     invoice: { ...DEFAULT_SETTINGS.invoice, ...(saved.invoice || {}) },
+    telegram: {
+      ...DEFAULT_SETTINGS.telegram,
+      // Fallback env (kalau diisi dari dashboard, nilai database yang dipakai).
+      ...(process.env.TELEGRAM_BOT_TOKEN
+        ? {
+            botToken: process.env.TELEGRAM_BOT_TOKEN,
+            chatId: process.env.TELEGRAM_CHAT_ID || '',
+            enabled: Boolean(process.env.TELEGRAM_CHAT_ID)
+          }
+        : {}),
+      ...(saved.telegram || {})
+    },
+    preOrder: { ...DEFAULT_SETTINGS.preOrder, ...(saved.preOrder || {}) },
     banks: Array.isArray(saved.banks) && saved.banks.length ? saved.banks : DEFAULT_BANKS,
     vouchers:
       Array.isArray(saved.vouchers) && saved.vouchers.length
@@ -179,6 +203,21 @@ const publicSettings = (settings) => ({
   payment: settings.payment,
   invoice: settings.invoice,
   announcement: settings.announcement,
+  preOrder: settings.preOrder,
+  /**
+   * Telegram untuk browser: JANGAN kirim botToken/chatId.
+   * Hanya status supaya UI bisa menampilkan "sudah terhubung".
+   * Nilai lengkap hanya lewat endpoint admin.
+   */
+  telegram: {
+    enabled: Boolean((settings.telegram || {}).enabled),
+    connected: Boolean((settings.telegram || {}).botToken && (settings.telegram || {}).chatId),
+    notifyNewOrder: Boolean((settings.telegram || {}).notifyNewOrder),
+    notifyPaymentProof: Boolean((settings.telegram || {}).notifyPaymentProof),
+    notifyPaid: Boolean((settings.telegram || {}).notifyPaid),
+    notifyShipped: Boolean((settings.telegram || {}).notifyShipped),
+    notifyB2B: Boolean((settings.telegram || {}).notifyB2B)
+  },
   updatedAt: settings.updatedAt
 });
 
@@ -479,7 +518,11 @@ route('GET', '/api/health', async () => {
       supabaseKey: SUPABASE_KEY_TYPE !== 'none',
       keyType: SUPABASE_KEY_TYPE,
       adminPasswordConfigured: Boolean(process.env.ADMIN_PASSWORD),
-      adminTokenSecretConfigured: Boolean(process.env.ADMIN_TOKEN_SECRET)
+      adminTokenSecretConfigured: Boolean(process.env.ADMIN_TOKEN_SECRET),
+      telegramConfigured: Boolean(
+        (settings.telegram && settings.telegram.botToken && settings.telegram.chatId) ||
+          (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID)
+      )
     },
     warnings,
     origin: SHIPPING_ORIGIN,
@@ -618,6 +661,31 @@ route('GET', '/api/diagnose', async () => {
     'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 081927157103.'
   );
 
+  // 4. Notifikasi Telegram (opsional, sangat disarankan)
+  const tg = telegramConfig(settings);
+  add(
+    'telegram',
+    'Notifikasi Telegram',
+    tg.botToken && tg.chatId ? 'ok' : 'warn',
+    tg.botToken && tg.chatId
+      ? `terhubung (${tg.enabled ? 'aktif' : 'nonaktif'})`
+      : 'belum diatur — admin tidak dapat notifikasi otomatis',
+    'Dashboard → Pengaturan → Notifikasi Telegram: isi Bot Token & Chat ID, lalu klik "Tes Koneksi".'
+  );
+
+  // 5. Penyimpanan gambar produk (Supabase Storage)
+  add(
+    'storage-images',
+    'Penyimpanan gambar produk',
+    process.env.SUPABASE_URL && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_KEY)
+      ? 'ok'
+      : 'warn',
+    process.env.SUPABASE_URL
+      ? `bucket ${process.env.SUPABASE_STORAGE_BUCKET || 'product-images'}`
+      : 'belum dikonfigurasi — upload gambar hanya tersimpan lokal',
+    'Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY, lalu buat bucket "product-images" (Public) di Supabase Storage.'
+  );
+
   const summary = {
     ok: checks.filter((c) => c.status === 'ok').length,
     warn: checks.filter((c) => c.status === 'warn').length,
@@ -720,7 +788,9 @@ route('POST', '/api/orders', async ({ body }) => {
     voucherDiscount = 0,
     items = [],
     notes = '',
-    paymentProofNote = ''
+    paymentProofNote = '',
+    isPreOrder = false,
+    preOrderNote = ''
   } = body || {};
 
   if (!customerName || !customerPhone || !Array.isArray(items) || items.length === 0) {
@@ -763,6 +833,10 @@ route('POST', '/api/orders', async ({ body }) => {
     bankAccount: bank,
     paymentStatus: 'MENUNGGU_VERIFIKASI',
     status: 'MENUNGGU_KONFIRMASI',
+    isPreOrder: Boolean(isPreOrder),
+    preOrderNote: isPreOrder
+      ? preOrderNote || (settings.preOrder && settings.preOrder.defaultNote) || 'Pre Order 7–15 hari kerja'
+      : '',
     subtotal,
     shippingCost: Number(shippingCost),
     voucherCode: voucherCode || null,
@@ -794,6 +868,11 @@ route('POST', '/api/orders', async ({ body }) => {
   };
 
   await store.put('orders', newOrder);
+
+  // Notifikasi Telegram ke admin (tidak pernah menggagalkan pembuatan order).
+  if (telegramConfig(settings).notifyNewOrder !== false) {
+    await notifySafe(settings, templateNewOrder(newOrder));
+  }
 
   return ok(
     {
@@ -832,6 +911,12 @@ route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {
     ]
   };
   await store.put('orders', updated);
+
+  const proofSettings = await readSettings();
+  if (telegramConfig(proofSettings).notifyPaymentProof !== false) {
+    await notifySafe(proofSettings, templatePaymentProof(updated));
+  }
+
   return ok({ order: decorateOrder(updated) });
 });
 
@@ -900,6 +985,12 @@ route('POST', '/api/b2b', async ({ body }) => {
     status: 'Menunggu Konfirmasi Tim Korporat (SLA < 1 Jam Kerja)'
   };
   await store.put('b2b', entry);
+
+  const b2bSettings = await readSettings();
+  if (telegramConfig(b2bSettings).notifyB2B !== false) {
+    await notifySafe(b2bSettings, templateB2B(entry));
+  }
+
   return ok({ inquiry: entry }, 201);
 });
 
@@ -1048,6 +1139,16 @@ route('PATCH', '/api/admin/orders/:orderId', async ({ headers, params, body }) =
   next.updatedAt = nowIso();
   await store.put('orders', next);
 
+  // Notifikasi Telegram ke admin (kalau admin mengaktifkannya).
+  const notifySettings = await readSettings();
+  const notifyCfg = telegramConfig(notifySettings);
+  if (payload.paymentStatus === 'LUNAS' && notifyCfg.notifyPaid !== false) {
+    await notifySafe(notifySettings, templatePaid(next));
+  }
+  if (payload.status === 'DIKIRIM' && notifyCfg.notifyShipped !== false) {
+    await notifySafe(notifySettings, templateShipped(next));
+  }
+
   return ok({ order: decorateOrder(next) });
 });
 
@@ -1066,82 +1167,235 @@ route('GET', '/api/admin/products', async ({ headers }) => {
   return ok({ products: await readProducts() });
 });
 
+/**
+ * Normalisasi + validasi payload produk dari dashboard admin.
+ * Dipakai oleh POST (buat baru) dan PUT (perbarui) supaya aturannya identik.
+ */
+const CATEGORY_LABELS = {
+  'apparel-tas': 'Apparel & Tas',
+  drinkware: 'Drinkware',
+  'aksesoris-dekorasi': 'Aksesoris & Dekorasi',
+  'perlengkapan-cetak': 'Perlengkapan & Cetak',
+  'paket-bundling': 'Paket Bundling / Hampers'
+};
+
+const cleanVariants = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v, idx) => {
+      const label = String((v && v.label) || '').trim();
+      if (!label) return null;
+      const price = Math.max(0, Number(v.price) || 0);
+      const originalPrice = Math.max(Number(v.originalPrice) || 0, price);
+      return {
+        id: String((v && v.id) || '').trim() || `var-${Date.now().toString(36)}-${idx}`,
+        label,
+        price,
+        originalPrice: originalPrice || price,
+        stock: Math.max(0, Math.round(Number(v.stock) || 0))
+      };
+    })
+    .filter(Boolean);
+};
+
+const cleanSpecs = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((sp) => ({
+      label: String((sp && sp.label) || '').trim(),
+      value: String((sp && sp.value) || '').trim()
+    }))
+    .filter((sp) => sp.label && sp.value);
+};
+
+const cleanStringList = (raw) =>
+  Array.isArray(raw)
+    ? raw.map((item) => String(item || '').trim()).filter(Boolean)
+    : [];
+
+const uniqueSlug = async (desired, selfId) => {
+  const base = slugify(desired) || `produk-${Date.now().toString(36)}`;
+  const products = await readProducts();
+  const taken = new Set(
+    products
+      .filter((p) => String(p.id) !== String(selfId || ''))
+      .map((p) => String(p.slug || '').toLowerCase())
+  );
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
+};
+
+/**
+ * @returns {{ errors: string[], product: any }}
+ */
+const normalizeProduct = async (payload, existing) => {
+  const errors = [];
+  const src = payload || {};
+  const base = existing || {};
+
+  const name = String(src.name ?? base.name ?? '').trim();
+  const price = Number(src.price ?? base.price ?? 0);
+  const originalPriceRaw = Number(src.originalPrice ?? base.originalPrice ?? price);
+  const stockRaw = Number(src.stock ?? base.stock ?? 0);
+  const weightGrams = Number(src.weightGrams ?? base.weightGrams ?? 300);
+  const minWholesaleQty = Number(src.minWholesaleQty ?? base.minWholesaleQty ?? 0);
+  const wholesalePrice = Number(src.wholesalePrice ?? base.wholesalePrice ?? price);
+
+  if (!name) errors.push('Nama produk wajib diisi.');
+  if (!Number.isFinite(price) || price <= 0) errors.push('Harga jual harus lebih besar dari 0.');
+  if (!Number.isFinite(originalPriceRaw) || originalPriceRaw < 0) {
+    errors.push('Harga sebelum diskon tidak boleh negatif.');
+  }
+  if (originalPriceRaw < price) {
+    errors.push('Harga sebelum diskon tidak boleh lebih kecil dari harga jual.');
+  }
+  if (!Number.isFinite(stockRaw) || stockRaw < 0) errors.push('Stok tidak boleh negatif.');
+  if (!Number.isFinite(weightGrams) || weightGrams <= 0) errors.push('Berat produk harus lebih dari 0 gram.');
+  if (minWholesaleQty < 0) errors.push('Minimum qty grosir tidak boleh negatif.');
+  if (wholesalePrice < 0) errors.push('Harga grosir tidak boleh negatif.');
+  if (wholesalePrice > price && minWholesaleQty > 0) {
+    errors.push('Harga grosir seharusnya lebih murah daripada harga jual satuan.');
+  }
+
+  const variants = cleanVariants(src.variants ?? base.variants);
+  const variantLabels = new Set();
+  variants.forEach((v) => {
+    const key = v.label.toLowerCase();
+    if (variantLabels.has(key)) errors.push(`Label varian "${v.label}" dipakai lebih dari sekali.`);
+    variantLabels.add(key);
+    if (v.price <= 0) errors.push(`Harga varian "${v.label}" harus lebih besar dari 0.`);
+    if (v.originalPrice < v.price) {
+      errors.push(`Harga sebelum diskon varian "${v.label}" tidak boleh lebih kecil dari harga varian.`);
+    }
+  });
+
+  const categorySlug =
+    src.categorySlug ?? base.categorySlug ?? 'aksesoris-dekorasi';
+  const categoryLabel =
+    src.categoryLabel || CATEGORY_LABELS[categorySlug] || base.categoryLabel || 'Aksesoris & Dekorasi';
+
+  const galleryImages = cleanStringList(src.galleryImages ?? base.galleryImages).slice(0, 9);
+  const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.png').trim();
+
+  if (errors.length) return { errors, product: null };
+
+  const finalPrice = Math.round(price);
+  const finalOriginal = Math.round(originalPriceRaw || price);
+  // Stok total: default = jumlah stok varian; bisa dioverride manual lewat stockManual.
+  const stockManual = Boolean(src.stockManual ?? base.stockManual);
+  const variantStock = variants.reduce((sum, v) => sum + v.stock, 0);
+  const stock = Math.max(
+    0,
+    Math.round(stockManual || variants.length === 0 ? stockRaw : variantStock)
+  );
+
+  const slug = await uniqueSlug(src.slug || base.slug || src.shortName || name, existing?.id);
+
+  return {
+    errors: [],
+    product: {
+      ...base,
+      slug,
+      name,
+      shortName: String(src.shortName ?? base.shortName ?? name).trim() || name,
+      englishSubtitle:
+        String(src.englishSubtitle ?? base.englishSubtitle ?? '').trim() ||
+        'Official Cilegon Enggih Merchandise',
+      categorySlug,
+      categoryLabel,
+      image,
+      galleryImages: galleryImages.length ? galleryImages : image ? [image] : [],
+      price: finalPrice,
+      priceRangeText: variants.length
+        ? `Rp ${Math.min(...variants.map((v) => v.price)).toLocaleString('id-ID')} – Rp ${Math.max(
+            ...variants.map((v) => v.price)
+          ).toLocaleString('id-ID')}`
+        : `Rp ${finalPrice.toLocaleString('id-ID')}`,
+      originalPrice: finalOriginal,
+      discountPercent:
+        finalOriginal > finalPrice
+          ? Math.round(((finalOriginal - finalPrice) / finalOriginal) * 100)
+          : 0,
+      rating: Number(src.rating ?? base.rating ?? 4.9) || 4.9,
+      reviewCount: Number(src.reviewCount ?? base.reviewCount ?? 0) || 0,
+      soldCount: Number(src.soldCount ?? base.soldCount ?? 0) || 0,
+      weightGrams: Math.round(weightGrams),
+      stock,
+      stockManual,
+      isBestSeller: Boolean(src.isBestSeller ?? base.isBestSeller),
+      isFlashDeal: Boolean(src.isFlashDeal ?? base.isFlashDeal),
+      isBundle: Boolean(src.isBundle ?? base.isBundle),
+      isPreOrder: Boolean(src.isPreOrder ?? base.isPreOrder),
+      preOrderNote: Boolean(src.isPreOrder ?? base.isPreOrder)
+        ? String(src.preOrderNote ?? base.preOrderNote ?? '').trim() ||
+          (DEFAULT_SETTINGS.preOrder && DEFAULT_SETTINGS.preOrder.defaultNote) ||
+          'Pre Order 7–15 hari kerja'
+        : '',
+      bundleItems: cleanStringList(src.bundleItems ?? base.bundleItems),
+      hasSizeChart: Boolean(src.hasSizeChart ?? base.hasSizeChart),
+      badges: cleanStringList(src.badges ?? base.badges),
+      description: String(src.description ?? base.description ?? '').trim(),
+      specs: cleanSpecs(src.specs ?? base.specs),
+      variants,
+      minWholesaleQty: Math.round(minWholesaleQty),
+      wholesalePrice: Math.round(wholesalePrice || finalPrice),
+      reviews: Array.isArray(src.reviews ?? base.reviews) ? (src.reviews ?? base.reviews) : [],
+      active: (src.active ?? base.active) !== false
+    }
+  };
+};
+
 route('POST', '/api/admin/products', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
-  const payload = body || {};
-  if (!payload.name) return bad('Nama produk wajib diisi.');
-  const products = await readProducts();
-  const id = payload.id || `prod-${Date.now().toString().slice(-6)}`;
-  const price = Number(payload.price) || 0;
-  const originalPrice = Number(payload.originalPrice) || Math.round(price * 1.15);
-  const product = {
-    id,
-    slug: payload.slug || slugify(payload.shortName || payload.name),
-    name: payload.name,
-    shortName: payload.shortName || payload.name,
-    englishSubtitle: payload.englishSubtitle || 'Official Cilegon Enggih Merchandise',
-    categorySlug: payload.categorySlug || 'aksesoris-dekorasi',
-    categoryLabel: payload.categoryLabel || 'Aksesoris & Dekorasi',
-    image: payload.image || '/products/gantungan-kunci-3d.png',
-    galleryImages: payload.galleryImages || [],
-    price,
-    priceRangeText: payload.priceRangeText || `Rp ${price.toLocaleString('id-ID')}`,
-    originalPrice,
-    discountPercent:
-      Number(payload.discountPercent) ||
-      (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0),
-    rating: Number(payload.rating) || 4.9,
-    reviewCount: Number(payload.reviewCount) || 0,
-    soldCount: Number(payload.soldCount) || 0,
-    weightGrams: Number(payload.weightGrams) || 300,
-    stock: Number(payload.stock) || 0,
-    isBestSeller: Boolean(payload.isBestSeller),
-    isFlashDeal: Boolean(payload.isFlashDeal),
-    isBundle: Boolean(payload.isBundle),
-    bundleItems: payload.bundleItems || [],
-    hasSizeChart: Boolean(payload.hasSizeChart),
-    badges: payload.badges || [],
-    description: payload.description || '',
-    specs: payload.specs || [],
-    variants: payload.variants || [],
-    minWholesaleQty: Number(payload.minWholesaleQty) || 0,
-    wholesalePrice: Number(payload.wholesalePrice) || price,
-    reviews: payload.reviews || [],
-    active: payload.active !== false,
+  const { errors, product } = await normalizeProduct(body || {}, null);
+  if (errors.length) return bad(errors[0], 400, { errors });
+  const created = {
+    ...product,
+    id: `prod-${Date.now().toString(36)}`,
     createdAt: nowIso(),
     updatedAt: nowIso()
   };
-  await store.put('products', product);
-  return ok({ product, products: await readProducts() }, 201);
+  await store.put('products', created);
+  return ok({ product: created, products: await readProducts() }, 201);
 });
 
 route('PUT', '/api/admin/products/:id', async ({ headers, params, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
   const existing = await store.get('products', params.id);
   if (!existing) return bad('Produk tidak ditemukan.', 404);
-  const payload = body || {};
-  const updated = { ...existing, ...payload, id: existing.id, updatedAt: nowIso() };
 
-  // Recalculate turunan supaya konsisten dengan storefront.
-  updated.price = Number(updated.price) || 0;
-  updated.originalPrice = Number(updated.originalPrice) || updated.price;
-  updated.priceRangeText =
-    payload.priceRangeText || `Rp ${updated.price.toLocaleString('id-ID')}`;
-  updated.discountPercent =
-    updated.originalPrice > updated.price
-      ? Math.round(((updated.originalPrice - updated.price) / updated.originalPrice) * 100)
-      : 0;
-  updated.stock = Number(updated.stock) || 0;
-  if (Array.isArray(updated.variants)) {
-    updated.variants = updated.variants.map((v) => ({
-      ...v,
-      price: Number(v.price) || 0,
-      originalPrice: Number(v.originalPrice) || Number(v.price) || 0,
-      stock: Number(v.stock) || 0
-    }));
-  }
+  const { errors, product } = await normalizeProduct(body || {}, existing);
+  if (errors.length) return bad(errors[0], 400, { errors });
+
+  const updated = { ...product, id: existing.id, updatedAt: nowIso() };
   await store.put('products', updated);
   return ok({ product: updated, products: await readProducts() });
+});
+
+/** Duplikat produk (mempercepat pembuatan varian produk serupa). */
+route('POST', '/api/admin/products/:id/duplicate', async ({ headers, params }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const existing = await store.get('products', params.id);
+  if (!existing) return bad('Produk tidak ditemukan.', 404);
+  const products = await readProducts();
+  const copyName = `${existing.name} (Salinan)`;
+  const copy = {
+    ...existing,
+    id: `prod-${Date.now().toString(36)}`,
+    name: copyName,
+    shortName: `${existing.shortName || existing.name} (Salinan)`,
+    slug: await uniqueSlug(`${existing.slug}-salinan`, null),
+    variants: (existing.variants || []).map((v, idx) => ({
+      ...v,
+      id: `var-${Date.now().toString(36)}-${idx}`
+    })),
+    createdAt: nowIso(),
+    updatedAt: nowIso()
+  };
+  await store.put('products', copy);
+  return ok({ product: copy, products: await readProducts() }, 201);
 });
 
 route('DELETE', '/api/admin/products/:id', async ({ headers, params }) => {
@@ -1171,12 +1425,150 @@ route('PUT', '/api/admin/settings', async ({ headers, body }) => {
     qris: { ...current.qris, ...(payload.qris || {}) },
     payment: { ...current.payment, ...(payload.payment || {}) },
     invoice: { ...current.invoice, ...(payload.invoice || {}) },
+    telegram: { ...current.telegram, ...(payload.telegram || {}) },
+    preOrder: { ...current.preOrder, ...(payload.preOrder || {}) },
     banks: Array.isArray(payload.banks) ? payload.banks : current.banks,
     vouchers: Array.isArray(payload.vouchers) ? payload.vouchers : current.vouchers,
     updatedAt: nowIso()
   };
   await store.put('settings', { ...merged, id: 'store-settings' });
   return ok({ settings: publicSettings(merged) });
+});
+
+/** Settings lengkap untuk dashboard (termasuk kredensial Telegram). */
+route('GET', '/api/admin/settings', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const settings = await readSettings();
+  return ok({ settings });
+});
+
+/** Uji koneksi bot Telegram. */
+route('POST', '/api/admin/telegram/test', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const current = await readSettings();
+  const payload = body || {};
+  const candidate = {
+    ...current,
+    telegram: {
+      ...current.telegram,
+      ...(payload.telegram || {}),
+      enabled: true
+    }
+  };
+  const cfg = telegramConfig(candidate);
+  if (!cfg.botToken || !cfg.chatId) {
+    return bad('Bot Token dan Chat ID wajib diisi sebelum mengetes koneksi.');
+  }
+  const result = await sendTelegramMessage(candidate, templateTest());
+  if (!result.sent) {
+    return bad(
+      `Telegram menolak pesan. Periksa Bot Token & Chat ID. Detail: ${
+        result.reason || 'tidak diketahui'
+      }`,
+      400
+    );
+  }
+  // Simpan kalau berhasil supaya admin tidak perlu menyimpan manual.
+  await store.put('settings', { ...candidate, id: 'store-settings', updatedAt: nowIso() });
+  return ok({ sent: true, message: 'Pesan uji terkirim ke Telegram.' });
+});
+
+/**
+ * Upload gambar produk.
+ * - Kalau Supabase Storage dikonfigurasi (SUPABASE_URL + kunci), file disimpan di bucket.
+ * - Kalau tidak, file disimpan di folder lokal `public/uploads` (dev / self-host).
+ * Body: { dataUrl: 'data:image/png;base64,...', filename?: 'nama.png' }
+ */
+const EXT_BY_MIME = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif'
+};
+const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // 3 MB setelah kompresi klien
+
+route('POST', '/api/admin/upload', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const dataUrl = String((body && body.dataUrl) || '');
+  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) return bad('Format gambar tidak dikenali. Gunakan JPG, PNG, atau WEBP.');
+  const mime = match[1].toLowerCase();
+  const ext = EXT_BY_MIME[mime];
+  if (!ext) return bad('Tipe gambar tidak didukung. Gunakan JPG, PNG, atau WEBP.');
+
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > MAX_UPLOAD_BYTES) {
+    return bad('Ukuran gambar melebihi 3 MB. Kompres dulu sebelum mengunggah.');
+  }
+
+  const safeBase = slugify((body && body.filename) || 'gambar') || 'gambar';
+  const filename = `${safeBase}-${Date.now().toString(36)}.${ext}`;
+
+  // Jalur 1: Supabase Storage.
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const sbKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SECRET_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    '';
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
+
+  if (sbUrl && sbKey) {
+    try {
+      const base = sbUrl.replace(/\/+$/, '');
+      const authHeaders = { apikey: sbKey, 'Content-Type': mime, 'x-upsert': 'true' };
+      if (!sbKey.startsWith('sb_')) authHeaders.Authorization = `Bearer ${sbKey}`;
+      const uploadRes = await fetch(
+        `${base}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`,
+        { method: 'POST', headers: authHeaders, body: buffer }
+      );
+      if (uploadRes.ok) {
+        return ok({
+          url: `${base}/storage/v1/object/public/${bucket}/${encodeURIComponent(filename)}`,
+          filename,
+          storage: 'supabase',
+          bucket
+        });
+      }
+      const detail = await uploadRes.text().catch(() => '');
+      console.error('[upload] Supabase Storage gagal:', uploadRes.status, detail.slice(0, 200));
+      // jatuh ke penyimpanan lokal di bawah
+      return bad(
+        `Upload ke Supabase Storage gagal (${uploadRes.status}). Pastikan bucket "${bucket}" sudah dibuat dan bersifat Public. Detail: ${detail.slice(
+          0,
+          160
+        )}`,
+        502
+      );
+    } catch (err) {
+      return bad(`Upload ke Supabase Storage gagal: ${err.message}`, 502);
+    }
+  }
+
+  // Jalur 2: penyimpanan lokal (hanya untuk dev / self-host, filesystem writable).
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    try {
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
+      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+      await fs.mkdir(uploadsDir, { recursive: true });
+      await fs.writeFile(path.join(uploadsDir, filename), buffer);
+      return ok({
+        url: `/uploads/${filename}`,
+        filename,
+        storage: 'local',
+        note: 'File disimpan lokal. Di Vercel/Cloudflare filesystem tidak permanen — set SUPABASE_URL + kunci agar upload permanen.'
+      });
+    } catch (err) {
+      return bad(`Gagal menyimpan gambar: ${err.message}`, 500);
+    }
+  }
+
+  return bad(
+    'Penyimpanan gambar belum dikonfigurasi. Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (opsional: SUPABASE_STORAGE_BUCKET).',
+    501
+  );
 });
 
 route('POST', '/api/admin/settings/reset', async ({ headers }) => {

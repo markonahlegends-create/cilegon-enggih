@@ -191,6 +191,11 @@ export const CheckoutModal: React.FC = () => {
         };
       });
 
+      const preOrderItems = cart.filter((item) => item.product.isPreOrder);
+      const hasPreOrder = preOrderItems.length > 0;
+      const preOrderNote =
+        preOrderItems[0]?.product.preOrderNote || 'Pre Order 7–15 hari kerja';
+
       const result = await createOrder({
         customerName,
         customerPhone,
@@ -208,7 +213,9 @@ export const CheckoutModal: React.FC = () => {
         voucherCode: appliedVoucher?.code,
         voucherDiscount,
         items: orderItems,
-        notes
+        notes,
+        isPreOrder: hasPreOrder,
+        preOrderNote: hasPreOrder ? preOrderNote : ''
       });
 
       setCreatedOrder(result.order);

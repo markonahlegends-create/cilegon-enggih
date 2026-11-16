@@ -187,6 +187,28 @@ export const adminDeleteProduct = (id: string) =>
     { method: 'DELETE', admin: true }
   );
 
+export const adminDuplicateProduct = (id: string) =>
+  apiRequest<{ product: any; products: any[] }>(
+    `/api/admin/products/${encodeURIComponent(id)}/duplicate`,
+    { method: 'POST', admin: true }
+  );
+
+export const adminUploadImage = (payload: { dataUrl: string; filename?: string }) =>
+  apiRequest<{ url: string; filename: string; storage: string; note?: string }>(
+    '/api/admin/upload',
+    { method: 'POST', body: payload, admin: true }
+  );
+
+export const adminSettingsFull = () =>
+  apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
+
+export const adminTestTelegram = (payload: { telegram: Record<string, unknown> }) =>
+  apiRequest<{ sent: boolean; message: string }>('/api/admin/telegram/test', {
+    method: 'POST',
+    body: payload,
+    admin: true
+  });
+
 export const adminResetProducts = () =>
   apiRequest<{ products: any[]; restored: number }>('/api/admin/products/reset', {
     method: 'POST',

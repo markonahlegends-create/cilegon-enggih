@@ -1,5 +1,8 @@
 # Cilegon Enggih — Official Store E-Commerce
 
+> **Baru:** editor produk lengkap (varian, gambar, spesifikasi, badge), label pre-order, dan notifikasi Telegram — lihat [EDITOR-PRODUK.md](EDITOR-PRODUK.md).
+
+
 **Oleh-Oleh Modern Kebanggaan Cilegon | Khas Kota Baja, Bangga Membawanya.**
 
 Website e-commerce resmi untuk brand merchandise **Cilegon Enggih** yang mengangkat ikon **Landmark Simpang Tiga Kota Cilegon**. Dirancang dengan pengalaman belanja modern ala *Official Store* Tokopedia menggunakan palet warna resmi:

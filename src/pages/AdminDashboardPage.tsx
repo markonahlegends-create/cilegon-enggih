@@ -34,6 +34,7 @@ import {
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { InvoiceDocument } from '../components/InvoiceDocument';
+import { ProductEditor } from '../components/ProductEditor';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
 import {
   adminLogin,
@@ -42,6 +43,8 @@ import {
   adminOrders,
   adminUpdateOrder,
   adminCreateProduct,
+  adminDuplicateProduct,
+  adminTestTelegram,
   adminUpdateProduct,
   adminDeleteProduct,
   adminResetProducts,
@@ -127,18 +130,36 @@ export const AdminDashboardPage: React.FC = () => {
   const [invoiceOrder, setInvoiceOrder] = useState<any>(null);
   const [invoiceMode, setInvoiceMode] = useState<'invoice' | 'label'>('invoice');
   const [editingProduct, setEditingProduct] = useState<any>(null);
+  const [productQuery, setProductQuery] = useState('');
+  const [productFilter, setProductFilter] = useState('');
+  const [confirmClose, setConfirmClose] = useState(false);
   const [showNewProduct, setShowNewProduct] = useState(false);
-  const [newProduct, setNewProduct] = useState<any>({
+  const blankProduct = () => ({
     name: '',
     shortName: '',
+    englishSubtitle: '',
+    slug: '',
     price: 50000,
     originalPrice: 60000,
     stock: 20,
+    stockManual: false,
     weightGrams: 300,
     categorySlug: 'aksesoris-dekorasi',
+    categoryLabel: 'Aksesoris & Dekorasi',
     image: '/products/gantungan-kunci-3d.png',
-    description: ''
+    galleryImages: ['/products/gantungan-kunci-3d.png'],
+    description: '',
+    specs: [],
+    variants: [],
+    badges: [],
+    bundleItems: [],
+    isPreOrder: true,
+    preOrderNote: 'Pre Order 7–15 hari kerja',
+    minWholesaleQty: 0,
+    wholesalePrice: 50000,
+    active: true
   });
+  const [newProduct, setNewProduct] = useState<any>(blankProduct());
 
   const token = getAdminToken();
 
@@ -230,18 +251,35 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const saveProduct = async (product: any) => {
-    setBusyId(product.id);
+    const { __isNew, __dirty, ...payload } = product;
+    setBusyId(payload.id || 'new');
     try {
-      const res = product.__isNew
-        ? await adminCreateProduct(product)
-        : await adminUpdateProduct(product.id, product);
+      const res = __isNew
+        ? await adminCreateProduct(payload)
+        : await adminUpdateProduct(payload.id, payload);
       setProducts(res.products || []);
       setEditingProduct(null);
       setShowNewProduct(false);
+      setProductQuery('');
+      setProductFilter('');
       await refreshStorefront();
-      pushToast('Produk Tersimpan', product.name, 'success');
+      pushToast('Produk Tersimpan', payload.name, 'success');
     } catch (err) {
       pushToast('Gagal Simpan Produk', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const duplicateProduct = async (product: any) => {
+    setBusyId(`dup-${product.id}`);
+    try {
+      const res = await adminDuplicateProduct(product.id);
+      setProducts(res.products || []);
+      await refreshStorefront();
+      pushToast('Produk Diduplikat', `${product.shortName || product.name} → salinan`, 'success');
+    } catch (err) {
+      pushToast('Gagal Duplikat', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
     } finally {
       setBusyId(null);
     }
@@ -274,6 +312,24 @@ export const AdminDashboardPage: React.FC = () => {
       pushToast('Gagal Reset', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
     } finally {
       setBusyId(null);
+    }
+  };
+
+  const [testingTelegram, setTestingTelegram] = useState(false);
+
+  const testTelegram = async () => {
+    setTestingTelegram(true);
+    try {
+      const res = await adminTestTelegram({ telegram: draftSettings.telegram || {} });
+      pushToast('Telegram Terhubung', res.message || 'Pesan uji terkirim.', 'success');
+      setDraftSettings((prev: any) => ({
+        ...prev,
+        telegram: { ...(prev.telegram || {}), enabled: true }
+      }));
+    } catch (err) {
+      pushToast('Tes Telegram Gagal', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setTestingTelegram(false);
     }
   };
 
@@ -334,6 +390,45 @@ export const AdminDashboardPage: React.FC = () => {
       pushToast('Export Gagal', 'Coba lagi', 'error');
     }
   };
+
+  /** Tutup editor dengan pengaman perubahan belum tersimpan. */
+  const requestCloseEditor = () => {
+    const dirty = Boolean(
+      (showNewProduct && newProduct.__dirty) || (editingProduct && editingProduct.__dirty)
+    );
+    if (dirty) {
+      setConfirmClose(true);
+      return;
+    }
+    setShowNewProduct(false);
+    setEditingProduct(null);
+  };
+
+  const filteredProducts = useMemo(() => {
+    const q = productQuery.trim().toLowerCase();
+    return products.filter((p) => {
+      const matchQuery =
+        !q ||
+        [p.name, p.shortName, p.categoryLabel, p.slug]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(q));
+      if (!matchQuery) return false;
+      switch (productFilter) {
+        case 'preorder':
+          return Boolean(p.isPreOrder);
+        case 'bestseller':
+          return Boolean(p.isBestSeller);
+        case 'bundle':
+          return Boolean(p.isBundle);
+        case 'lowstock':
+          return Number(p.stock || 0) <= 20;
+        case 'inactive':
+          return p.active === false;
+        default:
+          return true;
+      }
+    });
+  }, [products, productQuery, productFilter]);
 
   const filteredOrders = useMemo(() => {
     return orders.filter((o) => {
@@ -684,12 +779,41 @@ export const AdminDashboardPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setShowNewProduct(true)}
+                onClick={() => {
+                  setNewProduct(blankProduct());
+                  setShowNewProduct(true);
+                  setEditingProduct(null);
+                }}
                 className="px-3 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
               >
                 <Plus className="w-3.5 h-3.5" /> Produk Baru
               </button>
             </div>
+          </div>
+
+          {/* Pencarian & filter katalog */}
+          <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl border border-slate-200 p-2.5">
+            <div className="relative flex-1 min-w-[180px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                value={productQuery}
+                onChange={(e) => setProductQuery(e.target.value)}
+                placeholder="Cari nama, kategori, atau slug produk…"
+                className="input-admin !pl-8 !text-[11px] !py-1.5"
+              />
+            </div>
+            <select
+              value={productFilter}
+              onChange={(e) => setProductFilter(e.target.value)}
+              className="input-admin !text-[11px] !py-1.5 !w-auto"
+            >
+              <option value="">Semua produk ({products.length})</option>
+              <option value="preorder">Pre-Order</option>
+              <option value="bestseller">Best Seller</option>
+              <option value="bundle">Paket Bundling</option>
+              <option value="lowstock">Stok menipis (≤20)</option>
+              <option value="inactive">Nonaktif</option>
+            </select>
           </div>
 
           {(showNewProduct || editingProduct) && (
@@ -699,12 +823,11 @@ export const AdminDashboardPage: React.FC = () => {
                 if (showNewProduct) setNewProduct(next);
                 else setEditingProduct(next);
               }}
-              onCancel={() => {
-                setShowNewProduct(false);
-                setEditingProduct(null);
-              }}
+              onCancel={requestCloseEditor}
               onSave={saveProduct}
-              busy={busyId === (editingProduct?.id || 'new')}
+              busy={
+                busyId === (editingProduct?.id || 'new') || busyId === `dup-${editingProduct?.id}`
+              }
             />
           )}
 
@@ -716,12 +839,14 @@ export const AdminDashboardPage: React.FC = () => {
                     <th className="text-left px-3 py-2.5 font-bold">Produk</th>
                     <th className="text-right px-2 py-2.5 font-bold">Harga</th>
                     <th className="text-right px-2 py-2.5 font-bold">Stok</th>
-                    <th className="text-center px-2 py-2.5 font-bold">Status</th>
+                    <th className="text-center px-2 py-2.5 font-bold">Varian</th>
+                    <th className="text-right px-2 py-2.5 font-bold">Berat</th>
+                    <th className="text-center px-2 py-2.5 font-bold">Label</th>
                     <th className="text-right px-3 py-2.5 font-bold">Aksi</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {products.map((p) => (
+                  {filteredProducts.map((p) => (
                     <tr key={p.id} className="border-t border-slate-100">
                       <td className="px-3 py-2">
                         <div className="flex items-center gap-2">
@@ -755,8 +880,25 @@ export const AdminDashboardPage: React.FC = () => {
                       >
                         {p.stock}
                       </td>
+                      <td className="px-2 py-2 text-center text-slate-600 font-semibold">
+                        {(p.variants || []).length > 0 ? (
+                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                            {(p.variants || []).length}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">–</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-2 text-right text-slate-600 whitespace-nowrap">
+                        {p.weightGrams || 0} g
+                      </td>
                       <td className="px-2 py-2 text-center">
                         <div className="flex flex-wrap justify-center gap-1">
+                          {p.isPreOrder && (
+                            <span className="px-1.5 py-0.5 rounded bg-forest-600 text-white text-[9px] font-bold">
+                              PO
+                            </span>
+                          )}
                           {p.isBestSeller && (
                             <span className="px-1.5 py-0.5 rounded bg-amberbrand-100 text-amberbrand-800 text-[9px] font-bold">
                               Best
@@ -787,6 +929,15 @@ export const AdminDashboardPage: React.FC = () => {
                         </button>
                         <button
                           type="button"
+                          onClick={() => duplicateProduct(p)}
+                          disabled={busyId === `dup-${p.id}`}
+                          title="Duplikat produk"
+                          className="ml-1 p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => removeProduct(p)}
                           className="ml-1 p-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
                         >
@@ -795,6 +946,13 @@ export const AdminDashboardPage: React.FC = () => {
                       </td>
                     </tr>
                   ))}
+                  {filteredProducts.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
+                        Tidak ada produk yang cocok dengan pencarian/filter.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -884,8 +1042,47 @@ export const AdminDashboardPage: React.FC = () => {
           onChange={setDraftSettings}
           onSave={saveSettings}
           onReset={resetSettings}
+          onTestTelegram={testTelegram}
+          testingTelegram={testingTelegram}
           busy={busyId === 'settings' || busyId === 'reset-settings'}
         />
+      )}
+
+      {/* Konfirmasi tutup editor dengan perubahan belum disimpan */}
+      {confirmClose && (
+        <div className="fixed inset-0 z-50 bg-navy-950/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 space-y-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amberbrand-500 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="text-sm font-extrabold text-navy-800">Perubahan belum disimpan</h4>
+                <p className="text-[11.5px] text-slate-500 mt-1">
+                  Kalau ditutup sekarang, semua perubahan pada produk ini akan hilang.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setConfirmClose(false)}
+                className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700"
+              >
+                Lanjut Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmClose(false);
+                  setShowNewProduct(false);
+                  setEditingProduct(null);
+                }}
+                className="px-3 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold"
+              >
+                Buang Perubahan
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {invoiceOrder && (
@@ -1176,172 +1373,6 @@ const OrderCard: React.FC<{
 /* Product editor                                                       */
 /* ==================================================================== */
 
-const ProductEditor: React.FC<{
-  value: any;
-  onChange: (next: any) => void;
-  onCancel: () => void;
-  onSave: (product: any) => void;
-  busy: boolean;
-}> = ({ value, onChange, onCancel, onSave, busy }) => {
-  const set = (key: string, val: any) => onChange({ ...value, [key]: val });
-  return (
-    <div className="bg-white rounded-2xl border-2 border-forest-300 p-4 space-y-2.5 shadow-soft">
-      <div className="flex items-center justify-between">
-        <h4 className="text-sm font-extrabold text-navy-800">
-          {value.__isNew ? 'Tambah Produk Baru' : `Edit: ${value.shortName || value.name}`}
-        </h4>
-        <button type="button" onClick={onCancel} className="p-1 rounded-lg hover:bg-slate-100">
-          <X className="w-4 h-4 text-slate-500" />
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-        <Field label="Nama Produk">
-          <input
-            value={value.name || ''}
-            onChange={(e) => set('name', e.target.value)}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Nama Pendek (kartu produk)">
-          <input
-            value={value.shortName || ''}
-            onChange={(e) => set('shortName', e.target.value)}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Harga Jual (Rp)">
-          <input
-            type="number"
-            value={value.price ?? 0}
-            onChange={(e) => set('price', Number(e.target.value))}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Harga Sebelum Diskon (Rp)">
-          <input
-            type="number"
-            value={value.originalPrice ?? 0}
-            onChange={(e) => set('originalPrice', Number(e.target.value))}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Stok (pcs)">
-          <input
-            type="number"
-            value={value.stock ?? 0}
-            onChange={(e) => set('stock', Number(e.target.value))}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Berat (gram)">
-          <input
-            type="number"
-            value={value.weightGrams ?? 300}
-            onChange={(e) => set('weightGrams', Number(e.target.value))}
-            className="input-admin"
-          />
-        </Field>
-        <Field label="Kategori">
-          <select
-            value={value.categorySlug || 'aksesoris-dekorasi'}
-            onChange={(e) => {
-              const map: Record<string, string> = {
-                'apparel-tas': 'Apparel & Tas',
-                drinkware: 'Drinkware',
-                'aksesoris-dekorasi': 'Aksesoris & Dekorasi',
-                'perlengkapan-cetak': 'Perlengkapan & Cetak',
-                'paket-bundling': 'Paket Bundling / Hampers'
-              };
-              onChange({
-                ...value,
-                categorySlug: e.target.value,
-                categoryLabel: map[e.target.value] || 'Aksesoris & Dekorasi'
-              });
-            }}
-            className="input-admin"
-          >
-            {[
-              ['apparel-tas', 'Apparel & Tas'],
-              ['drinkware', 'Drinkware'],
-              ['aksesoris-dekorasi', 'Aksesoris & Dekorasi'],
-              ['perlengkapan-cetak', 'Perlengkapan & Cetak'],
-              ['paket-bundling', 'Paket Bundling / Hampers']
-            ].map(([slug, label]) => (
-              <option key={slug} value={slug}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Path Gambar">
-          <input
-            value={value.image || ''}
-            onChange={(e) => set('image', e.target.value)}
-            placeholder="/products/kaos-distro.png"
-            className="input-admin"
-          />
-        </Field>
-      </div>
-
-      <Field label="Deskripsi">
-        <textarea
-          rows={2}
-          value={value.description || ''}
-          onChange={(e) => set('description', e.target.value)}
-          className="input-admin"
-        />
-      </Field>
-
-      <div className="flex flex-wrap gap-3 text-[11px] font-semibold text-slate-700">
-        {[
-          ['isBestSeller', 'Best Seller'],
-          ['isFlashDeal', 'Flash Deal'],
-          ['isBundle', 'Paket Bundling'],
-          ['hasSizeChart', 'Tampilkan Size Chart']
-        ].map(([key, label]) => (
-          <label key={key} className="inline-flex items-center gap-1.5">
-            <input
-              type="checkbox"
-              checked={Boolean(value[key])}
-              onChange={(e) => set(key, e.target.checked)}
-              className="rounded border-slate-300"
-            />
-            {label}
-          </label>
-        ))}
-        <label className="inline-flex items-center gap-1.5">
-          <input
-            type="checkbox"
-            checked={value.active !== false}
-            onChange={(e) => set('active', e.target.checked)}
-            className="rounded border-slate-300"
-          />
-          Tampil di Storefront
-        </label>
-      </div>
-
-      <div className="flex gap-2 pt-1">
-        <button
-          type="button"
-          disabled={busy || !value.name}
-          onClick={() => onSave(value)}
-          className="px-4 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 disabled:opacity-50 text-white text-xs font-extrabold inline-flex items-center gap-1.5"
-        >
-          <Save className="w-3.5 h-3.5" /> Simpan Produk
-        </button>
-        <button
-          type="button"
-          onClick={onCancel}
-          className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700"
-        >
-          Batal
-        </button>
-      </div>
-    </div>
-  );
-};
-
 const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div>
     <label className="block text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-0.5">
@@ -1360,8 +1391,10 @@ const SettingsPanel: React.FC<{
   onChange: (next: any) => void;
   onSave: () => void;
   onReset: () => void;
+  onTestTelegram: () => void;
+  testingTelegram: boolean;
   busy: boolean;
-}> = ({ value, onChange, onSave, onReset, busy }) => {
+}> = ({ value, onChange, onSave, onReset, onTestTelegram, testingTelegram, busy }) => {
   const [copied, setCopied] = useState('');
   const set = (key: string, val: any) => onChange({ ...value, [key]: val });
   const setNested = (group: string, key: string, val: any) =>
@@ -1699,6 +1732,95 @@ const SettingsPanel: React.FC<{
           >
             <Plus className="w-3 h-3" /> Tambah Voucher
           </button>
+        </div>
+      </Section>
+
+      {/* Notifikasi Telegram */}
+      <Section title="Notifikasi Telegram (Gratis)" icon={MessageCircle}>
+        <p className="text-[11px] text-slate-500 leading-relaxed">
+          Admin menerima pemberitahuan otomatis saat ada pesanan baru, bukti transfer, pembayaran
+          LUNAS, paket dikirim, dan penawaran B2B. Gratis, tanpa biaya per pesan.
+        </p>
+        <div className="rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-[10.5px] text-slate-600 leading-relaxed space-y-1">
+          <div>
+            <strong>1.</strong> Buka Telegram → chat <code>@BotFather</code> → kirim{' '}
+            <code>/newbot</code> → ikuti langkahnya → salin <strong>token</strong>.
+          </div>
+          <div>
+            <strong>2.</strong> Kirim pesan apa saja ke bot Anda, lalu buka{' '}
+            <code>https://api.telegram.org/bot&lt;TOKEN&gt;/getUpdates</code> untuk melihat{' '}
+            <strong>chat id</strong> (angka, biasanya diawali <code>-</code> untuk grup).
+          </div>
+          <div>
+            <strong>3.</strong> Tempel token & chat id di bawah → klik <strong>Tes Koneksi</strong>{' '}
+            → Simpan Pengaturan.
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <Field label="Bot Token">
+            <input
+              value={value.telegram?.botToken || ''}
+              onChange={(e) => setNested('telegram', 'botToken', e.target.value)}
+              placeholder="123456789:AAF..."
+              className="input-admin font-mono !text-[11px]"
+            />
+          </Field>
+          <Field label="Chat ID Admin">
+            <input
+              value={value.telegram?.chatId || ''}
+              onChange={(e) => setNested('telegram', 'chatId', e.target.value)}
+              placeholder="123456789 atau -1001234567890"
+              className="input-admin font-mono !text-[11px]"
+            />
+          </Field>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={onTestTelegram}
+            disabled={testingTelegram}
+            className="px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-900 disabled:opacity-60 text-white text-[11px] font-extrabold inline-flex items-center gap-1.5"
+          >
+            {testingTelegram ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <MessageCircle className="w-3.5 h-3.5" />
+            )}
+            {testingTelegram ? 'Mengirim…' : 'Tes Koneksi'}
+          </button>
+          <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={value.telegram?.enabled === true}
+              onChange={(e) => setNested('telegram', 'enabled', e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Aktifkan notifikasi
+          </label>
+          {value.telegram?.botToken && value.telegram?.chatId && (
+            <span className="text-[10.5px] font-bold text-forest-700 bg-forest-50 px-2 py-1 rounded-lg">
+              ✓ Terkonfigurasi
+            </span>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+          {[
+            ['notifyNewOrder', 'Pesanan baru masuk'],
+            ['notifyPaymentProof', 'Bukti transfer diunggah'],
+            ['notifyPaid', 'Pembayaran diverifikasi LUNAS'],
+            ['notifyShipped', 'Paket dikirim (resi diinput)'],
+            ['notifyB2B', 'Penawaran B2B baru']
+          ].map(([key, label]) => (
+            <label key={key} className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+              <input
+                type="checkbox"
+                checked={value.telegram?.[key] !== false}
+                onChange={(e) => setNested('telegram', key, e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              {label}
+            </label>
+          ))}
         </div>
       </Section>
 
