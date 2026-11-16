@@ -1,5 +1,7 @@
 # 🚦 GO-LIVE PLAYBOOK — Cilegon Enggih Official Store
 
+> Ingin versi ringkas berisi **tugas Anda saja**? Lihat **[TUGAS-ANDA.md](./TUGAS-ANDA.md)**.
+
 Panduan operasional **langkah demi langkah** untuk membawa project ini dari repo → domain publik → transaksi pertama, mengikuti rekomendasi arsitektur yang sudah dipilih (**Option A**).
 
 **Rekomendasi utama (paling murah & paling cepat):**
