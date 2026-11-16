@@ -1,6 +1,18 @@
 # 🚦 GO-LIVE PLAYBOOK — Cilegon Enggih Official Store
 
 > Ingin versi ringkas berisi **tugas Anda saja**? Lihat **[TUGAS-ANDA.md](./TUGAS-ANDA.md)**.
+> Deployment sudah jalan tapi muncul halaman login Vercel / env Supabase belum terbaca? Lihat
+> **[TROUBLESHOOTING-DEPLOY.md](./TROUBLESHOOTING-DEPLOY.md)**.
+
+### Diagnosa mandiri setelah deploy
+
+| Cara | URL / aksi |
+| --- | --- |
+| Panel visual | `/admin` → tab **Analitik** → panel **Kesiapan Go-Live** |
+| JSON | `/api/diagnose` |
+| Terminal | `npm run preflight -- https://domain-anda.com` |
+
+Panel & endpoint ini **hanya menampilkan status**, tidak pernah menampilkan nilai kunci/password.
 
 Panduan operasional **langkah demi langkah** untuk membawa project ini dari repo → domain publik → transaksi pertama, mengikuti rekomendasi arsitektur yang sudah dipilih (**Option A**).
 

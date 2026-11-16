@@ -10,7 +10,7 @@
  */
 
 import crypto from 'node:crypto';
-import { store } from './db.js';
+import { store, SUPABASE_KEY_TYPE } from './db.js';
 import { SEED_PRODUCTS, SEED_CATEGORIES, SEED_SIZE_CHART } from './seed/catalog.js';
 import {
   STORE,
@@ -448,6 +448,25 @@ const route = (method, path, handler) => routes.push({ method, path, handler });
 
 route('GET', '/api/health', async () => {
   const settings = await readSettings();
+  const warnings = [];
+  if (store.mode !== 'supabase') {
+    warnings.push(
+      'SUPABASE_URL / kunci Supabase belum terbaca. Di serverless (Vercel) data akan hilang saat cold start. Set kedua env var lalu Redeploy.'
+    );
+  }
+  if (SUPABASE_KEY_TYPE === 'publishable') {
+    warnings.push(
+      'Kunci Supabase bertipe publishable (anon). RLS aktif sehingga backend tidak bisa membaca/menulis data. Gunakan Secret key (sb_secret_...) atau service_role key.'
+    );
+  }
+  if (store.mode === 'supabase') {
+    const reachable = await store.ping();
+    if (!reachable) {
+      warnings.push(
+        'Supabase tidak dapat dihubungi atau tabel ce_documents belum dibuat. Jalankan supabase-schema.sql di SQL Editor Supabase.'
+      );
+    }
+  }
   return ok({
     status: 'ok',
     store: `${settings.storeName} Official API`,
@@ -455,6 +474,14 @@ route('GET', '/api/health', async () => {
     dataDir: store.dataDir,
     supabase: store.mode === 'supabase',
     adminProtected: true,
+    env: {
+      supabaseUrl: Boolean(process.env.SUPABASE_URL),
+      supabaseKey: SUPABASE_KEY_TYPE !== 'none',
+      keyType: SUPABASE_KEY_TYPE,
+      adminPasswordConfigured: Boolean(process.env.ADMIN_PASSWORD),
+      adminTokenSecretConfigured: Boolean(process.env.ADMIN_TOKEN_SECRET)
+    },
+    warnings,
     origin: SHIPPING_ORIGIN,
     timestamp: nowIso()
   });
@@ -468,6 +495,144 @@ route('GET', '/api/storefront', async () => {
     products,
     origin: SHIPPING_ORIGIN,
     storage: store.mode
+  });
+});
+
+/** Diagnosa mandiri untuk pemilik toko — tidak membocorkan kredensial. */
+route('GET', '/api/diagnose', async () => {
+  const settings = await readSettings();
+  const checks = [];
+
+  const add = (id, label, status, detail, fix = '') =>
+    checks.push({ id, label, status, detail, fix });
+
+  // 1. Env Supabase
+  const urlSet = Boolean(process.env.SUPABASE_URL);
+  const keySet = SUPABASE_KEY_TYPE !== 'none';
+  add(
+    'env-url',
+    'SUPABASE_URL tersedia',
+    urlSet ? 'ok' : 'fail',
+    urlSet ? 'terbaca' : 'tidak terbaca di runtime',
+    'Vercel → Settings → Environment Variables → tambah SUPABASE_URL (https://xxxx.supabase.co) untuk Production, lalu Redeploy.'
+  );
+  add(
+    'env-key',
+    'Kunci Supabase tersedia',
+    keySet ? 'ok' : 'fail',
+    keySet ? `tipe kunci: ${SUPABASE_KEY_TYPE}` : 'tidak terbaca di runtime',
+    'Tambah SUPABASE_SERVICE_ROLE_KEY (JWT eyJ... atau sb_secret_...). Jangan pakai sb_publishable_/anon.'
+  );
+  if (SUPABASE_KEY_TYPE === 'publishable') {
+    add(
+      'key-type',
+      'Tipe kunci memadai',
+      'fail',
+      'kunci publishable/anon tidak bisa menembus RLS',
+      'Ganti dengan Secret key (sb_secret_...) atau service_role JWT.'
+    );
+  }
+
+  // 2. Koneksi + tabel
+  if (store.mode === 'supabase') {
+    const reachable = await store.ping();
+    add(
+      'supabase-reachable',
+      'Supabase dapat dihubungi & tabel ce_documents ada',
+      reachable ? 'ok' : 'fail',
+      reachable ? 'query berhasil' : 'gagal menghubungi / tabel belum dibuat',
+      'Jalankan isi supabase-schema.sql pada SQL Editor project Supabase.'
+    );
+
+    if (reachable) {
+      try {
+        const products = await readProducts();
+        add(
+          'products',
+          'Katalog produk tersedia',
+          products.length > 0 ? 'ok' : 'warn',
+          `${products.length} produk`,
+          products.length ? '' : 'Buka /admin → Produk → Reset Katalog.'
+        );
+      } catch (err) {
+        add('products', 'Katalog produk tersedia', 'fail', err.message, '');
+      }
+    }
+  } else {
+    add(
+      'storage-mode',
+      'Mode penyimpanan',
+      'warn',
+      'local-json (data tidak persisten di serverless)',
+      'Lengkapi SUPABASE_URL + kunci Supabase.'
+    );
+  }
+
+  // 3. Konfigurasi toko
+  const placeholderBanks = (settings.banks || []).filter(
+    (b) => b.isPlaceholder || /placehold/i.test(String(b.accountHolder))
+  );
+  add(
+    'banks',
+    'Rekening bank asli',
+    placeholderBanks.length === 0 ? 'ok' : 'fail',
+    placeholderBanks.length === 0
+      ? `${settings.banks.length} rekening terisi`
+      : `${placeholderBanks.length} dari ${settings.banks.length} rekening masih placeholder`,
+    'Login /admin → Pengaturan → ganti nomor & atas nama rekening, lalu Simpan.'
+  );
+
+  const qrisOk =
+    settings.qris?.mode === 'static'
+      ? Boolean(settings.qris?.staticImageUrl)
+      : Boolean(settings.qris?.nmid) && settings.qris?.nmid !== 'ID1020030405060';
+  add(
+    'qris',
+    'QRIS terkonfigurasi',
+    qrisOk ? 'ok' : 'warn',
+    settings.qris?.mode === 'static'
+      ? `mode statis → ${settings.qris?.staticImageUrl}`
+      : `mode dinamis → NMID ${settings.qris?.nmid}`,
+    'Pengaturan → QRIS: unggah gambar QRIS resmi (mode statis) atau isi NMID asli (mode dinamis).'
+  );
+
+  add(
+    'password',
+    'ADMIN_PASSWORD dari environment',
+    process.env.ADMIN_PASSWORD ? 'ok' : 'warn',
+    process.env.ADMIN_PASSWORD ? 'terpasang' : 'memakai default development',
+    'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy.'
+  );
+  add(
+    'token-secret',
+    'ADMIN_TOKEN_SECRET dari environment',
+    process.env.ADMIN_TOKEN_SECRET ? 'ok' : 'warn',
+    process.env.ADMIN_TOKEN_SECRET ? 'terpasang' : 'diturunkan dari password',
+    'Set ADMIN_TOKEN_SECRET acak 64 karakter hex.'
+  );
+  add(
+    'contact',
+    'Kontak & alamat resmi',
+    /Karang Asem/.test(settings.address) && settings.whatsapp === '6281927157103' ? 'ok' : 'warn',
+    `${settings.whatsappDisplay} • ${settings.email}`,
+    'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 081927157103.'
+  );
+
+  const summary = {
+    ok: checks.filter((c) => c.status === 'ok').length,
+    warn: checks.filter((c) => c.status === 'warn').length,
+    fail: checks.filter((c) => c.status === 'fail').length
+  };
+  const ready = summary.fail === 0;
+
+  return ok({
+    ready,
+    summary,
+    storage: store.mode,
+    checks,
+    generatedAt: nowIso(),
+    note:
+      'Halaman ini hanya menampilkan status konfigurasi, tidak pernah menampilkan nilai kunci/password.'
   });
 });
 

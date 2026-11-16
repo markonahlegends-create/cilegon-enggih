@@ -106,6 +106,7 @@ DEPLOYMENT.md         # panduan deploy Vercel / Cloudflare Pages / VPS + Supabas
 
 ## Deployment & Go-Live
 
+- **[TROUBLESHOOTING-DEPLOY.md](./TROUBLESHOOTING-DEPLOY.md)** — perbaikan masalah deployment (proteksi Vercel, env Supabase, kunci `sb_secret_`, diagnosa).
 - **[TUGAS-ANDA.md](./TUGAS-ANDA.md)** — daftar tugas yang **hanya bisa Anda lakukan sendiri** (rekening asli, QRIS, akun Supabase/Vercel, domain, uji transfer, publikasi) dalam 5 blok + checklist satu halaman.
 - **[GO-LIVE.md](./GO-LIVE.md)** — playbook operasional langkah demi langkah: persiapan kredensial → Supabase → deploy Vercel → domain & HTTPS → konfigurasi toko dari dashboard → uji transaksi end-to-end → publikasi (SEO, Google Business) → checklist "Definition of Done".
 - **[DEPLOYMENT.md](./DEPLOYMENT.md)** — referensi teknis deployment (env vars, alternatif Cloudflare Pages & VPS/PM2, backup, troubleshooting).

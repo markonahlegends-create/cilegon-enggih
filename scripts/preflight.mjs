@@ -93,6 +93,34 @@ if (target) {
     }
   };
 
+  /* --- deteksi proteksi deployment Vercel (SSO) ---------------------- */
+  let protectedDeployment = false;
+  try {
+    const probe = await fetch(`${base}/api/health`, {
+      signal: AbortSignal.timeout(15000),
+      redirect: 'manual'
+    });
+    const location = probe.headers.get('location') || '';
+    if (probe.status >= 300 && probe.status < 400 && /vercel\.com/i.test(location)) {
+      protectedDeployment = true;
+    }
+    if (probe.status === 401) protectedDeployment = true;
+  } catch (err) {
+    fail('deployment dapat diakses publik', err.message);
+  }
+
+  if (protectedDeployment) {
+    fail(
+      'deployment dapat diakses publik',
+      'URL ini meminta login Vercel (Deployment Protection aktif) — pembeli tidak bisa membuka toko'
+    );
+    fail(
+      'aksi: matikan proteksi',
+      'Vercel → Project → Settings → Deployment Protection → Vercel Authentication: Disabled → lalu Redeploy. Gunakan URL Production (domain utama), bukan URL preview ber-hash.'
+    );
+    console.log('\n⚠️  Deployment masih dilindungi Vercel Authentication — pemeriksaan API dilewati.\n');
+  }
+
   await check('api health', `${base}/api/health`, async (res) => {
     const body = await res.json().catch(() => ({}));
     if (body.storage === 'supabase') {
@@ -100,7 +128,24 @@ if (target) {
       return true;
     }
     fail('storage supabase', `masih "${body.storage}" — env Supabase belum terbaca, data akan hilang saat cold start`);
+    if (Array.isArray(body.warnings)) {
+      body.warnings.forEach((w) => console.log(`      ↳ ${w}`));
+    }
     return false;
+  });
+
+  await check('api diagnose (ringkas)', `${base}/api/diagnose`, async (res) => {
+    const body = await res.json().catch(() => ({}));
+    if (!Array.isArray(body.checks)) {
+      fail('api diagnose', 'respons tidak dikenali (versi deploy lama?)');
+      return false;
+    }
+    body.checks.forEach((c) => {
+      if (c.status === 'fail') fail(`diagnosa: ${c.label}`, c.fix || c.detail);
+      else if (c.status === 'warn') console.log(`   ⚠️  ${c.label} — ${c.detail}`);
+    });
+    pass('api diagnose', `${body.summary?.ok ?? '?'} siap / ${body.summary?.fail ?? '?'} wajib`);
+    return true;
   });
 
   await check('api storefront', `${base}/api/storefront`, async (res) => {

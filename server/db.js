@@ -22,9 +22,30 @@ import { SEED_PRODUCTS } from './seed/catalog.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
+const SUPABASE_URL = (
+  process.env.SUPABASE_URL ||
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+).replace(/\/+$/, '');
+
+// Dukung dua gaya kunci Supabase:
+//  • legacy JWT  → service_role / anon key (eyJhbGciOi...)
+//  • baru (2025) → secret key `sb_secret_...` / publishable `sb_publishable_...`
 const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
+  process.env.SUPABASE_SECRET_KEY ||
+  process.env.SUPABASE_SERVICE_KEY ||
+  process.env.SUPABASE_ANON_KEY ||
+  '';
+
+/** Jenis kunci — dipakai untuk peringatan konfigurasi (tanpa membocorkan nilai). */
+export const SUPABASE_KEY_TYPE = !SUPABASE_KEY
+  ? 'none'
+  : SUPABASE_KEY.startsWith('sb_secret_')
+  ? 'secret'
+  : SUPABASE_KEY.startsWith('sb_publishable_')
+  ? 'publishable'
+  : 'jwt';
 const TABLE = process.env.SUPABASE_DOCS_TABLE || 'ce_documents';
 
 export const USING_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY);
@@ -131,13 +152,19 @@ const ensureLocalSeed = (collection) => {
 /* Supabase REST adapter                                               */
 /* ------------------------------------------------------------------ */
 
-const sbHeaders = (extra = {}) => ({
-  apikey: SUPABASE_KEY,
-  Authorization: `Bearer ${SUPABASE_KEY}`,
-  'Content-Type': 'application/json',
-  Prefer: 'return=representation',
-  ...extra
-});
+const sbHeaders = (extra = {}) => {
+  const headers = {
+    apikey: SUPABASE_KEY,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation'
+  };
+  // Kunci gaya baru (sb_secret_/sb_publishable_) cukup lewat header `apikey`.
+  // Kunci JWT legacy tetap butuh Authorization: Bearer <key>.
+  if (!SUPABASE_KEY.startsWith('sb_')) {
+    headers.Authorization = `Bearer ${SUPABASE_KEY}`;
+  }
+  return { ...headers, ...extra };
+};
 
 /**
  * Circuit breaker sederhana: kalau Supabase tidak bisa dihubungi
@@ -181,6 +208,19 @@ const remoteRequest = async (queryPath, options = {}) => {
 export const store = {
   mode: USING_SUPABASE ? 'supabase' : 'local-json',
   dataDir: USING_SUPABASE ? null : DATA_DIR,
+
+  /** Cek konektivitas + keberadaan tabel (dipakai /api/health). */
+  async ping() {
+    if (!USING_SUPABASE) return false;
+    try {
+      await remoteRequest('?select=id&limit=1');
+      remoteFailures = 0;
+      return true;
+    } catch (err) {
+      console.error('[storage] ping Supabase gagal:', err.message);
+      return false;
+    }
+  },
 
   async list(collection) {
     if (!USING_SUPABASE || !remoteAvailable()) return ensureLocalSeed(collection);

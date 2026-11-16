@@ -34,6 +34,7 @@ import {
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { InvoiceDocument } from '../components/InvoiceDocument';
+import { HealthCheckPanel } from '../components/HealthCheckPanel';
 import {
   adminLogin,
   adminSession,
@@ -500,6 +501,7 @@ export const AdminDashboardPage: React.FC = () => {
       {/* ------------------------------ OVERVIEW ------------------------------ */}
       {tab === 'overview' && (
         <div className="space-y-4">
+          <HealthCheckPanel />
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
