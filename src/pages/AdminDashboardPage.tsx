@@ -45,6 +45,7 @@ import {
   adminCreateProduct,
   adminDuplicateProduct,
   adminTestTelegram,
+  adminSettingsFull,
   adminUpdateProduct,
   adminDeleteProduct,
   adminResetProducts,
@@ -206,18 +207,20 @@ export const AdminDashboardPage: React.FC = () => {
     if (!authed) return;
     setLoading(true);
     try {
-      const [an, ord, b2b, prod, exp] = await Promise.all([
+      const [an, ord, b2b, prod, full] = await Promise.all([
         adminAnalytics(),
         adminOrders(),
         adminB2B(),
         adminProducts(),
-        adminExport().catch(() => null)
+        // Endpoint admin mengembalikan settings LENGKAP (termasuk kredensial Telegram).
+        // Jangan pakai /api/admin/export: publicSettings() menghapus botToken/chatId.
+        adminSettingsFull().catch(() => null)
       ]);
       setAnalytics(an);
       setOrders(ord.orders || []);
       setInquiries(b2b.inquiries || []);
       setProducts(prod.products || []);
-      if (exp?.settings) setDraftSettings(exp.settings);
+      if (full?.settings) setDraftSettings(full.settings);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAdminToken('');
@@ -337,7 +340,9 @@ export const AdminDashboardPage: React.FC = () => {
     setBusyId('settings');
     try {
       const res = await adminUpdateSettings(draftSettings);
-      setDraftSettings(res.settings);
+      // Ambil ulang versi lengkap supaya botToken/chatId tetap ada di state.
+      const full = await adminSettingsFull().catch(() => null);
+      setDraftSettings(full?.settings || res.settings);
       await refreshStorefront();
       pushToast('Pengaturan Tersimpan', 'Storefront langsung memakai data terbaru', 'success');
     } catch (err) {
@@ -1402,7 +1407,14 @@ const SettingsPanel: React.FC<{
 
   const updateBank = (idx: number, key: string, val: any) => {
     const banks = [...(value.banks || [])];
-    banks[idx] = { ...banks[idx], [key]: val };
+    const next = { ...banks[idx], [key]: val };
+    // Nomor rekening / atas nama diubah admin => rekening ini bukan placeholder lagi.
+    if (key === 'accountNumber' && String(val).trim()) next.isPlaceholder = false;
+    if (key === 'accountHolder') {
+      next.accountHolder = String(val).replace(/\s*\(placeholder\)\s*/i, '').trim();
+      if (next.accountHolder) next.isPlaceholder = false;
+    }
+    banks[idx] = next;
     set('banks', banks);
   };
 
@@ -1493,7 +1505,7 @@ const SettingsPanel: React.FC<{
       </Section>
 
       {/* Rekening bank */}
-      <Section title="Rekening Bank Toko (Placeholder — edit sebelum go-live)" icon={Banknote}>
+      <Section title="Rekening Bank Toko" icon={Banknote}>
         <div className="space-y-2">
           {(value.banks || []).map((bank: any, idx: number) => (
             <div key={bank.id || idx} className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end">
@@ -1553,7 +1565,7 @@ const SettingsPanel: React.FC<{
                   accountNumber: '0000000000',
                   accountHolder: 'Cilegon Enggih',
                   color: '#1B365D',
-                  isPlaceholder: true
+                  isPlaceholder: false
                 }
               ])
             }
