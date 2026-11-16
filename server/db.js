@@ -54,6 +54,8 @@ export const USING_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY);
 /* Local JSON fallback                                                 */
 /* ------------------------------------------------------------------ */
 
+// Catatan: JANGAN memakai ./data di root (dulu sempat ter-commit dan
+// membuat build gagal); default selalu server/data.
 const OLD_DATA_DIR = path.join(__dirname, 'data');
 const PREFERRED_DIR = process.env.CE_DATA_DIR || OLD_DATA_DIR;
 

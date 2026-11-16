@@ -35,6 +35,7 @@ lerna-debug.log*
 
 # Local data store (fallback JSON) — jangan commit data pesanan pelanggan
 server/data/
+data/
 .ce-data/
 .env
 .env.local
