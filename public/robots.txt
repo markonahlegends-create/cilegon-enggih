@@ -1,0 +1,7 @@
+# Cilegon Enggih Official Store
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://cilegonenggih.com/sitemap.xml

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <rect width="64" height="64" rx="16" fill="#1B365D"/>
+  <!-- Dome / Crown of Cilegon Landmark Tower -->
+  <ellipse cx="32" cy="15" rx="17" ry="6" fill="#2E6F40" stroke="#E5A93C" stroke-width="2"/>
+  <path d="M18 17L26 24H38L46 17" stroke="#E5A93C" stroke-width="2" stroke-linecap="round"/>
+  <!-- Central Core -->
+  <rect x="27" y="21" width="10" height="27" rx="1" fill="#F8FAF8" fill-opacity="0.15" stroke="#F8FAF8" stroke-width="2"/>
+  <!-- Iconic Diagonal Fins Left & Right -->
+  <path d="M27 26L19 21M27 32L19 27M27 38L19 33M27 44L20 39" stroke="#E5A93C" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M37 26L45 21M37 32L45 27M37 38L45 33M37 44L44 39" stroke="#E5A93C" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Base Pillars & Steps -->
+  <path d="M21 48H43M23 44V51M41 44V51" stroke="#F8FAF8" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M15 53C20 50 26 50 32 50C38 50 44 50 49 53" stroke="#2E6F40" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
