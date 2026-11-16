@@ -140,6 +140,23 @@ export const DEFAULT_SETTINGS = {
   },
   announcement:
     'Gratis ongkir area Cilegon untuk pembelian di atas Rp 300.000 — gunakan kode ONGKIRCILEGON.',
+  /** Notifikasi Telegram ke admin (gratis). Isi botToken & chatId dari Dashboard Admin. */
+  telegram: {
+    enabled: false,
+    botToken: '',
+    chatId: '',
+    notifyNewOrder: true,
+    notifyPaymentProof: true,
+    notifyPaid: true,
+    notifyShipped: true,
+    notifyB2B: true
+  },
+  /** Pengaturan umum produk pre-order (dipakai sebagai teks default). */
+  preOrder: {
+    enabled: true,
+    defaultNote: 'Pre Order 7–15 hari kerja',
+    badgeText: 'PRE-ORDER'
+  },
   vouchers: DEFAULT_VOUCHERS,
   updatedAt: new Date().toISOString()
 };

@@ -52,6 +52,11 @@ export interface Product {
   isFlashDeal?: boolean;
   isBundle?: boolean;
   bundleItems?: string[];
+  /** Pre-order: produk dibuat setelah pesanan masuk (7–15 hari kerja). */
+  isPreOrder?: boolean;
+  preOrderNote?: string;
+  /** Stok dikelola manual walau ada varian. */
+  stockManual?: boolean;
   badges: string[];
   description: string;
   specs: ProductSpec[];

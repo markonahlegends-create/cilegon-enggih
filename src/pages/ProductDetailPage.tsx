@@ -11,6 +11,7 @@ import {
   Plus,
   Minus,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Layers,
   Building2,
@@ -47,6 +48,7 @@ export const ProductDetailPage: React.FC = () => {
   const [note, setNote] = useState('');
   const [activeTab, setActiveTab] = useState<'deskripsi' | 'spesifikasi' | 'ulasan'>('deskripsi');
   const [showSizeChartModal, setShowSizeChartModal] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
     setSelectedVariant(product.variants?.[0]);
@@ -59,6 +61,19 @@ export const ProductDetailPage: React.FC = () => {
   const gallery = product.galleryImages?.length
     ? product.galleryImages
     : [product.image];
+
+  // Navigasi lightbox (keyboard) — hanya aktif saat lightbox terbuka.
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.key === 'Escape') setLightboxIndex(null);
+      if (ev.key === 'ArrowRight') setLightboxIndex((i) => (i === null ? null : (i + 1) % gallery.length));
+      if (ev.key === 'ArrowLeft')
+        setLightboxIndex((i) => (i === null ? null : (i - 1 + gallery.length) % gallery.length));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [lightboxIndex, gallery.length]);
 
   const baseUnitPrice = selectedVariant?.price ?? product.price;
   const isWholesaleActive = qty >= product.minWholesaleQty;
@@ -109,35 +124,76 @@ export const ProductDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
         {/* Column 1: Product Gallery */}
         <div className="lg:col-span-4 lg:sticky lg:top-32 space-y-3">
-          <div className="aspect-square rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-card relative">
-            <img
-              src={activeImage}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5">
-              {product.badges.map((b, i) => (
-                <span
-                  key={i}
-                  className="px-2.5 py-1 rounded-lg bg-navy-800/90 text-white text-[11px] font-bold backdrop-blur-xs"
+          <div className="flex gap-2.5">
+            {/* Thumbnail vertikal (desktop) — gaya Tokopedia */}
+            {gallery.length > 1 && (
+              <div className="hidden lg:flex flex-col gap-2 max-h-[430px] overflow-y-auto pr-0.5 shrink-0">
+                {gallery.map((img, idx) => (
+                  <button
+                    key={`${img}-${idx}`}
+                    type="button"
+                    onClick={() => setActiveImage(img)}
+                    aria-label={`Gambar ${idx + 1}`}
+                    className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                      activeImage === img
+                        ? 'border-forest-600 ring-1 ring-forest-600/30'
+                        : 'border-slate-200 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex-1 min-w-0">
+              <div className="aspect-square rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-card relative group">
+                <button
+                  type="button"
+                  onClick={() => setLightboxIndex(Math.max(0, gallery.indexOf(activeImage || gallery[0])))}
+                  className="w-full h-full block cursor-zoom-in"
+                  aria-label="Perbesar gambar"
                 >
-                  {b}
-                </span>
-              ))}
+                  <img
+                    src={activeImage}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                  />
+                </button>
+                <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pointer-events-none">
+                  {product.badges.map((b, i) => (
+                    <span
+                      key={i}
+                      className="px-2.5 py-1 rounded-lg bg-navy-800/90 text-white text-[11px] font-bold backdrop-blur-xs"
+                    >
+                      {b}
+                    </span>
+                  ))}
+                  {product.isPreOrder && (
+                    <span className="px-2.5 py-1 rounded-lg bg-forest-600 text-white text-[11px] font-extrabold backdrop-blur-xs">
+                      ⏳ PRE-ORDER
+                    </span>
+                  )}
+                </div>
+                {gallery.length > 1 && (
+                  <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-navy-950/70 text-white text-[10.5px] font-bold">
+                    {Math.max(1, gallery.indexOf(activeImage || gallery[0]) + 1)}/{gallery.length}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
+          {/* Thumbnail horizontal (mobile) */}
           {gallery.length > 1 && (
-            <div className="grid grid-cols-4 gap-2.5">
+            <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
               {gallery.map((img, idx) => (
                 <button
-                  key={idx}
+                  key={`m-${img}-${idx}`}
                   type="button"
                   onClick={() => setActiveImage(img)}
-                  className={`aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                    activeImage === img
-                      ? 'border-forest-600 ring-2 ring-forest-600/20'
-                      : 'border-slate-200 opacity-75 hover:opacity-100'
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 ${
+                    activeImage === img ? 'border-forest-600' : 'border-slate-200 opacity-75'
                   }`}
                 >
                   <img src={img} alt="" className="w-full h-full object-cover" />
@@ -177,6 +233,17 @@ export const ProductDetailPage: React.FC = () => {
             <h1 className="text-xl sm:text-2xl font-extrabold text-navy-800 leading-snug">
               {product.name}
             </h1>
+
+            {product.isPreOrder && (
+              <div className="mt-2 flex items-start gap-2 rounded-xl bg-forest-50 border border-forest-200 px-3 py-2">
+                <span className="text-base leading-none">⏳</span>
+                <div className="text-[11.5px] leading-snug text-forest-900">
+                  <strong className="font-extrabold">Produk Pre-Order.</strong>{' '}
+                  {product.preOrderNote || 'Pre Order 7–15 hari kerja'} dihitung setelah pembayaran
+                  diverifikasi.
+                </div>
+              </div>
+            )}
 
             {/* Rating & Sold Stats */}
             <div className="flex flex-wrap items-center gap-2.5 text-xs text-slate-600 mt-2.5">
@@ -650,6 +717,56 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Lightbox galeri */}
+      {lightboxIndex !== null && gallery[lightboxIndex] && (
+        <div
+          className="fixed inset-0 z-[70] bg-navy-950/90 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setLightboxIndex(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <button
+            type="button"
+            onClick={() => setLightboxIndex(null)}
+            className="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Tutup"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIndex((i) => (i === null ? null : (i - 1 + gallery.length) % gallery.length));
+            }}
+            className="absolute left-3 sm:left-6 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Sebelumnya"
+          >
+            <ChevronLeft className="w-6 h-6" />
+          </button>
+          <img
+            src={gallery[lightboxIndex]}
+            alt={`${product.name} ${lightboxIndex + 1}`}
+            className="max-h-[85vh] max-w-full rounded-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxIndex((i) => (i === null ? null : (i + 1) % gallery.length));
+            }}
+            className="absolute right-3 sm:right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 text-white"
+            aria-label="Berikutnya"
+          >
+            <ChevronRight className="w-6 h-6" />
+          </button>
+          <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-white/10 text-white text-xs font-bold">
+            {lightboxIndex + 1} / {gallery.length}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

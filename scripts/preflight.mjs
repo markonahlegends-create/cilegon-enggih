@@ -62,6 +62,28 @@ if (distJs.includes('6281927157103')) pass('WhatsApp resmi', '0819-2715-7103 ter
 else fail('WhatsApp resmi', 'nomor tidak ditemukan di bundle');
 if (distJs.includes('fadil-labs.vercel.app')) pass('kredit developer', 'Fadil Labs ter-bundle');
 else fail('kredit developer', 'link Fadil Labs tidak ditemukan');
+if (distJs.includes('Tambah Varian')) pass('editor produk: varian', 'form varian terbundle');
+else fail('editor produk: varian', 'editor varian tidak ada di bundle');
+if (distJs.includes('Notifikasi Telegram')) pass('pengaturan Telegram', 'panel notifikasi terbundle');
+else fail('pengaturan Telegram', 'panel Telegram tidak ada di bundle');
+if (distJs.includes('PRE-ORDER')) pass('label pre-order', 'badge pre-order terbundle');
+else fail('label pre-order', 'label pre-order tidak ditemukan');
+
+/* Notifikasi Telegram & Storage gambar (opsional, dicek kalau API hidup) */
+const apiBase = target ? target.replace(/\/+$/, '') : 'http://localhost:3001';
+try {
+  const diag = await fetch(`${apiBase}/api/diagnose`).then((r) => (r.ok ? r.json() : null));
+  if (diag && Array.isArray(diag.checks)) {
+    const tg = diag.checks.find((c) => c.id === 'telegram');
+    const img = diag.checks.find((c) => c.id === 'storage-images');
+    if (tg && tg.status === 'ok') pass('notifikasi Telegram', tg.detail);
+    else fail('notifikasi Telegram', (tg && tg.detail) || 'belum diatur di dashboard');
+    if (img && img.status === 'ok') pass('storage gambar produk', img.detail);
+    else fail('storage gambar produk', (img && img.detail) || 'bucket belum disiapkan');
+  }
+} catch {
+  // API tidak hidup → lewati pemeriksaan runtime.
+}
 
 /* ---------------- 3. Checklist manual ---------------- */
 console.log('\n📋 Checklist manual (tidak bisa diotomasi):');

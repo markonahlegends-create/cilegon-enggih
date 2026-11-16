@@ -37,6 +37,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </span>
           ) : null}
 
+          {product.isPreOrder && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-forest-600 text-white text-[10.5px] font-extrabold shadow-sm w-fit">
+              ⏳ PRE-ORDER
+            </span>
+          )}
+
           {product.discountPercent > 0 && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-forest-600 text-white text-[10.5px] font-bold w-fit">
               Hemat {product.discountPercent}%
@@ -97,6 +103,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               </span>
             </div>
           </div>
+
+          {product.isPreOrder && (
+            <div className="text-[10.5px] font-semibold text-forest-700 bg-forest-50 rounded-lg px-2 py-1 mt-1.5">
+              ⏳ {product.preOrderNote || 'Pre Order 7–15 hari kerja'}
+            </div>
+          )}
 
           {/* Official Store + Location (Tokopedia trust style) */}
           <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-2">
