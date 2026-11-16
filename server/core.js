@@ -891,6 +891,11 @@ const slugify = (text) =>
     .replace(/\s+/g, '-')
     .slice(0, 70);
 
+route('GET', '/api/admin/products', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  return ok({ products: await readProducts() });
+});
+
 route('POST', '/api/admin/products', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
   const payload = body || {};
