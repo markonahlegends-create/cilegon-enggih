@@ -1,5 +1,9 @@
 # 🚀 Panduan Deployment — Cilegon Enggih Official Store
 
+> Mencari langkah operasional sampai toko benar-benar **live dan menerima order pertama**? Ikuti
+> **[GO-LIVE.md](./GO-LIVE.md)** (playbook lengkap per fase dengan checklist & uji transaksi).
+> Dokumen ini adalah referensi teknis konfigurasinya.
+
 Aplikasi ini dirancang **siap deploy ke cloud gratis (Option A)** tanpa mengubah kode:
 
 | Lapisan | Opsi Gratis | Keterangan |

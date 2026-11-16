@@ -550,7 +550,7 @@ route('POST', '/api/orders', async ({ body }) => {
     courierService = '',
     shippingCost = 0,
     paymentMethod = 'Transfer Bank BCA',
-    bankId = 'bca',
+    bankId = '',
     voucherCode = '',
     voucherDiscount = 0,
     items = [],
@@ -568,8 +568,13 @@ route('POST', '/api/orders', async ({ body }) => {
   const uniqueCode = settings.payment.uniqueCodeEnabled === false ? 0 : makeUniqueCode(existing, totalBeforeCode);
   const totalAmount = totalBeforeCode + uniqueCode;
 
-  const bank = (settings.banks || DEFAULT_BANKS).find((b) => b.id === bankId) || null;
   const isQris = String(paymentMethod).toLowerCase().includes('qris');
+  const banks = settings.banks || DEFAULT_BANKS;
+  const bankMatch =
+    banks.find((b) => b.id === bankId) ||
+    banks.find((b) => String(paymentMethod).toLowerCase().includes(String(b.bank).toLowerCase())) ||
+    (isQris ? null : banks[0]);
+  const bank = isQris ? null : bankMatch;
 
   const orderId = nextOrderId(existing);
   const created = new Date();
@@ -590,7 +595,7 @@ route('POST', '/api/orders', async ({ body }) => {
     addressDetail,
     fullAddress: `${addressDetail ? `${addressDetail}, ` : ''}${destination}`,
     paymentMethod,
-    bankAccount: isQris ? null : bank,
+    bankAccount: bank,
     paymentStatus: 'MENUNGGU_VERIFIKASI',
     status: 'MENUNGGU_KONFIRMASI',
     subtotal,

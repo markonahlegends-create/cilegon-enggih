@@ -15,6 +15,20 @@ const __dirname = path.dirname(__filename);
 export const createApp = () => {
   const app = express();
 
+  app.disable('x-powered-by');
+
+  // Header keamanan dasar untuk self-host (Vercel/Cloudflare punya sendiri via config).
+  app.use((_req, res, next) => {
+    res.header('X-Content-Type-Options', 'nosniff');
+    res.header('X-Frame-Options', 'SAMEORIGIN');
+    res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+  });
+
+  // Healthcheck ringan (untuk uptime monitor) — tidak menyentuh storage.
+  app.get('/api/ping', (_req, res) => res.json({ pong: true, at: new Date().toISOString() }));
+
   app.use(express.json({ limit: '6mb' }));
   app.use(express.urlencoded({ extended: true, limit: '6mb' }));
 

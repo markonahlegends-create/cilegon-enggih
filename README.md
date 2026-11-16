@@ -104,9 +104,10 @@ DEPLOYMENT.md         # panduan deploy Vercel / Cloudflare Pages / VPS + Supabas
 | PUT | `/api/admin/settings` | Rekening, QRIS, voucher, kontak |
 | GET/PATCH | `/api/admin/b2b` | Inbox inquiry B2B |
 
-## Deployment
+## Deployment & Go-Live
 
-Panduan lengkap (Vercel, Cloudflare Pages, VPS/PM2, Supabase, backup, troubleshooting) ada di **[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+- **[GO-LIVE.md](./GO-LIVE.md)** — playbook operasional langkah demi langkah: persiapan kredensial → Supabase → deploy Vercel → domain & HTTPS → konfigurasi toko dari dashboard → uji transaksi end-to-end → publikasi (SEO, Google Business) → checklist "Definition of Done".
+- **[DEPLOYMENT.md](./DEPLOYMENT.md)** — referensi teknis deployment (env vars, alternatif Cloudflare Pages & VPS/PM2, backup, troubleshooting).
 
 ---
 
