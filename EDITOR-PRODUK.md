@@ -96,6 +96,18 @@ Cek status kapan saja di `/admin` → tab **Analitik** → panel **Kesiapan Go-L
 
 ---
 
+## 5b. Rekening & status kesiapan
+
+Status "placeholder" rekening sekarang ditentukan **di server**, bukan dari browser:
+
+- Nomor rekening masih nomor contoh bawaan (`1234567890`, `1300012345678`,
+  `012345678901234`, `901234567890`, `0000000000`) atau kosong → dianggap **belum siap**.
+- Nomor asli apa pun (termasuk nomor e-wallet `0819…`) → dianggap **siap**, dan label
+  `(PLACEHOLDER)` otomatis dibersihkan dari nama pemilik.
+
+Artinya: cukup ganti nomor rekening di dashboard, lalu Simpan — `/api/diagnose` langsung
+melaporkan `banks: ok` tanpa langkah tambahan.
+
 ## 6. API yang berubah (untuk pengembang)
 
 | Endpoint | Perubahan |

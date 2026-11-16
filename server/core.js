@@ -151,6 +151,39 @@ const makeUniqueCode = (orders, total) => {
   return base + 100;
 };
 
+/**
+ * Bersihkan penanda placeholder rekening secara server-side.
+ * Bendera dari browser bisa tidak ikut tersimpan (mis. akun lama menyimpan
+ * isPlaceholder: true), jadi backend yang memutuskan status akhirnya:
+ *  - buang label "(PLACEHOLDER)" dari nama pemilik
+ *  - isPlaceholder = true hanya jika nomor rekening masih nomor contoh default
+ */
+// Nomor rekening CONTOH (fiktif) yang tidak akan pernah menerima transfer.
+// Nomor e-wallet toko (0819…) sengaja TIDAK dimasukkan karena itu nomor asli.
+const PLACEHOLDER_ACCOUNT_NUMBERS = new Set([
+  '1234567890',
+  '1300012345678',
+  '012345678901234',
+  '901234567890',
+  '0000000000'
+]);
+
+const normalizeBanks = (banks) => {
+  if (!Array.isArray(banks)) return [];
+  return banks.map((bank) => {
+    const accountHolder =
+      String(bank.accountHolder || '')
+        .replace(/\s*\(\s*placeholder\s*\)\s*/gi, '')
+        .trim() || String(bank.bank || 'Cilegon Enggih');
+    const accountNumber = String(bank.accountNumber || '').trim();
+    const digits = accountNumber.replace(/\D/g, '');
+    // Idempoten: hanya bergantung pada nomor rekening, bukan label teks.
+    // Nomor kosong atau masih nomor contoh bawaan => belum siap menerima transfer.
+    const isPlaceholder = !digits || PLACEHOLDER_ACCOUNT_NUMBERS.has(digits);
+    return { ...bank, accountNumber, accountHolder, isPlaceholder };
+  });
+};
+
 const readSettings = async () => {
   const docs = await store.list('settings');
   const saved = docs[0] || {};
@@ -173,7 +206,9 @@ const readSettings = async () => {
       ...(saved.telegram || {})
     },
     preOrder: { ...DEFAULT_SETTINGS.preOrder, ...(saved.preOrder || {}) },
-    banks: Array.isArray(saved.banks) && saved.banks.length ? saved.banks : DEFAULT_BANKS,
+    banks: normalizeBanks(
+      Array.isArray(saved.banks) && saved.banks.length ? saved.banks : DEFAULT_BANKS
+    ),
     vouchers:
       Array.isArray(saved.vouchers) && saved.vouchers.length
         ? saved.vouchers
@@ -1427,7 +1462,7 @@ route('PUT', '/api/admin/settings', async ({ headers, body }) => {
     invoice: { ...current.invoice, ...(payload.invoice || {}) },
     telegram: { ...current.telegram, ...(payload.telegram || {}) },
     preOrder: { ...current.preOrder, ...(payload.preOrder || {}) },
-    banks: Array.isArray(payload.banks) ? payload.banks : current.banks,
+    banks: normalizeBanks(Array.isArray(payload.banks) ? payload.banks : current.banks),
     vouchers: Array.isArray(payload.vouchers) ? payload.vouchers : current.vouchers,
     updatedAt: nowIso()
   };
