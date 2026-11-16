@@ -1,0 +1,20 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "rewrites": [{ "source": "/api/(.*)", "destination": "/api/[...route]" }],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "no-store, max-age=0" }]
+    },
+    {
+      "source": "/products/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800, immutable" }]
+    }
+  ],
+  "functions": {
+    "api/[...route].js": { "memory": 1024, "maxDuration": 30 }
+  }
+}

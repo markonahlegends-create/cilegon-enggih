@@ -1,0 +1,113 @@
+[
+  {
+    "storeName": "Cilegon Enggih",
+    "legalName": "CV Cilegon Enggih Kreatif",
+    "tagline": "Khas Kota Baja, Bangga Membawanya.",
+    "address": "Link. Jerang Barat RT. 004/001 Kel. Karang Asem Kec. Cibeber Kota Cilegon - Banten 42425",
+    "addressShort": "Kel. Karang Asem, Kec. Cibeber, Kota Cilegon",
+    "originDistrict": "Kec. Cibeber",
+    "originCity": "Kota Cilegon",
+    "originPostal": "42425",
+    "email": "cilegonenggih@gmail.com",
+    "whatsapp": "6281927157103",
+    "whatsappDisplay": "0819-2715-7103",
+    "openHours": "Senin – Minggu: 08.30 – 20.30 WIB",
+    "mapsUrl": "https://maps.google.com/?q=Karang+Asem+Cibeber+Kota+Cilegon",
+    "instagram": "https://instagram.com/cilegonenggih",
+    "developerTitle": "Web Develop by Fadil Labs",
+    "developerUrl": "https://fadil-labs.vercel.app/",
+    "banks": [
+      {
+        "id": "bca",
+        "bank": "BCA",
+        "accountNumber": "1234567890",
+        "accountHolder": "Cilegon Enggih (PLACEHOLDER)",
+        "color": "#0060AF",
+        "isPlaceholder": true
+      },
+      {
+        "id": "mandiri",
+        "bank": "Mandiri",
+        "accountNumber": "1300012345678",
+        "accountHolder": "Cilegon Enggih (PLACEHOLDER)",
+        "color": "#003D79",
+        "isPlaceholder": true
+      },
+      {
+        "id": "bri",
+        "bank": "BRI",
+        "accountNumber": "012345678901234",
+        "accountHolder": "Cilegon Enggih (PLACEHOLDER)",
+        "color": "#00529C",
+        "isPlaceholder": true
+      },
+      {
+        "id": "seabank",
+        "bank": "SeaBank Indonesia",
+        "accountNumber": "901234567890",
+        "accountHolder": "Cilegon Enggih (PLACEHOLDER)",
+        "color": "#F05A28",
+        "isPlaceholder": true
+      },
+      {
+        "id": "dana",
+        "bank": "DANA (E-Wallet)",
+        "accountNumber": "081927157103",
+        "accountHolder": "Cilegon Enggih",
+        "color": "#118EEA",
+        "isPlaceholder": true
+      }
+    ],
+    "qris": {
+      "enabled": true,
+      "dynamicEnabled": true,
+      "mode": "dynamic",
+      "merchantName": "CILEGON ENGGIH",
+      "nmid": "ID1020030405060",
+      "staticImageUrl": "/qris-placeholder.png",
+      "note": "Scan QRIS dengan GoPay, OVO, DANA, ShopeePay, BCA Mobile, Livin Mandiri, BRImo, atau aplikasi bank lain."
+    },
+    "payment": {
+      "uniqueCodeEnabled": true,
+      "bankTransferEnabled": true,
+      "qrisEnabled": true,
+      "codEnabled": false,
+      "paymentWindowHours": 24,
+      "instructions": "Transfer sesuai NOMINAL AKHIR (termasuk 3 angka unik di belakang) agar pesanan Anda terverifikasi otomatis tanpa biaya gateway."
+    },
+    "invoice": {
+      "prefix": "CE",
+      "footerNote": "Terima kasih telah berbelanja merchandise resmi Cilegon Enggih. Barang dikirim dari Kel. Karang Asem, Kec. Cibeber, Kota Cilegon.",
+      "signerName": "Cilegon Enggih Official Store"
+    },
+    "announcement": "Gratis ongkir area Cilegon untuk pembelian di atas Rp 300.000 — gunakan kode ONGKIRCILEGON.",
+    "vouchers": [
+      {
+        "code": "ENGGIHBARU",
+        "title": "Diskon Pelanggan Baru Rp 15.000",
+        "minPurchase": 100000,
+        "discountAmount": 15000,
+        "description": "Potongan langsung Rp 15.000 min. belanja Rp 100.000",
+        "active": true
+      },
+      {
+        "code": "KOTABAJA",
+        "title": "Cashback / Diskon Spesial Rp 25.000",
+        "minPurchase": 200000,
+        "discountAmount": 25000,
+        "description": "Potongan Rp 25.000 min. belanja Rp 200.000 semua produk",
+        "active": true
+      },
+      {
+        "code": "ONGKIRCILEGON",
+        "title": "Subsidi Ongkir Rp 10.000",
+        "minPurchase": 50000,
+        "discountAmount": 10000,
+        "description": "Potongan ongkir Rp 10.000 min. belanja Rp 50.000",
+        "active": true
+      }
+    ],
+    "updatedAt": "2026-11-16T11:27:27.745Z",
+    "id": "store-settings"
+  }
+]
