@@ -16,6 +16,7 @@ import { HowToOrderFaqPage } from './pages/HowToOrderFaqPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
 import { LegalPage } from './pages/LegalPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 
 const ScrollToTopOnNavigate: React.FC = () => {
   const { pathname } = useLocation();
@@ -43,7 +44,9 @@ export const App: React.FC = () => {
               <Route path="/lacak-pesanan" element={<TrackOrderPage />} />
               <Route path="/legalitas" element={<LegalPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="*" element={<HomePage />} />
+              {/* 404 sungguhan — jangan arahkan ke beranda agar Google tidak
+                  mengindeks halaman duplikat untuk setiap URL salah. */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>
           <Footer />

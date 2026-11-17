@@ -45,10 +45,24 @@ for (const file of requiredFiles) {
 const indexHtml = fs.existsSync(path.join(root, 'dist/index.html'))
   ? fs.readFileSync(path.join(root, 'dist/index.html'), 'utf-8')
   : '';
-if (indexHtml.includes('cilegonenggih.com')) {
-  pass('canonical & OG meta', 'domain produksi terpasang');
+const CANONICAL_DOMAINS = ['cilegon-enggih.vercel.app', 'cilegonenggih.com'];
+const matchedDomain = CANONICAL_DOMAINS.find((d) => indexHtml.includes(`https://${d}`));
+if (matchedDomain) {
+  pass('canonical & OG meta', `domain terpasang: ${matchedDomain}`);
 } else {
   fail('canonical & OG meta', 'domain belum diset di index.html');
+}
+
+/* sitemap.xml harus ikut ter-build (sebelumnya bisa hilang tanpa disadari) */
+if (fs.existsSync(path.join(root, 'dist/sitemap.xml'))) {
+  const sm = fs.readFileSync(path.join(root, 'dist/sitemap.xml'), 'utf-8');
+  const urls = (sm.match(/<loc>/g) || []).length;
+  pass('sitemap.xml', `${urls} URL, domain ${matchedDomain || '?'}`);
+  if (/cilegonenggih\.com/.test(sm) && matchedDomain !== 'cilegonenggih.com') {
+    fail('sitemap domain', 'sitemap masih menunjuk cilegonenggih.com (domain mati)');
+  }
+} else {
+  fail('sitemap.xml', 'tidak ada di dist — jalankan `npm run build`');
 }
 
 const distJs = fs.existsSync(path.join(root, 'dist/assets'))

@@ -24,6 +24,7 @@ import {
   num
 } from './finance.js';
 import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
+import { checkStock, applyStockMovement, stockAlreadyApplied } from './stock.js';
 import {
   COOKIE_NAME,
   SESSION_TTL_MS,
@@ -648,6 +649,9 @@ const route = (method, path, handler) => routes.push({ method, path, handler });
 
 /* ---------------- Public ---------------- */
 
+/** Healthcheck ringan untuk uptime monitor & preflight (tidak menyentuh storage). */
+route('GET', '/api/ping', async () => ok({ pong: true, at: nowIso() }));
+
 route('GET', '/api/health', async () => {
   const settings = await readSettings();
   const warnings = [];
@@ -946,13 +950,104 @@ route('POST', '/api/payment/qris', async ({ body }) => {
 
 /* ---------------- Orders ---------------- */
 
-route('POST', '/api/orders', async ({ body }) => {
+/** Batas kewajaran input publik — mencegah data sampah & pesanan fiktif. */
+const MAX_ITEM_QTY = 500;
+const MAX_ITEMS = 30;
+
+/**
+ * Bersihkan & validasi input pembeli.
+ * @returns {{errors:string[], clean:object}}
+ */
+const sanitizeBuyerInput = (body) => {
+  const errors = [];
+  const clip = (value, max) => String(value ?? '').trim().slice(0, max);
+
+  const customerName = clip(body?.customerName, 80);
+  const rawPhone = clip(body?.customerPhone, 25);
+  const addressDetail = clip(body?.addressDetail, 240);
+  const destination = clip(body?.destination, 80) || 'Kota Cilegon';
+  const notes = clip(body?.notes, 500);
+  const customerEmail = clip(body?.customerEmail, 120);
+
+  if (customerName.length < 3) {
+    errors.push('Nama penerima minimal 3 karakter.');
+  }
+
+  // Nomor Indonesia: 08xx / 628xx / +628xx, 9–15 digit setelah normalisasi.
+  const phone = rawPhone.replace(/[\s().-]/g, '');
+  if (!/^(?:\+?62|0)8[1-9][0-9]{6,12}$/.test(phone)) {
+    errors.push('Nomor WhatsApp tidak valid. Contoh: 081234567890.');
+  }
+
+  if (customerEmail && !/^[^@\s]+@[^@\s]+\.[a-zA-Z]{2,}$/.test(customerEmail)) {
+    errors.push('Format email tidak valid.');
+  }
+
+  if (addressDetail.length < 8) {
+    errors.push('Alamat pengiriman terlalu singkat — tulis minimal 8 karakter (jalan, nomor, kelurahan).');
+  }
+
+  return {
+    errors,
+    clean: {
+      customerName,
+      customerPhone: phone,
+      customerEmail,
+      destination,
+      addressDetail,
+      notes
+    }
+  };
+};
+
+/** Validasi daftar item: jumlah, qty, dan bentuk data. */
+const sanitizeItems = (items) => {
+  const errors = [];
+  if (!Array.isArray(items) || items.length === 0) {
+    errors.push('Item pesanan wajib diisi.');
+    return { errors, items: [] };
+  }
+  if (items.length > MAX_ITEMS) {
+    errors.push(`Maksimal ${MAX_ITEMS} jenis produk per pesanan.`);
+    return { errors, items: [] };
+  }
+  const clean = items.map((raw, idx) => {
+    const qty = Math.round(Number(raw?.qty) || 0);
+    if (!Number.isFinite(qty) || qty < 1) {
+      errors.push(`Jumlah untuk item ${idx + 1} tidak valid (minimal 1).`);
+    } else if (qty > MAX_ITEM_QTY) {
+      errors.push(
+        `Jumlah item ${idx + 1} melebihi batas ${MAX_ITEM_QTY} pcs. Untuk pesanan besar, gunakan halaman Custom/Korporat.`
+      );
+    }
+    return { ...(raw || {}), qty: Math.max(1, qty) };
+  });
+  return { errors, items: clean };
+};
+
+route('POST', '/api/orders', async ({ body, headers }) => {
+  const ip = clientIp(headers);
+
+  // Anti spam: 10 pesanan / 10 menit per IP. Tanpa ini satu skrip bisa
+  // membanjiri database & notifikasi Telegram.
+  const limit = rateLimit(`order:${ip}`, { max: 10, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Terlalu banyak pesanan dari perangkat ini. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit, atau hubungi kami via WhatsApp.`,
+      429
+    );
+  }
+
+  const buyer = sanitizeBuyerInput(body);
+  const itemCheck = sanitizeItems(body?.items);
+  const inputErrors = [...buyer.errors, ...itemCheck.errors];
+  if (inputErrors.length) {
+    return bad(inputErrors[0], 400, { details: inputErrors });
+  }
+
   const {
-    customerName,
-    customerPhone,
-    customerEmail = '',
-    destination = 'Kota Cilegon',
-    addressDetail = '',
     courier = 'JNE Reguler (CTC/REG)',
     courierService = '',
     shippingCost = 0,
@@ -960,16 +1055,13 @@ route('POST', '/api/orders', async ({ body }) => {
     bankId = '',
     voucherCode = '',
     voucherDiscount = 0,
-    items = [],
-    notes = '',
     paymentProofNote = '',
     isPreOrder = false,
     preOrderNote = ''
   } = body || {};
-
-  if (!customerName || !customerPhone || !Array.isArray(items) || items.length === 0) {
-    return bad('Nama penerima, nomor WhatsApp, dan item pesanan wajib diisi.');
-  }
+  const { customerName, customerPhone, customerEmail, destination, addressDetail, notes } =
+    buyer.clean;
+  const items = itemCheck.items;
 
   const [settings, existing, catalog] = await Promise.all([
     readSettings(),
@@ -993,19 +1085,14 @@ route('POST', '/api/orders', async ({ body }) => {
       null;
 
     if (!product) {
-      // Produk tidak ditemukan (mis. sudah dihapus). Pakai harga kiriman tapi catat.
+      /**
+       * Dulu item tak dikenal tetap diterima dengan harga kiriman pembeli —
+       * artinya siapa pun bisa memesan "Produk" seharga Rp 0. Sekarang ditolak.
+       */
       priceIssues.push(
-        `Item ${idx + 1} (${raw.name || 'tanpa nama'}) tidak cocok dengan katalog — harga memakai nilai kiriman.`
+        `Item ${idx + 1} (${raw.name || 'tanpa nama'}) tidak ada di katalog.`
       );
-      return {
-        productId: raw.productId || null,
-        variantId: raw.variantId || null,
-        variantLabel: raw.variantLabel || '',
-        name: raw.name || 'Produk',
-        qty,
-        price: Math.max(0, Number(raw.price) || 0),
-        verified: false
-      };
+      return null;
     }
 
     const variants = Array.isArray(product.variants) ? product.variants : [];
@@ -1048,8 +1135,35 @@ route('POST', '/api/orders', async ({ body }) => {
     };
   });
 
+  // Tolak pesanan yang memuat produk tidak dikenal (katalog berubah/dihapus).
+  if (pricedItems.some((it) => !it)) {
+    return bad(
+      `Produk pada pesanan tidak ditemukan di katalog kami. Silakan muat ulang halaman lalu pilih produk kembali. (${priceIssues.join(' ')})`,
+      400,
+      { problems: priceIssues }
+    );
+  }
+
   const subtotal = pricedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
-  const totalBeforeCode = Math.max(0, subtotal + Number(shippingCost) - Number(voucherDiscount));
+
+  // Cek stok SEBELUM order disimpan — menolak pesanan yang melebihi stok
+  // (kecuali produk pre-order, yang memang diproduksi sesuai pesanan).
+  const stockCheck = checkStock(
+    pricedItems.map((it, i) => ({ ...it, isPreOrder: items[i]?.isPreOrder || isPreOrder })),
+    catalog
+  );
+  if (!stockCheck.ok) {
+    const detail = stockCheck.problems
+      .map((p) => `${p.name}: diminta ${p.requested}, tersedia ${p.available}`)
+      .join('; ');
+    return bad(`Stok tidak mencukupi — ${detail}. Silakan kurangi jumlah atau hubungi kami.`, 409, {
+      problems: stockCheck.problems
+    });
+  }
+
+  const safeShipping = Math.max(0, Math.min(Number(shippingCost) || 0, 500000));
+  const safeDiscount = Math.max(0, Math.min(Number(voucherDiscount) || 0, subtotal));
+  const totalBeforeCode = Math.max(0, subtotal + safeShipping - safeDiscount);
   const uniqueCode = settings.payment.uniqueCodeEnabled === false ? 0 : makeUniqueCode(existing, totalBeforeCode);
   const totalAmount = totalBeforeCode + uniqueCode;
 
@@ -1088,9 +1202,9 @@ route('POST', '/api/orders', async ({ body }) => {
       ? preOrderNote || (settings.preOrder && settings.preOrder.defaultNote) || 'Pre Order 7–15 hari kerja'
       : '',
     subtotal,
-    shippingCost: Number(shippingCost),
+    shippingCost: safeShipping,
     voucherCode: voucherCode || null,
-    voucherDiscount: Number(voucherDiscount),
+    voucherDiscount: safeDiscount,
     totalBeforeCode,
     totalAmount,
     notes,
@@ -1119,6 +1233,18 @@ route('POST', '/api/orders', async ({ body }) => {
   };
 
   await store.put('orders', newOrder);
+
+  // Reservasi stok: kurangi sekarang supaya pembeli lain tidak memesan
+  // barang yang sama. Dikembalikan otomatis bila order dibatalkan.
+  try {
+    const movement = await applyStockMovement(store, newOrder.items, { direction: 1 });
+    if (movement.changed) {
+      newOrder.stockAppliedAt = new Date().toISOString();
+      await store.put('orders', newOrder);
+    }
+  } catch (err) {
+    console.error('[stock] gagal mengurangi stok:', err.message);
+  }
 
   // Notifikasi Telegram ke admin (tidak pernah menggagalkan pembuatan order).
   if (telegramConfig(settings).notifyNewOrder !== false) {
@@ -1299,7 +1425,18 @@ route('GET', '/api/orders/track', async ({ query, headers }) => {
   return ok({ order: publicTrackingView(found) });
 });
 
-route('POST', '/api/b2b', async ({ body }) => {
+route('POST', '/api/b2b', async ({ body, headers }) => {
+  const ip = clientIp(headers);
+  const limit = rateLimit(`b2b:${ip}`, { max: 5, windowMs: 30 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Terlalu banyak pengajuan dari perangkat ini. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+
   const payload = body || {};
   if (!payload.companyName || !payload.picName || !payload.phone) {
     return bad('Nama Instansi/Perusahaan, Nama PIC, dan Nomor WhatsApp wajib diisi.');
@@ -1725,6 +1862,35 @@ route('PATCH', '/api/admin/orders/:orderId', async ({ headers, params, body }) =
   if (payload.adminNote) pushTimeline(`Catatan admin: ${payload.adminNote}`, 'Catatan Internal');
   if (payload.timelineNote) pushTimeline(payload.timelineNote);
 
+  // Pesanan dibatalkan → kembalikan stok yang sudah direservasi.
+  const becameCancelled =
+    next.status === 'DIBATALKAN' && order.status !== 'DIBATALKAN';
+  if (becameCancelled && order.stockAppliedAt && !order.stockReleasedAt) {
+    try {
+      const movement = await applyStockMovement(store, order.items, { direction: -1 });
+      if (movement.changed) {
+        next.stockReleasedAt = nowIso();
+        pushTimeline(`Stok dikembalikan otomatis (${movement.changed} produk)`);
+      }
+    } catch (err) {
+      console.error('[stock] gagal mengembalikan stok:', err.message);
+    }
+  }
+
+  // Pesanan dibatalkan lalu diaktifkan lagi → potong stok kembali.
+  if (order.status === 'DIBATALKAN' && next.status !== 'DIBATALKAN' && order.stockReleasedAt) {
+    try {
+      const movement = await applyStockMovement(store, order.items, { direction: 1 });
+      if (movement.changed) {
+        next.stockReleasedAt = null;
+        next.stockAppliedAt = nowIso();
+        pushTimeline('Stok dipotong kembali karena pesanan diaktifkan lagi');
+      }
+    } catch (err) {
+      console.error('[stock] gagal memotong ulang stok:', err.message);
+    }
+  }
+
   next.timeline = timeline;
   next.updatedAt = nowIso();
   await store.put('orders', next);
@@ -1753,6 +1919,92 @@ route('PATCH', '/api/admin/orders/:orderId', async ({ headers, params, body }) =
   }
 
   return ok({ order: decorateOrder(next) });
+});
+
+/**
+ * Hapus satu pesanan. Stok dikembalikan bila belum pernah dikembalikan.
+ * Dipakai untuk membersihkan data uji/demo, atau permintaan penghapusan data
+ * pembeli (hak privasi).
+ */
+route('DELETE', '/api/admin/orders/:orderId', async ({ headers, params }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const order = await store.get('orders', params.orderId);
+  if (!order) return bad('Pesanan tidak ditemukan.', 404);
+
+  let stockRestored = false;
+  if (order.stockAppliedAt && !order.stockReleasedAt) {
+    try {
+      const movement = await applyStockMovement(store, order.items, { direction: -1 });
+      stockRestored = movement.changed > 0;
+    } catch (err) {
+      console.error('[stock] gagal mengembalikan stok saat hapus order:', err.message);
+    }
+  }
+
+  await store.remove('orders', order.orderId);
+
+  await recordAudit(store, {
+    action: 'order.dihapus',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: order.orderId,
+    status: 'ok',
+    detail: {
+      pelanggan: order.customerName,
+      total: order.totalAmount,
+      stokDikembalikan: stockRestored
+    }
+  });
+
+  return ok({
+    deleted: order.orderId,
+    stockRestored,
+    message: `Pesanan ${order.orderId} dihapus${stockRestored ? ' dan stok dikembalikan' : ''}.`
+  });
+});
+
+/**
+ * Bersihkan SEMUA pesanan uji/demo sekaligus.
+ * `confirm` wajib berisi teks "HAPUS SEMUA" agar tidak terpicu tidak sengaja.
+ */
+route('POST', '/api/admin/orders/reset', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  if (String(body?.confirm || '').trim().toUpperCase() !== 'HAPUS SEMUA') {
+    return bad('Konfirmasi tidak cocok. Kirim confirm: "HAPUS SEMUA" untuk melanjutkan.');
+  }
+
+  const orders = await readOrders();
+  // Kembalikan stok untuk pesanan yang belum dibatalkan.
+  let restored = 0;
+  for (const order of orders) {
+    if (!order.stockAppliedAt || order.stockReleasedAt) continue;
+    if (order.status === 'DIBATALKAN') continue;
+    try {
+      const movement = await applyStockMovement(store, order.items, { direction: -1 });
+      if (movement.changed) restored += 1;
+    } catch (err) {
+      console.error('[stock] gagal mengembalikan stok saat reset:', err.message);
+    }
+  }
+
+  await store.replaceAll('orders', []);
+  await store.replaceAll('b2b', []);
+
+  await recordAudit(store, {
+    action: 'data.demo-dibersihkan',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: 'ok',
+    detail: { jumlahOrder: orders.length, stokDikembalikan: restored }
+  });
+
+  return ok({
+    deletedOrders: orders.length,
+    stockRestored: restored,
+    message: `${orders.length} pesanan dihapus. ${
+      restored ? `Stok ${restored} produk dikembalikan. ` : ''
+    }Data B2B juga dikosongkan.`
+  });
 });
 
 /* ---------------- Admin: products CRUD ---------------- */

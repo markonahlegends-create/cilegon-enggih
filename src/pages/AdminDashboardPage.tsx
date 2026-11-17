@@ -79,6 +79,8 @@ import {
   adminExport,
   adminMe,
   adminLogout,
+  adminDeleteOrder,
+  adminResetOrders,
   ApiError
 } from '../lib/api';
 
@@ -299,6 +301,51 @@ export const AdminDashboardPage: React.FC = () => {
   }, [loadAll]);
 
   /* ---------------------------- actions ---------------------------- */
+  const deleteOrder = async (orderId: string) => {
+    if (
+      !window.confirm(
+        `Hapus pesanan ${orderId}?\n\nData pesanan hilang permanen. Stok produk akan dikembalikan otomatis bila pesanan belum dibatalkan.`
+      )
+    )
+      return;
+    setBusyId(orderId);
+    try {
+      const res = await adminDeleteOrder(orderId);
+      setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
+      pushToast('Pesanan Dihapus', res.message, 'success');
+      const an = await adminAnalytics().catch(() => null);
+      if (an) setAnalytics(an);
+      await loadAll();
+    } catch (err) {
+      pushToast('Gagal Hapus', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const resetAllOrders = async () => {
+    const first = window.confirm(
+      `Hapus SEMUA ${orders.length} pesanan?\n\nStok akan dikembalikan otomatis. Tindakan ini tidak bisa dibatalkan.`
+    );
+    if (!first) return;
+    const second = window.prompt('Ketik HAPUS SEMUA untuk konfirmasi terakhir:');
+    if (String(second || '').trim().toUpperCase() !== 'HAPUS SEMUA') {
+      pushToast('Dibatalkan', 'Konfirmasi tidak cocok, tidak ada yang dihapus.', 'info');
+      return;
+    }
+    setBusyId('reset-orders');
+    try {
+      const res = await adminResetOrders();
+      setOrders([]);
+      pushToast('Data Uji Dibersihkan', res.message, 'success');
+      await loadAll();
+    } catch (err) {
+      pushToast('Gagal', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const updateOrder = async (orderId: string, payload: Record<string, unknown>) => {
     setBusyId(orderId);
     try {
@@ -851,6 +898,18 @@ export const AdminDashboardPage: React.FC = () => {
                 </option>
               ))}
             </select>
+            {orders.length > 0 && (
+              <button
+                type="button"
+                onClick={resetAllOrders}
+                disabled={busyId === 'reset-orders'}
+                title="Hapus seluruh pesanan (berguna setelah uji coba sebelum toko dibuka)"
+                className="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-red-600 text-[11px] font-extrabold hover:bg-red-50 inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {busyId === 'reset-orders' ? 'Menghapus…' : 'Bersihkan Data Uji'}
+              </button>
+            )}
           </div>
 
           {filteredOrders.length === 0 && (
@@ -865,6 +924,7 @@ export const AdminDashboardPage: React.FC = () => {
               order={order}
               busy={busyId === order.orderId}
               onUpdate={updateOrder}
+              onDelete={deleteOrder}
               onPrint={(mode) => {
                 setInvoiceOrder(order);
                 setInvoiceMode(mode);
@@ -1224,7 +1284,8 @@ const OrderCard: React.FC<{
   busy: boolean;
   onUpdate: (orderId: string, payload: Record<string, unknown>) => void;
   onPrint: (mode: 'invoice' | 'label') => void;
-}> = ({ order, busy, onUpdate, onPrint }) => {
+  onDelete: (orderId: string) => void;
+}> = ({ order, busy, onUpdate, onPrint, onDelete }) => {
   const [resi, setResi] = useState(order.resi || '');
   const [courier, setCourier] = useState(order.courier || COURIER_OPTIONS[0]);
   const [timelineNote, setTimelineNote] = useState('');
@@ -1475,6 +1536,15 @@ const OrderCard: React.FC<{
                 Cek Resi
               </a>
             )}
+            <button
+              type="button"
+              onClick={() => onDelete(order.orderId)}
+              disabled={busy}
+              title="Hapus pesanan ini (stok dikembalikan otomatis)"
+              className="px-2.5 py-1.5 rounded-lg bg-white border border-red-200 text-[11px] font-bold text-red-600 hover:bg-red-50 inline-flex items-center gap-1 disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" /> Hapus
+            </button>
           </div>
 
           {busy && (

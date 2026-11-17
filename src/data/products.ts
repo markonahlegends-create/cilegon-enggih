@@ -942,7 +942,14 @@ export const DEVELOPER_CREDIT = {
 export const WHATSAPP_NUMBER = '6281927157103';
 export const WHATSAPP_DISPLAY = '0819-2715-7103';
 export const STORE_EMAIL = 'cilegonenggih@gmail.com';
-export const STORE_DOMAIN = 'cilegonenggih.com';
+/**
+ * Domain publik toko. Dipakai untuk canonical, footer, invoice, dan teks legal.
+ * Sementara memakai domain Vercel karena cilegonenggih.com belum diarahkan.
+ * Saat domain asli aktif: set VITE_STORE_DOMAIN=cilegonenggih.com di Vercel,
+ * lalu redeploy — tanpa perlu ubah kode.
+ */
+export const STORE_DOMAIN =
+  (import.meta.env.VITE_STORE_DOMAIN as string | undefined) || 'cilegon-enggih.vercel.app';
 
 export const buildWhatsAppUrl = (message: string): string => {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
