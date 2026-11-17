@@ -29,12 +29,16 @@ import {
   RotateCcw,
   Download,
   Users,
-  Sparkles
+  Sparkles,
+  Calculator,
+  ShieldCheck
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 import { ProductEditor } from '../components/ProductEditor';
+import { FinancePanel } from '../components/FinancePanel';
+import { SecurityPanel } from '../components/SecurityPanel';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
 import {
   adminLogin,
@@ -46,6 +50,23 @@ import {
   adminDuplicateProduct,
   adminTestTelegram,
   adminSettingsFull,
+  adminVerifyOtp,
+  adminSetTwoFactor,
+  adminFinanceMeta,
+  adminVendors,
+  adminCreateVendor,
+  adminUpdateVendor,
+  adminDeleteVendor,
+  adminExpenses,
+  adminCreateExpense,
+  adminUpdateExpense,
+  adminDeleteExpense,
+  adminProfitLoss,
+  adminMarginReport,
+  adminSalesReport,
+  adminCashReport,
+  adminReceivables,
+  adminAuditLog,
   adminUpdateProduct,
   adminDeleteProduct,
   adminResetProducts,
@@ -60,7 +81,7 @@ import {
   ApiError
 } from '../lib/api';
 
-type Tab = 'overview' | 'orders' | 'products' | 'b2b' | 'settings';
+type Tab = 'overview' | 'orders' | 'products' | 'b2b' | 'finance' | 'security' | 'settings';
 
 const ORDER_STATUS_OPTIONS = [
   'MENUNGGU_KONFIRMASI',
@@ -115,6 +136,8 @@ export const AdminDashboardPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [otpChallenge, setOtpChallenge] = useState('');
+  const [otpCode, setOtpCode] = useState('');
   const [loggingIn, setLoggingIn] = useState(false);
 
   const [tab, setTab] = useState<Tab>('overview');
@@ -132,6 +155,7 @@ export const AdminDashboardPage: React.FC = () => {
   const [invoiceMode, setInvoiceMode] = useState<'invoice' | 'label'>('invoice');
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [productQuery, setProductQuery] = useState('');
+  const [vendorOptions, setVendorOptions] = useState<any[]>([]);
   const [productFilter, setProductFilter] = useState('');
   const [confirmClose, setConfirmClose] = useState(false);
   const [showNewProduct, setShowNewProduct] = useState(false);
@@ -185,9 +209,24 @@ export const AdminDashboardPage: React.FC = () => {
     setLoginError('');
     try {
       const res = await adminLogin(password);
+
+      // Dua langkah: password benar, tapi butuh kode 6 digit dari Telegram.
+      if (res.otpRequired && res.challengeId) {
+        setOtpChallenge(res.challengeId);
+        setOtpCode('');
+        if (res.warning) pushToast('Perhatian', res.warning, 'info');
+        return;
+      }
+
+      if (!res.token) {
+        setLoginError('Respons server tidak mengandung token. Coba lagi.');
+        return;
+      }
+
       setAdminToken(res.token);
       setAuthed(true);
       setPassword('');
+      if (res.warning) pushToast('Perhatian', res.warning, 'info');
       pushToast('Login Berhasil', `Selamat datang, admin (storage: ${res.storage})`, 'success');
     } catch (err) {
       setLoginError(err instanceof ApiError ? err.message : 'Login gagal.');
@@ -196,7 +235,30 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
+  /** Langkah 2: verifikasi kode OTP Telegram. */
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpChallenge) return;
+    setLoggingIn(true);
+    setLoginError('');
+    try {
+      const res = await adminVerifyOtp(otpChallenge, otpCode);
+      setAdminToken(res.token);
+      setAuthed(true);
+      setOtpChallenge('');
+      setOtpCode('');
+      setPassword('');
+      pushToast('Login Berhasil', 'Verifikasi 2 langkah lolos', 'success');
+    } catch (err) {
+      setLoginError(err instanceof ApiError ? err.message : 'Kode salah.');
+    } finally {
+      setLoggingIn(false);
+    }
+  };
+
   const handleLogout = () => {
+    setOtpChallenge('');
+    setOtpCode('');
     setAdminToken('');
     setAuthed(false);
     pushToast('Logout', 'Sesi admin diakhiri', 'info');
@@ -221,6 +283,10 @@ export const AdminDashboardPage: React.FC = () => {
       setInquiries(b2b.inquiries || []);
       setProducts(prod.products || []);
       if (full?.settings) setDraftSettings(full.settings);
+      // Dropdown vendor untuk editor produk.
+      adminVendors()
+        .then((res) => setVendorOptions(res.vendors || []))
+        .catch(() => setVendorOptions([]));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setAdminToken('');
@@ -474,6 +540,50 @@ export const AdminDashboardPage: React.FC = () => {
             </p>
           </div>
 
+          {otpChallenge ? (
+            <form onSubmit={handleVerifyOtp} className="space-y-3">
+              <div className="text-xs text-slate-600 bg-forest-50 border border-forest-200 rounded-xl p-3 leading-relaxed">
+                Password benar. Masukkan <strong>kode 6 digit</strong> yang dikirim ke{' '}
+                <strong>Telegram admin</strong>. Kode berlaku 5 menit.
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Kode Verifikasi</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoFocus
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="123456"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-center text-lg font-extrabold tracking-[0.4em] outline-none focus:border-forest-600"
+                />
+              </div>
+              {loginError && (
+                <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-2.5">
+                  {loginError}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={loggingIn || otpCode.length !== 6}
+                className="w-full py-3 rounded-xl bg-navy-800 hover:bg-navy-900 disabled:opacity-60 text-white text-sm font-extrabold"
+              >
+                {loggingIn ? 'Memverifikasi...' : 'Verifikasi & Masuk'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpChallenge('');
+                  setOtpCode('');
+                  setLoginError('');
+                }}
+                className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-600"
+              >
+                Kembali ke halaman login
+              </button>
+            </form>
+          ) : (
           <form onSubmit={handleLogin} className="space-y-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Username</label>
@@ -519,6 +629,7 @@ export const AdminDashboardPage: React.FC = () => {
               {loggingIn ? 'Memproses...' : 'Masuk Dashboard'}
             </button>
           </form>
+          )}
 
           <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl p-3">
             Password default development: <strong>enggih2026</strong>. Untuk produksi, set
@@ -578,6 +689,8 @@ export const AdminDashboardPage: React.FC = () => {
           { id: 'orders', label: `Pesanan (${orders.length})`, icon: ShoppingBag },
           { id: 'products', label: `Produk (${products.length})`, icon: Package },
           { id: 'b2b', label: `B2B (${inquiries.length})`, icon: Building2 },
+          { id: 'finance', label: 'Keuangan', icon: Calculator },
+          { id: 'security', label: 'Keamanan', icon: ShieldCheck },
           { id: 'settings', label: 'Pengaturan', icon: SettingsIcon }
         ].map((t) => {
           const Icon = t.icon;
@@ -830,6 +943,7 @@ export const AdminDashboardPage: React.FC = () => {
               }}
               onCancel={requestCloseEditor}
               onSave={saveProduct}
+              vendors={vendorOptions}
               busy={
                 busyId === (editingProduct?.id || 'new') || busyId === `dup-${editingProduct?.id}`
               }
@@ -1041,6 +1155,10 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* ------------------------------ SETTINGS ------------------------------ */}
+      {tab === 'finance' && <FinancePanel pushToast={pushToast} />}
+
+      {tab === 'security' && <SecurityPanel pushToast={pushToast} />}
+
       {tab === 'settings' && (
         <SettingsPanel
           value={draftSettings}

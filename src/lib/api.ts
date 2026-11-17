@@ -128,9 +128,9 @@ export const uploadPaymentProof = (
     body: payload
   });
 
-export const trackOrder = (code: string) =>
-  apiRequest<{ order: any; recentSamples?: any[] }>(
-    `/api/orders/track?q=${encodeURIComponent(code)}`
+export const trackOrder = (code: string, phoneLast4: string) =>
+  apiRequest<{ order: any }>(
+    `/api/orders/track?q=${encodeURIComponent(code)}&phone=${encodeURIComponent(phoneLast4)}`
   );
 
 export const submitB2B = (payload: Record<string, unknown>) =>
@@ -139,10 +139,115 @@ export const submitB2B = (payload: Record<string, unknown>) =>
 /* ---------------------------- Admin ------------------------------- */
 
 export const adminLogin = (password: string, username = 'admin') =>
+  apiRequest<{
+    token?: string;
+    otpRequired?: boolean;
+    challengeId?: string;
+    expiresInSeconds?: number;
+    username: string;
+    storage?: string;
+    expiresInHours?: number;
+    warning?: string;
+  }>('/api/admin/login', { method: 'POST', body: { password, username } });
+
+export const adminVerifyOtp = (challengeId: string, code: string) =>
   apiRequest<{ token: string; username: string; storage: string; expiresInHours: number }>(
-    '/api/admin/login',
-    { method: 'POST', body: { password, username } }
+    '/api/admin/verify-otp',
+    { method: 'POST', body: { challengeId, code } }
   );
+
+export const adminSetTwoFactor = (enabled: boolean) =>
+  apiRequest<{ enabled: boolean }>('/api/admin/2fa', {
+    method: 'POST',
+    body: { enabled },
+    admin: true
+  });
+
+/* ---------------- Keuangan ---------------- */
+
+export const adminFinanceMeta = () => apiRequest<any>('/api/admin/finance/meta', { admin: true });
+
+export const adminVendors = () => apiRequest<{ vendors: any[] }>('/api/admin/vendors', { admin: true });
+
+export const adminCreateVendor = (payload: Record<string, unknown>) =>
+  apiRequest<{ vendor: any; vendors: any[] }>('/api/admin/vendors', {
+    method: 'POST',
+    body: payload,
+    admin: true
+  });
+
+export const adminUpdateVendor = (id: string, payload: Record<string, unknown>) =>
+  apiRequest<{ vendor: any; vendors: any[] }>(`/api/admin/vendors/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: payload,
+    admin: true
+  });
+
+export const adminDeleteVendor = (id: string) =>
+  apiRequest<{ deleted: string; vendors: any[] }>(`/api/admin/vendors/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    admin: true
+  });
+
+export const adminExpenses = (params: { from?: string; to?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  return apiRequest<{ expenses: any[]; categories: any[] }>(
+    `/api/admin/expenses${qs.toString() ? `?${qs}` : ''}`,
+    { admin: true }
+  );
+};
+
+export const adminCreateExpense = (payload: Record<string, unknown>) =>
+  apiRequest<{ expense: any; expenses: any[] }>('/api/admin/expenses', {
+    method: 'POST',
+    body: payload,
+    admin: true
+  });
+
+export const adminUpdateExpense = (id: string, payload: Record<string, unknown>) =>
+  apiRequest<{ expense: any; expenses: any[] }>(`/api/admin/expenses/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: payload,
+    admin: true
+  });
+
+export const adminDeleteExpense = (id: string) =>
+  apiRequest<{ deleted: string; expenses: any[] }>(`/api/admin/expenses/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    admin: true
+  });
+
+const rangeQuery = (params: { from?: string; to?: string }) => {
+  const qs = new URLSearchParams();
+  if (params.from) qs.set('from', params.from);
+  if (params.to) qs.set('to', params.to);
+  return qs.toString() ? `?${qs}` : '';
+};
+
+export const adminProfitLoss = (params: { from?: string; to?: string } = {}) =>
+  apiRequest<any>(`/api/admin/finance/profit-loss${rangeQuery(params)}`, { admin: true });
+
+export const adminMarginReport = () => apiRequest<any>('/api/admin/finance/margin', { admin: true });
+
+export const adminSalesReport = (params: { from?: string; to?: string } = {}) =>
+  apiRequest<any>(`/api/admin/finance/sales${rangeQuery(params)}`, { admin: true });
+
+export const adminCashReport = (params: { from?: string; to?: string } = {}) =>
+  apiRequest<any>(`/api/admin/finance/cash${rangeQuery(params)}`, { admin: true });
+
+export const adminReceivables = () => apiRequest<any>('/api/admin/finance/receivables', { admin: true });
+
+export const adminAuditLog = (params: { q?: string; action?: string } = {}) => {
+  const qs = new URLSearchParams();
+  if (params.q) qs.set('q', params.q);
+  if (params.action) qs.set('action', params.action);
+  return apiRequest<{ total: number; entries: any[] }>(
+    `/api/admin/audit${qs.toString() ? `?${qs}` : ''}`,
+    { admin: true }
+  );
+};
 
 export const adminSession = () =>
   apiRequest<{ valid: boolean; username: string; storage: string }>('/api/admin/session', {
@@ -193,7 +298,11 @@ export const adminDuplicateProduct = (id: string) =>
     { method: 'POST', admin: true }
   );
 
-export const adminUploadImage = (payload: { dataUrl: string; filename?: string }) =>
+export const adminUploadImage = (payload: {
+  dataUrl: string;
+  filename?: string;
+  kind?: 'product' | 'proof';
+}) =>
   apiRequest<{ url: string; filename: string; storage: string; note?: string }>(
     '/api/admin/upload',
     { method: 'POST', body: payload, admin: true }
