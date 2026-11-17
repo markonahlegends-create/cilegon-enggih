@@ -15,7 +15,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -28,7 +28,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -41,7 +41,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -54,7 +54,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -67,7 +67,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -80,7 +80,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -93,20 +93,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--gantungan-kunci-karet-3d.html"
-    },
-    {
-      "source": "/produk/gantungan-kunci-karet-3d/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -119,20 +106,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--lampu-tidur-3d-arsitektur.html"
-    },
-    {
-      "source": "/produk/lampu-tidur-3d-arsitektur/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -145,20 +119,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--kalender-dinding-eksklusif-a3.html"
-    },
-    {
-      "source": "/produk/kalender-dinding-eksklusif-a3/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -171,20 +132,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--kaos-distro-cilegon-enggih.html"
-    },
-    {
-      "source": "/produk/kaos-distro-cilegon-enggih/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -197,20 +145,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--mug-keramik-souvenir.html"
-    },
-    {
-      "source": "/produk/mug-keramik-souvenir/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -223,20 +158,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--stiker-vinyl-die-cut.html"
-    },
-    {
-      "source": "/produk/stiker-vinyl-die-cut/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -249,20 +171,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-stainless-steel-sporty.html"
-    },
-    {
-      "source": "/produk/tumbler-stainless-steel-sporty/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -275,20 +184,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--payung-desain-geometris.html"
-    },
-    {
-      "source": "/produk/payung-desain-geometris/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -301,20 +197,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--tote-bag-kanvas-premium.html"
-    },
-    {
-      "source": "/produk/tote-bag-kanvas-premium/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -327,20 +210,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-hemat-wisatawan.html"
-    },
-    {
-      "source": "/produk/paket-hemat-wisatawan/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -353,20 +223,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-eksekutif-korporat.html"
-    },
-    {
-      "source": "/produk/paket-eksekutif-korporat/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -379,20 +236,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-meja-kerja-inspiratif.html"
-    },
-    {
-      "source": "/produk/paket-meja-kerja-inspiratif/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
           }
         }
       ],
@@ -432,7 +276,7 @@
       ]
     },
     {
-      "source": "/og/*.jpg",
+      "source": "/og/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
