@@ -418,8 +418,40 @@ export const SecurityPanel: React.FC<{ pushToast: (t: string, m: string, k?: any
           </div>
           <div className="px-4 py-2 text-[10.5px] text-slate-500 leading-relaxed">
             {backupMeta?.schedule || 'Harian'} • retensi {backupMeta?.retention ?? 30} berkas.
-            Tersimpan di Supabase Storage (bucket <code>backups</code>), tanpa kredensial.
+            Tersimpan di Supabase Storage (bucket <code>{backupMeta?.bucket || 'backups'}</code>),
+            tanpa kredensial.
           </div>
+          {/* Diagnostik: supaya salah nama bucket langsung terlihat, bukan menebak */}
+          <div className="px-4 pb-2 flex flex-wrap gap-1.5">
+            {[
+              {
+                ok: backupMeta?.bucketReachable,
+                label: backupMeta?.bucketReachable
+                  ? `bucket "${backupMeta?.bucket}" terbaca`
+                  : `bucket "${backupMeta?.bucket || 'backups'}" belum terbaca`
+              },
+              {
+                ok: backupMeta?.cronSecretConfigured,
+                label: backupMeta?.cronSecretConfigured
+                  ? 'CRON_SECRET terpasang'
+                  : 'CRON_SECRET belum diisi'
+              }
+            ].map((item) => (
+              <span
+                key={item.label}
+                className={`px-1.5 py-0.5 rounded text-[9.5px] font-bold ${
+                  item.ok ? 'bg-forest-50 text-forest-700' : 'bg-amberbrand-100 text-amberbrand-800'
+                }`}
+              >
+                {item.label}
+              </span>
+            ))}
+          </div>
+          {backupMeta?.diagnostic && (
+            <div className="mx-4 mb-2 px-2 py-1.5 rounded-lg bg-red-50 border border-red-200 text-[9.5px] text-red-700 leading-relaxed break-words">
+              {backupMeta.diagnostic}
+            </div>
+          )}
           <div className="max-h-[150px] overflow-y-auto divide-y divide-slate-100">
             {backups.map((b) => (
               <div key={b.filename} className="px-4 py-1.5 flex items-center gap-2">

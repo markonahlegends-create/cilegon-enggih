@@ -102,19 +102,60 @@ const uploadObject = async ({ name, body, contentType }) => {
   return name;
 };
 
-const listObjects = async () => {
+/**
+ * Daftar berkas backup. `strict` = jangan telan error, supaya diagnostik bisa
+ * membedakan "belum ada backup" dengan "bucket tidak ada / nama salah".
+ */
+const listObjects = async ({ strict = false } = {}) => {
   const { url, key } = supabaseConfig();
-  if (!url || !key) return [];
+  if (!url || !key) {
+    if (strict) throw new Error('SUPABASE_URL / kunci belum diisi.');
+    return [];
+  }
   const res = await fetch(`${url}/storage/v1/object/list/${bucket()}`, {
     method: 'POST',
     headers: { ...authHeaders(key), 'Content-Type': 'application/json' },
     body: JSON.stringify({ prefix: '', limit: 200, sortBy: { column: 'name', order: 'asc' } })
   });
-  if (!res.ok) return [];
+  if (!res.ok) {
+    if (strict) {
+      const detail = await res.text().catch(() => '');
+      throw new Error(
+        `Bucket "${bucket()}" tidak bisa dibaca (${res.status}). Pastikan nama bucket sama persis, huruf kecil semua, dan sudah dibuat di Supabase Storage. ${detail.slice(0, 120)}`
+      );
+    }
+    return [];
+  }
   const rows = await res.json().catch(() => []);
   return (Array.isArray(rows) ? rows : [])
     .map((r) => r.name)
     .filter((n) => typeof n === 'string' && /^backup-.*\.json\.gz$/.test(n));
+};
+
+/** Diagnostik backup untuk dashboard: nama bucket, keterjangkauan, cron. */
+export const backupStatus = async () => {
+  const name = bucket();
+  const status = {
+    bucket: name,
+    storageConfigured: Boolean(supabaseConfig().url && supabaseConfig().key),
+    bucketReachable: false,
+    files: 0,
+    cronSecretConfigured: Boolean(process.env.CRON_SECRET),
+    retention: Number(process.env.BACKUP_RETENTION) || 30,
+    error: null
+  };
+  if (!status.storageConfigured) {
+    status.error = 'SUPABASE_URL / kunci belum terbaca.';
+    return status;
+  }
+  try {
+    const names = await listObjects({ strict: true });
+    status.bucketReachable = true;
+    status.files = names.length;
+  } catch (err) {
+    status.error = err.message;
+  }
+  return status;
 };
 
 const deleteObject = async (name) => {

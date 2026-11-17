@@ -43,7 +43,8 @@ import {
   listBackups,
   readBackup,
   restoreBackup,
-  snapshotStats
+  snapshotStats,
+  backupStatus
 } from './backup.js';
 import {
   rateLimit,
@@ -2580,13 +2581,19 @@ route('GET', '/api/admin/export', async ({ headers }) => {
 route('GET', '/api/admin/backups', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
   try {
-    const items = await listBackups();
+    const [items, status] = await Promise.all([listBackups(), backupStatus()]);
     return ok({
       total: items.length,
       items: items.slice(0, 40),
       schedule: 'Harian otomatis pukul 18:00 WIB (Vercel Cron)',
-      retention: Number(process.env.BACKUP_RETENTION) || 30,
-      configured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+      retention: status.retention,
+      configured: status.storageConfigured && status.bucketReachable,
+      // Diagnostik: menunjukkan nama bucket yang dicari server, sehingga
+      // salah kapitalisasi / salah nama langsung kelihatan di dashboard.
+      bucket: status.bucket,
+      bucketReachable: status.bucketReachable,
+      cronSecretConfigured: status.cronSecretConfigured,
+      diagnostic: status.error
     });
   } catch (err) {
     return bad(`Gagal membaca daftar backup: ${err.message}`, 502);
