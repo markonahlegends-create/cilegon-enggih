@@ -6,7 +6,7 @@ Semua pekerjaan teknis kode (backend, admin dashboard, pembayaran, resi, invoice
 
 ---
 
-## Ringkasan: 5 blok tugas
+## Ringkasan: 6 blok tugas
 
 | # | Blok | Waktu | Bisa dikerjakan siapa |
 | --- | --- | --- | --- |
@@ -15,8 +15,9 @@ Semua pekerjaan teknis kode (backend, admin dashboard, pembayaran, resi, invoice
 | 3 | Pasang domain & DNS | 15 menit + propagasi | Anda |
 | 4 | Isi data toko di dashboard `/admin` | 20 menit | Anda |
 | 5 | Uji transaksi dengan uang asli + publikasi | 60 menit | Anda |
+| 6 | **Keamanan & keuangan**: isi HPP, catat pengeluaran, tambah vendor, nyalakan 2FA | 25 menit | Anda |
 
-Total realistis: **± 2–3 jam** (di luar waktu propagasi DNS).
+Total realistis: **± 3 jam** (di luar waktu propagasi DNS).
 
 **Legend:** 🔴 = wajib sebelum toko bisa menerima uang · 🟡 = wajib sebelum dipromosikan · 🟢 = disarankan
 
@@ -281,6 +282,55 @@ Order kecil lagi → pilih **QRIS Toko** → scan dengan aplikasi bank/e-wallet 
 - ❌ Mengatur SPA rewrite, header keamanan, SEO, sitemap, robots — sudah ter-commit.
 - ❌ Deploy dari terminal — cukup klik di dashboard Vercel.
 - ❌ Menyiapkan QRIS dinamis "dari nol" — bisa pakai mode statis.
+- ❌ Menghitung harga pesanan manual — server menghitung ulang sendiri.
+- ❌ Membuat laporan keuangan dengan Excel — 7 laporan sudah ada di dashboard.
+
+---
+
+## BLOK 6 — Keamanan & Keuangan (baru, 25 menit)
+
+Semua fitur di bawah **sudah jalan** — Anda hanya perlu menyalakan dan mengisi datanya.
+
+### 6.1 Isi HPP tiap produk 🔴 (paling penting)
+
+HPP = modal per pcs. Tanpa HPP, laporan Laba Rugi akan menganggap semua penjualan untung 100%.
+
+1. Dashboard → tab **Produk** → pilih produk → **Ubah**.
+2. Buka bagian **"2b. HPP, Margin & Vendor"**.
+3. Isi **HPP per pcs** dan (opsional) **biaya tambahan** (packing dll). Untuk produk bervarian, isi HPP di tiap varian — yang kosong otomatis memakai HPP produk.
+4. Isi **SKU** (opsional) dan pilih **vendor** (buat dulu di tab Keuangan → Vendor bila belum ada).
+5. Sisi kanan langsung menampilkan **laba per pcs** dan **margin %**. Simpan akan **ditolak** bila harga jual lebih rendah dari HPP — itu pengaman, bukan error.
+
+> Produk yang belum punya HPP diberi tanda di tab Keuangan → Ringkasan & HPP. Kejar sampai tanda itu hilang.
+
+### 6.2 Catat pengeluaran rutin 🟡
+
+Tab **Keuangan** → **Pengeluaran** → tombol tambah. Pilih kategori (bahan baku, packing, ongkir, iklan, operasional, gaji, bank, lain-lain), isi tanggal & nominal. Ini yang membuat Laba Rugi realistis.
+
+### 6.3 Tambah vendor 🟡
+
+Tab **Keuangan** → **Vendor**. Isi nama pemasok, kontak, dan termin pembayaran. Vendor otomatis muncul sebagai pilihan saat mengedit produk, dan tagihan yang belum dibayar masuk laporan **Hutang**.
+
+### 6.4 Nyalakan 2FA login admin 🔴 (setelah bot Telegram aktif)
+
+Tab **Keamanan** → kartu **Verifikasi 2 Langkah** → **Aktifkan 2FA**.
+
+- Setelah itu, login butuh password **+ kode 6 digit** yang dikirim ke Telegram Anda.
+- Pastikan bot Telegram sudah terhubung dulu (Pengaturan → Notifikasi Telegram → **Tes Koneksi**), kalau tidak tombol aktifnya terkunci.
+- Simpan akses Telegram Anda. Kalau bot terhapus, login masih bisa lewat password dengan peringatan — tapi jangan jadikan kebiasaan.
+
+### 6.5 Rutin tiap akhir bulan 🟡
+
+1. Tab **Keuangan** → pilih periode **Bulan ini** → cek **Laba Rugi** & **margin per produk**.
+2. Perhatikan produk dengan margin di bawah 15% (ditandai) — naikkan harga atau cari vendor lebih murah.
+3. Cek **Piutang** (order belum lunas) dan **Hutang** (tagihan vendor belum dibayar).
+4. Buka **Keamanan** → lihat log aktivitas: ada login gagal beruntun atau ekspor data yang tidak Anda lakukan?
+
+### Yang TIDAK perlu Anda lakukan di blok ini
+
+- ❌ Menghitung harga pesanan manual — server sudah menghitung ulang sendiri.
+- ❌ Membersihkan log aktivitas — otomatis terhapus setelah 90 hari.
+- ❌ Menyiapkan pembukuan double-entry (Neraca/Jurnal/Buku Besar) — laporan di atas sudah cukup untuk keputusan harian.
 
 ---
 
@@ -295,6 +345,7 @@ Kirim ke chat, lalu saya kerjakan:
 | Nama domain final | Ganti canonical/OG/sitemap/`STORE_DOMAIN` di kode + commit |
 | Teks voucher/promo baru | Update default settings |
 | Permintaan fitur tambahan (ongkir real-time, notifikasi WA otomatis, upload gambar produk) | Implementasi + deploy config |
+| HPP produk sudah diisi tapi margin terasa aneh | Cek ulang perhitungan & snapshot HPP di order |
 
 Jangan pernah mengirim: password admin, `service_role` key, password database, atau kode OTP/2FA.
 
@@ -313,6 +364,9 @@ Jangan pernah mengirim: password admin, `service_role` key, password database, a
 [ ] Domain ditambahkan di Vercel + DNS di registrar → HTTPS aktif
 [ ] /admin: rekening diganti, QRIS diset, voucher dirapikan
 [ ] Data demo dihapus
+[ ] Tab Produk → isi HPP + biaya tambahan + vendor tiap produk (Blok 6)
+[ ] Tab Keuangan → catat pengeluaran bulan berjalan
+[ ] Tab Keamanan → 2FA diaktifkan (setelah bot Telegram tersambung)
 [ ] Tes transfer Rp ~20rb + kode unik → verifikasi LUNAS → input resi → lacak → print label
 [ ] Tes QRIS
 [ ] Google Search Console + sitemap

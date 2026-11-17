@@ -164,6 +164,21 @@ Lihat `.env.example`. Ringkasnya:
 | `API_ORIGIN` | (Cloudflare) URL backend | – |
 | `VITE_API_BASE_URL` | (opsional) API beda domain | same-origin |
 
+### Keamanan & keuangan (perilaku bawaan, tanpa env tambahan)
+
+| Perilaku | Detail | Bisa diubah? |
+| --- | --- | --- |
+| Harga dihitung di server | Harga dari browser diabaikan; selisih dicatat sebagai `priceAudit` | tidak (by design) |
+| Rate limit login | 5 percobaan / 15 menit per IP → `429` | di `server/core.js` |
+| Rate limit lacak pesanan | 20 percobaan / 10 menit per IP | di `server/core.js` |
+| Rate limit ekspor | 3 ekspor / jam per IP | di `server/core.js` |
+| Lacak pesanan 2 faktor | Nomor pesanan + 4 digit terakhir WhatsApp | tidak |
+| 2FA admin (OTP Telegram) | 6 digit, berlaku 10 menit, maks. 5 coba | dashboard → tab Keamanan |
+| Audit log | 90 hari, tanpa kredensial | `pruneAudit(store, 90)` |
+| Bukti transfer | URL Supabase Storage (bukan base64 di order) | butuh Supabase aktif |
+
+> **Penting:** 2FA hanya bisa dinyalakan setelah `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID` (atau isian di Pengaturan) tersambung. Kalau pengiriman kode gagal, login **tidak** terkunci total — sistem lanjut dengan peringatan agar Anda tidak kehilangan akses; perbaiki bot lalu login ulang.
+
 ---
 
 ## 7. Alur bisnis setelah go-live
@@ -174,7 +189,8 @@ Lihat `.env.example`. Ringkasnya:
 4. Admin packing, serahkan ke kurir, lalu **input resi asli** → klik **Simpan Resi & Tandai Dikirim** (status otomatis `DIKIRIM`).
 5. Admin klik **Kabari Pembeli** → WhatsApp berisi nomor resi + link lacak.
 6. Pembeli melacak di `/lacak-pesanan` (bisa pakai Order ID, Resi, atau nomor WhatsApp) → tombol **Cek Resi** membuka situs kurir resmi.
-7. Cetak **Invoice** atau **Label Pengiriman** dari checkout, halaman lacak, atau dashboard admin (`window.print()` → simpan PDF).
+7. **Admin** memantau tab **Keuangan**: Laba Rugi, margin per produk (HPP diisi di editor produk, otomatis di-snapshot ke tiap order saat checkout), pengeluaran, vendor, kas, piutang & hutang. Laporan ini **manajemen**, bukan double-entry.
+8. Cetak **Invoice** atau **Label Pengiriman** dari checkout, halaman lacak, atau dashboard admin (`window.print()` → simpan PDF).
 
 ---
 

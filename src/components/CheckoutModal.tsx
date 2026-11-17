@@ -32,7 +32,8 @@ const toBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
   });
 
-const compressImage = (file: File, maxSize = 1100, quality = 0.72): Promise<string> =>
+// Bukti transfer: target ≤600 KB agar tidak membebani payload serverless.
+const compressImage = (file: File, maxSize = 900, quality = 0.62): Promise<string> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -185,6 +186,11 @@ export const CheckoutModal: React.FC = () => {
             ? Math.min(unitPrice, item.product.wholesalePrice || unitPrice)
             : unitPrice;
         return {
+          // ID dikirim supaya server bisa memverifikasi & menghitung harga sendiri.
+          productId: item.product.id,
+          productSlug: item.product.slug,
+          variantId: item.variant?.id,
+          variantLabel: item.variant?.label,
           name: `${item.product.shortName}${item.variant ? ` (${item.variant.label})` : ''}`,
           qty: item.qty,
           price: effectivePrice

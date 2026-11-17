@@ -100,6 +100,7 @@ const compressImage = (file: File, maxSide = 1200, quality = 0.82): Promise<stri
 
 export interface ProductEditorProps {
   value: any;
+  vendors?: { id: string; name: string; code?: string }[];
   onChange: (next: any) => void;
   onCancel: () => void;
   onSave: (product: any) => Promise<void> | void;
@@ -111,7 +112,8 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   onChange,
   onCancel,
   onSave,
-  busy
+  busy,
+  vendors = []
 }) => {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -269,6 +271,12 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     if (Number(value.minWholesaleQty) > 0 && Number(value.wholesalePrice) > Number(value.price)) {
       list.push('Harga grosir seharusnya lebih murah daripada harga jual.');
     }
+    if (
+      (Number(value.costPrice) || 0) + (Number(value.extraCost) || 0) > 0 &&
+      Number(value.price) < (Number(value.costPrice) || 0) + (Number(value.extraCost) || 0)
+    ) {
+      list.push('Harga jual lebih rendah dari HPP — produk akan dijual rugi.');
+    }
     return list;
   }, [value, variants]);
 
@@ -282,6 +290,11 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   }, [value.price, value.originalPrice]);
 
   const variantStockTotal = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+
+  const totalHpp = (Number(value.costPrice) || 0) + (Number(value.extraCost) || 0);
+  const marginAmount = (Number(value.price) || 0) - totalHpp;
+  const marginPercent =
+    Number(value.price) > 0 ? Math.round((marginAmount / Number(value.price)) * 1000) / 10 : 0;
 
   const handleSave = () => {
     if (errors.length) {
@@ -501,6 +514,89 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
             </div>
           </SectionCard>
 
+          {/* 2b. HPP & vendor */}
+          <SectionCard step="2b" title="HPP, Margin & Vendor" hint="dasar laporan laba rugi">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <Labelled label="HPP / Modal per pcs (Rp)" hint="Harga beli dari vendor / biaya produksi">
+                <input
+                  type="number"
+                  min={0}
+                  value={value.costPrice ?? 0}
+                  onChange={(e) => set('costPrice', Number(e.target.value))}
+                  className="input-admin"
+                />
+              </Labelled>
+              <Labelled label="Biaya Tambahan per pcs (Rp)" hint="Packing, stiker, kartu ucapan">
+                <input
+                  type="number"
+                  min={0}
+                  value={value.extraCost ?? 0}
+                  onChange={(e) => set('extraCost', Number(e.target.value))}
+                  className="input-admin"
+                />
+              </Labelled>
+              <Labelled label="SKU / Kode Produk">
+                <input
+                  value={value.sku || ''}
+                  onChange={(e) => set('sku', e.target.value)}
+                  placeholder="CE-KAL-A3"
+                  className="input-admin"
+                />
+              </Labelled>
+              <Labelled label="Vendor / Supplier">
+                <select
+                  value={value.vendorId || ''}
+                  onChange={(e) => {
+                    const vendor = vendors.find((v) => v.id === e.target.value);
+                    setMany({
+                      vendorId: e.target.value || null,
+                      vendorName: vendor ? vendor.name : ''
+                    });
+                  }}
+                  className="input-admin"
+                >
+                  <option value="">— Belum ditentukan —</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                      {v.code ? ` (${v.code})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </Labelled>
+            </div>
+
+            {/* Ringkasan margin */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+              {[
+                ['HPP total', formatRupiah(totalHpp)],
+                ['Harga jual', formatRupiah(Number(value.price) || 0)],
+                ['Laba / pcs', formatRupiah(marginAmount)],
+                ['Margin', `${marginPercent}%`]
+              ].map(([label, val]) => (
+                <div
+                  key={label}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-2.5 py-2"
+                >
+                  <div className="text-[9.5px] font-bold uppercase tracking-wide text-slate-500">
+                    {label}
+                  </div>
+                  <div className="text-[12px] font-extrabold text-navy-800">{val}</div>
+                </div>
+              ))}
+            </div>
+
+            {Number(value.costPrice) + Number(value.extraCost) > 0 && marginPercent < 15 && (
+              <div className="text-[11px] font-semibold text-amberbrand-800 bg-amberbrand-100 rounded-xl px-3 py-2 flex items-start gap-1.5">
+                <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                <span>
+                  Margin di bawah 15%. Pastikan harga jual masih menutup biaya iklan, ongkir
+                  subsidi, dan biaya operasional.
+                </span>
+              </div>
+            )}
+          </SectionCard>
+
           {/* 3. Varian */}
           <SectionCard
             step="3"
@@ -516,13 +612,14 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
             {variants.length > 0 && (
               <div className="overflow-x-auto -mx-1">
-                <table className="w-full text-[11px] min-w-[560px]">
+                <table className="w-full text-[11px] min-w-[640px]">
                   <thead className="text-slate-500">
                     <tr>
                       <th className="text-left px-1 py-1 font-bold">Label Varian</th>
                       <th className="text-left px-1 py-1 font-bold w-24">Harga</th>
                       <th className="text-left px-1 py-1 font-bold w-24">Harga Coret</th>
                       <th className="text-left px-1 py-1 font-bold w-20">Stok</th>
+                      <th className="text-left px-1 py-1 font-bold w-24">HPP</th>
                       <th className="text-right px-1 py-1 font-bold w-24">Aksi</th>
                     </tr>
                   </thead>
@@ -561,6 +658,17 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                             min={0}
                             value={v.stock ?? 0}
                             onChange={(e) => updateVariant(idx, 'stock', Number(e.target.value))}
+                            className="input-admin !text-[11px] !py-1.5"
+                          />
+                        </td>
+                        <td className="px-1 py-1.5">
+                          <input
+                            type="number"
+                            min={0}
+                            value={v.costPrice ?? 0}
+                            onChange={(e) => updateVariant(idx, 'costPrice', Number(e.target.value))}
+                            placeholder="0"
+                            title="Harga pokok per varian (0 = ikut HPP produk)"
                             className="input-admin !text-[11px] !py-1.5"
                           />
                         </td>
@@ -1040,6 +1148,8 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               ['Varian', variants.length ? `${variants.length} varian` : 'tanpa varian'],
               ['Stok', `${value.stock ?? 0} pcs`],
               ['Berat', `${value.weightGrams ?? 0} gram`],
+              ['HPP', totalHpp > 0 ? formatRupiah(totalHpp) : 'belum diisi'],
+              ['Margin', totalHpp > 0 ? `${marginPercent}%` : '—'],
               ['Gambar', `${gallery.length} / 9`],
               ['Spesifikasi', `${specs.length} baris`],
               ['Badge', `${(value.badges || []).length} badge`]

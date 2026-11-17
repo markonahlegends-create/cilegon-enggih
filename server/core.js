@@ -13,6 +13,27 @@ import crypto from 'node:crypto';
 import { store, SUPABASE_KEY_TYPE } from './db.js';
 import { SEED_PRODUCTS, SEED_CATEGORIES, SEED_SIZE_CHART } from './seed/catalog.js';
 import {
+  buildProfitLoss,
+  buildMarginReport,
+  buildSalesReport,
+  buildCashReport,
+  buildReceivables,
+  buildPayables,
+  EXPENSE_CATEGORIES,
+  EXPENSE_CATEGORY_LABEL,
+  num
+} from './finance.js';
+import {
+  rateLimit,
+  isBlocked,
+  resetRateLimit,
+  clientIp,
+  createOtpChallenge,
+  verifyOtpChallenge,
+  recordAudit,
+  pruneAudit
+} from './security.js';
+import {
   notifySafe,
   sendTelegramMessage,
   telegramConfig,
@@ -82,6 +103,12 @@ const bearer = (headers = {}) => {
 };
 
 const isAdmin = (headers) => Boolean(verifyAdminToken(bearer(headers)));
+
+/** OTP aktif hanya jika bot Telegram sudah dikonfigurasi (kalau tidak, login biasa). */
+const otpEnabled = (settings) => {
+  const tg = settings?.telegram || {};
+  return Boolean(tg.botToken && tg.chatId && tg.otpEnabled === true);
+};
 
 const nowIso = () => new Date().toISOString();
 
@@ -832,8 +859,84 @@ route('POST', '/api/orders', async ({ body }) => {
     return bad('Nama penerima, nomor WhatsApp, dan item pesanan wajib diisi.');
   }
 
-  const [settings, existing] = await Promise.all([readSettings(), readOrders()]);
-  const subtotal = items.reduce((sum, it) => sum + Number(it.price) * Number(it.qty), 0);
+  const [settings, existing, catalog] = await Promise.all([
+    readSettings(),
+    readOrders(),
+    readProducts()
+  ]);
+
+  /**
+   * Harga TIDAK dipercaya dari browser.
+   * Setiap item dicocokkan ke produk (dan varian) di database, lalu harga
+   * dihitung ulang di server. Ini menutup celah "ubah harga lewat DevTools".
+   */
+  const priceIssues = [];
+
+  const pricedItems = items.map((raw, idx) => {
+    const qty = Math.max(1, Math.round(Number(raw.qty) || 0));
+    const product =
+      catalog.find((p) => p.id === raw.productId) ||
+      catalog.find((p) => p.slug && raw.productSlug && p.slug === raw.productSlug) ||
+      catalog.find((p) => String(p.shortName || p.name || '').toLowerCase() === String(raw.name || '').toLowerCase()) ||
+      null;
+
+    if (!product) {
+      // Produk tidak ditemukan (mis. sudah dihapus). Pakai harga kiriman tapi catat.
+      priceIssues.push(
+        `Item ${idx + 1} (${raw.name || 'tanpa nama'}) tidak cocok dengan katalog — harga memakai nilai kiriman.`
+      );
+      return {
+        productId: raw.productId || null,
+        variantId: raw.variantId || null,
+        variantLabel: raw.variantLabel || '',
+        name: raw.name || 'Produk',
+        qty,
+        price: Math.max(0, Number(raw.price) || 0),
+        verified: false
+      };
+    }
+
+    const variants = Array.isArray(product.variants) ? product.variants : [];
+    const variant =
+      variants.find((v) => v.id === raw.variantId) ||
+      (variants.length === 1 ? variants[0] : null);
+
+    const unitPrice = Number(variant?.price ?? product.price) || 0;
+    const wholesaleApplies =
+      Number(product.minWholesaleQty) > 0 && qty >= Number(product.minWholesaleQty);
+    const effectivePrice = wholesaleApplies
+      ? Math.min(unitPrice, Number(product.wholesalePrice) || unitPrice)
+      : unitPrice;
+
+    const sentPrice = Number(raw.price);
+    if (Number.isFinite(sentPrice) && Math.abs(sentPrice - effectivePrice) > 1) {
+      priceIssues.push(
+        `${product.shortName || product.name}: harga kiriman Rp ${sentPrice.toLocaleString(
+          'id-ID'
+        )} berbeda dari harga server Rp ${effectivePrice.toLocaleString('id-ID')} — memakai harga server.`
+      );
+    }
+
+    return {
+      productId: product.id,
+      variantId: variant?.id || raw.variantId || null,
+      variantLabel: variant?.label || raw.variantLabel || '',
+      name: `${product.shortName || product.name}${
+        variant?.label ? ` (${variant.label})` : ''
+      }`,
+      qty,
+      price: effectivePrice,
+      // Biaya pokok & vendor dibekukan saat order dibuat (dasar laporan laba rugi).
+      // Varian tanpa HPP mewarisi HPP produk (bukan dianggap 0).
+      costPrice: Number(variant?.costPrice) || Number(product.costPrice) || 0,
+      extraCost: Number(variant?.extraCost) || Number(product.extraCost) || 0,
+      vendorId: variant?.vendorId || product.vendorId || null,
+      vendorName: variant?.vendorName || product.vendorName || '',
+      verified: true
+    };
+  });
+
+  const subtotal = pricedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
   const totalBeforeCode = Math.max(0, subtotal + Number(shippingCost) - Number(voucherDiscount));
   const uniqueCode = settings.payment.uniqueCodeEnabled === false ? 0 : makeUniqueCode(existing, totalBeforeCode);
   const totalAmount = totalBeforeCode + uniqueCode;
@@ -882,7 +985,8 @@ route('POST', '/api/orders', async ({ body }) => {
     paymentProofNote,
     createdAt: created.toISOString(),
     updatedAt: created.toISOString(),
-    items,
+    items: pricedItems,
+    priceAudit: priceIssues.length ? priceIssues : undefined,
     timeline: [
       {
         time: wibStamp(created),
@@ -926,14 +1030,41 @@ route('POST', '/api/orders', async ({ body }) => {
 route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {
   const order = await store.get('orders', params.orderId);
   if (!order) return bad('Pesanan tidak ditemukan.', 404);
-  const { paymentProofNote = '', paymentProofImage = '' } = body || {};
-  if (!paymentProofNote && !paymentProofImage) {
+  const { paymentProofNote = '', paymentProofImage = '', paymentProofUrl = '' } = body || {};
+  if (!paymentProofNote && !paymentProofImage && !paymentProofUrl) {
     return bad('Isi catatan bukti transfer atau unggah gambar bukti.');
   }
+
+  // Kalau klien mengirim data URL, pindahkan ke Storage (bukan disimpan di database).
+  let proofUrl = String(paymentProofUrl || '').slice(0, 500);
+  let proofStorage = 'url';
+  if (String(paymentProofImage).startsWith('data:image/')) {
+    try {
+      const bucket = process.env.SUPABASE_PROOF_BUCKET || 'payment-proofs';
+      const saved = await saveImage({
+        dataUrl: paymentProofImage,
+        filename: `${params.orderId}-bukti`,
+        bucket,
+        maxBytes: MAX_PROOF_BYTES
+      });
+      proofUrl = saved.url;
+      proofStorage = saved.storage;
+    } catch (err) {
+      // Storage belum siap → simpan base64 sebagai upaya terakhir agar bukti tidak hilang.
+      console.error('[proof] gagal ke storage, simpan base64:', err.message);
+      proofStorage = 'inline-fallback';
+    }
+  }
+
   const updated = {
     ...order,
     paymentProofNote,
-    paymentProofImage: String(paymentProofImage).slice(0, 1_600_000), // maks ±1.2 MB base64
+    paymentProofUrl: proofUrl || undefined,
+    paymentProofStorage: proofStorage,
+    paymentProofImage:
+      proofStorage === 'inline-fallback'
+        ? String(paymentProofImage).slice(0, 700_000)
+        : '',
     paymentProofAt: nowIso(),
     updatedAt: nowIso(),
     timeline: [
@@ -955,47 +1086,106 @@ route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {
   return ok({ order: decorateOrder(updated) });
 });
 
-route('GET', '/api/orders/track', async ({ query }) => {
-  const raw = String(query.q || query.query || query.phone || '').trim();
-  const orders = await readOrders();
+/**
+ * Lacak pesanan.
+ * Keamanan: WAJIB kode (nomor order / resi / invoice) + 4 digit terakhir WhatsApp
+ * pemesan. Tanpa itu, siapa pun bisa melihat pesanan orang lain.
+ * Data yang dikembalikan juga dipangkas (tanpa email & alamat lengkap).
+ */
+const maskPhone = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.length < 6) return '****';
+  return `${digits.slice(0, 4)}****${digits.slice(-2)}`;
+};
 
-  if (!raw) {
-    return ok({
-      recentSamples: orders.slice(0, 3).map((o) => ({
-        orderId: o.orderId,
-        resi: o.resi,
-        status: o.status
-      }))
-    });
+const publicTrackingView = (order) => ({
+  orderId: order.orderId,
+  invoiceNumber: order.invoiceNumber,
+  status: order.status,
+  paymentStatus: order.paymentStatus,
+  courier: order.courier,
+  courierService: order.courierService,
+  resi: order.resi || null,
+  resiInputAt: order.resiInputAt || null,
+  resiStatus: order.resi ? 'TERSEDIA' : 'MENUNGGU_INPUT_RESI',
+  trackingLinks: trackLinksFor(order.courier, order.resi),
+  customerName: order.customerName,
+  customerPhoneMasked: maskPhone(order.customerPhone),
+  destination: order.destination,
+  // Alamat hanya ditampilkan sebagian.
+  addressPreview: order.addressDetail
+    ? `${String(order.addressDetail).slice(0, 28)}${String(order.addressDetail).length > 28 ? '…' : ''}`
+    : '',
+  items: (order.items || []).map((it) => ({
+    name: it.name,
+    qty: it.qty,
+    price: it.price
+  })),
+  subtotal: order.subtotal,
+  shippingCost: order.shippingCost,
+  voucherDiscount: order.voucherDiscount,
+  uniqueCode: order.uniqueCode,
+  totalAmount: order.totalAmount,
+  paymentMethod: order.paymentMethod,
+  bankAccount: order.paymentStatus === 'LUNAS' ? undefined : order.bankAccount,
+  isPreOrder: Boolean(order.isPreOrder),
+  preOrderNote: order.preOrderNote,
+  createdAt: order.createdAt,
+  timeline: (order.timeline || []).map((t) => ({
+    time: t.time,
+    status: t.status,
+    location: t.location
+  }))
+});
+
+route('GET', '/api/orders/track', async ({ query, headers }) => {
+  const code = String(query.q || query.query || query.orderId || '').trim();
+  const phone = String(query.phone || query.wa || '').replace(/\D/g, '');
+
+  if (!code) {
+    return bad('Masukkan nomor pesanan / resi / nomor invoice Anda.', 400);
+  }
+  if (phone.length < 4) {
+    return bad('Masukkan 4 digit terakhir nomor WhatsApp yang dipakai saat memesan.', 400);
   }
 
-  const q = raw.toUpperCase().replace(/\s|-/g, '');
-  const digits = raw.replace(/\D/g, '');
-  const normalizedDigits = digits.replace(/^62/, '0');
+  // Batasi percobaan agar tidak bisa dipakai menebak data orang lain.
+  const ip = clientIp(headers);
+  const limit = rateLimit(`track:${ip}`, { max: 20, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad('Terlalu banyak percobaan pelacakan. Coba lagi beberapa menit lagi.', 429);
+  }
+
+  const orders = await readOrders();
+  const q = code.toUpperCase().replace(/\s|-/g, '');
+  const tail = phone.slice(-4);
 
   const found = orders.find((o) => {
     const orderId = String(o.orderId || '').toUpperCase().replace(/-/g, '');
     const resi = String(o.resi || '').toUpperCase().replace(/\s/g, '');
-    const phone = String(o.customerPhone || '').replace(/\D/g, '').replace(/^62/, '0');
-    return (
-      orderId === q ||
-      (resi && resi === q) ||
-      (normalizedDigits.length >= 8 && phone === normalizedDigits) ||
-      String(o.invoiceNumber || '').toUpperCase() === q
-    );
+    const invoice = String(o.invoiceNumber || '').toUpperCase().replace(/\s/g, '');
+    const matchCode = orderId === q || (resi && resi === q) || invoice === q;
+    if (!matchCode) return false;
+    const ownerPhone = String(o.customerPhone || '').replace(/\D/g, '');
+    return ownerPhone.endsWith(tail);
   });
 
   if (!found) {
+    await recordAudit(store, {
+      action: 'public.track-gagal',
+      actor: 'publik',
+      ip,
+      status: 'not-found',
+      detail: { kode: q.slice(0, 24) }
+    });
     return bad(
-      'Nomor Order / Resi / WhatsApp tidak ditemukan. Pastikan penulisan sudah benar, atau hubungi WhatsApp resmi kami.',
+      'Data pesanan tidak ditemukan. Periksa nomor pesanan/resi dan 4 digit terakhir nomor WhatsApp Anda.',
       404
     );
   }
 
-  return ok({ order: decorateOrder(found) });
+  return ok({ order: publicTrackingView(found) });
 });
-
-/* ---------------- B2B ---------------- */
 
 route('POST', '/api/b2b', async ({ body }) => {
   const payload = body || {};
@@ -1031,20 +1221,164 @@ route('POST', '/api/b2b', async ({ body }) => {
 
 /* ---------------- Admin auth ---------------- */
 
-route('POST', '/api/admin/login', async ({ body }) => {
+route('POST', '/api/admin/login', async ({ body, headers }) => {
+  const ip = clientIp(headers);
   const { username = 'admin', password = '' } = body || {};
-  if (String(password) !== ADMIN_PASSWORD) {
+
+  // Anti brute force: 5 percobaan / 15 menit per IP.
+  const limit = rateLimit(`login:${ip}`, { max: 5, windowMs: 15 * 60 * 1000 });
+  if (!limit.allowed) {
+    await recordAudit(store, {
+      action: 'login.diblokir',
+      actor: 'percobaan-luar',
+      ip,
+      status: 'blocked',
+      detail: { retryAfterSeconds: limit.retryAfterSeconds }
+    });
+    return bad(
+      `Terlalu banyak percobaan login. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+
+  const passwordOk = String(password) === ADMIN_PASSWORD;
+  const usernameOk = String(username).toLowerCase() === 'admin';
+
+  if (!passwordOk || !usernameOk) {
+    await recordAudit(store, {
+      action: 'login.gagal',
+      actor: String(username || 'admin'),
+      ip,
+      status: 'failed',
+      detail: { sisaPercobaan: limit.remaining ?? 0 }
+    });
     return bad('Password admin salah. Cek kembali password yang diberikan pemilik toko.', 401);
   }
-  if (String(username).toLowerCase() !== 'admin') {
-    return bad('Username admin tidak dikenal (default: admin).', 401);
+
+  const settings = await readSettings();
+
+  // 2FA: kalau diaktifkan & Telegram siap, minta kode 6 digit dulu.
+  if (otpEnabled(settings)) {
+    const { challengeId, code, expiresInSeconds } = createOtpChallenge();
+    const sent = await sendTelegramMessage(
+      settings,
+      [
+        '🔐 <b>KODE LOGIN DASHBOARD</b>',
+        '',
+        `<b style="font-size:22px">${code}</b>`,
+        '',
+        `Berlaku ${Math.round(expiresInSeconds / 60)} menit.`,
+        `IP: <code>${ip}</code>`,
+        '',
+        '<i>Jika bukan Anda yang login, segera ganti password admin.</i>'
+      ].join('\n')
+    );
+
+    await recordAudit(store, {
+      action: 'login.otp-diminta',
+      actor: 'admin',
+      ip,
+      status: sent.sent ? 'ok' : 'warning',
+      detail: { terkirim: sent.sent, alasan: sent.reason }
+    });
+
+    if (!sent.sent) {
+      // Jangan kunci admin keluar kalau Telegram bermasalah.
+      return ok({
+        otpRequired: false,
+        token: signAdminToken(username),
+        username: 'admin',
+        expiresInHours: 12,
+        storage: store.mode,
+        warning:
+          'Kode 2FA gagal dikirim ke Telegram sehingga verifikasi dilewati. Periksa Bot Token/Chat ID di Pengaturan.'
+      });
+    }
+
+    return ok({
+      otpRequired: true,
+      challengeId,
+      expiresInSeconds,
+      username: 'admin'
+    });
   }
+
+  resetRateLimit(`login:${ip}`);
+  await recordAudit(store, { action: 'login.sukses', actor: 'admin', ip, status: 'ok' });
+
   return ok({
     token: signAdminToken(username),
     username: 'admin',
     expiresInHours: 12,
+    storage: store.mode,
+    otpRequired: false
+  });
+});
+
+/** Langkah 2 login: tukar kode OTP dengan token admin. */
+route('POST', '/api/admin/verify-otp', async ({ body, headers }) => {
+  const ip = clientIp(headers);
+  const limit = rateLimit(`otp:${ip}`, { max: 8, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Terlalu banyak percobaan kode. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+
+  const { challengeId, code } = body || {};
+  const result = verifyOtpChallenge(challengeId, code);
+
+  if (!result.ok) {
+    await recordAudit(store, {
+      action: 'login.otp-gagal',
+      actor: 'admin',
+      ip,
+      status: 'failed',
+      detail: { alasan: result.reason }
+    });
+    return bad(result.reason || 'Kode verifikasi tidak valid.', 401);
+  }
+
+  resetRateLimit(`login:${ip}`);
+  await recordAudit(store, { action: 'login.sukses-2fa', actor: 'admin', ip, status: 'ok' });
+
+  return ok({
+    token: signAdminToken('admin'),
+    username: 'admin',
+    expiresInHours: 12,
     storage: store.mode
   });
+});
+
+/** Nyalakan/matikan 2FA (hanya bisa kalau Telegram sudah terhubung). */
+route('POST', '/api/admin/2fa', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const current = await readSettings();
+  if (!current.telegram?.botToken || !current.telegram?.chatId) {
+    return bad(
+      'Hubungkan Bot Telegram lebih dulu (Pengaturan → Notifikasi Telegram) sebelum mengaktifkan 2FA.',
+      400
+    );
+  }
+  const enable = Boolean(body?.enabled);
+  const next = {
+    ...current,
+    telegram: { ...current.telegram, otpEnabled: enable },
+    updatedAt: nowIso()
+  };
+  await store.put('settings', { ...next, id: 'store-settings' });
+  await recordAudit(store, {
+    action: enable ? 'security.2fa-aktif' : 'security.2fa-nonaktif',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: 'ok'
+  });
+  return ok({ enabled: enable });
 });
 
 route('GET', '/api/admin/session', async ({ headers }) => {
@@ -1174,6 +1508,19 @@ route('PATCH', '/api/admin/orders/:orderId', async ({ headers, params, body }) =
   next.updatedAt = nowIso();
   await store.put('orders', next);
 
+  await recordAudit(store, {
+    action: 'order.diubah',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: order.orderId,
+    detail: {
+      pembayaran: { dari: order.paymentStatus, ke: next.paymentStatus },
+      status: { dari: order.status, ke: next.status },
+      resi: next.resi || null,
+      jumlahTerverifikasi: payload.verifiedAmount ?? null
+    }
+  });
+
   // Notifikasi Telegram ke admin (kalau admin mengaktifkannya).
   const notifySettings = await readSettings();
   const notifyCfg = telegramConfig(notifySettings);
@@ -1227,7 +1574,12 @@ const cleanVariants = (raw) => {
         label,
         price,
         originalPrice: originalPrice || price,
-        stock: Math.max(0, Math.round(Number(v.stock) || 0))
+        stock: Math.max(0, Math.round(Number(v.stock) || 0)),
+        // HPP per varian (opsional; fallback ke HPP produk).
+        costPrice: Math.max(0, Number(v.costPrice) || 0),
+        extraCost: Math.max(0, Number(v.extraCost) || 0),
+        vendorId: v.vendorId || null,
+        vendorName: String(v.vendorName || '').trim()
       };
     })
     .filter(Boolean);
@@ -1290,6 +1642,19 @@ const normalizeProduct = async (payload, existing) => {
   if (!Number.isFinite(weightGrams) || weightGrams <= 0) errors.push('Berat produk harus lebih dari 0 gram.');
   if (minWholesaleQty < 0) errors.push('Minimum qty grosir tidak boleh negatif.');
   if (wholesalePrice < 0) errors.push('Harga grosir tidak boleh negatif.');
+  const costPrice = Math.max(0, Number(src.costPrice ?? base.costPrice ?? 0));
+  const extraCost = Math.max(0, Number(src.extraCost ?? base.extraCost ?? 0));
+  const totalCost = costPrice + extraCost;
+
+  // Cegah menjual di bawah modal (kerugian nyata yang sering tidak disadari).
+  if (totalCost > 0 && price > 0 && price < totalCost) {
+    errors.push(
+      `Harga jual (Rp ${price.toLocaleString('id-ID')}) lebih rendah dari HPP (Rp ${totalCost.toLocaleString(
+        'id-ID'
+      )}). Perbaiki harga atau HPP sebelum menyimpan.`
+    );
+  }
+
   if (wholesalePrice > price && minWholesaleQty > 0) {
     errors.push('Harga grosir seharusnya lebih murah daripada harga jual satuan.');
   }
@@ -1303,6 +1668,13 @@ const normalizeProduct = async (payload, existing) => {
     if (v.price <= 0) errors.push(`Harga varian "${v.label}" harus lebih besar dari 0.`);
     if (v.originalPrice < v.price) {
       errors.push(`Harga sebelum diskon varian "${v.label}" tidak boleh lebih kecil dari harga varian.`);
+    }
+    if (v.costPrice + v.extraCost > 0 && v.price < v.costPrice + v.extraCost) {
+      errors.push(
+        `Varian "${v.label}": harga jual lebih rendah dari HPP (Rp ${(
+          v.costPrice + v.extraCost
+        ).toLocaleString('id-ID')}).`
+      );
     }
   });
 
@@ -1374,6 +1746,11 @@ const normalizeProduct = async (payload, existing) => {
       description: String(src.description ?? base.description ?? '').trim(),
       specs: cleanSpecs(src.specs ?? base.specs),
       variants,
+      costPrice: Math.round(costPrice),
+      extraCost: Math.round(extraCost),
+      vendorId: src.vendorId ?? base.vendorId ?? null,
+      vendorName: String(src.vendorName ?? base.vendorName ?? '').trim(),
+      sku: String(src.sku ?? base.sku ?? '').trim(),
       minWholesaleQty: Math.round(minWholesaleQty),
       wholesalePrice: Math.round(wholesalePrice || finalPrice),
       reviews: Array.isArray(src.reviews ?? base.reviews) ? (src.reviews ?? base.reviews) : [],
@@ -1393,6 +1770,13 @@ route('POST', '/api/admin/products', async ({ headers, body }) => {
     updatedAt: nowIso()
   };
   await store.put('products', created);
+  await recordAudit(store, {
+    action: 'produk.dibuat',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: created.id,
+    detail: { nama: created.name, harga: created.price, hpp: created.costPrice ?? null }
+  });
   return ok({ product: created, products: await readProducts() }, 201);
 });
 
@@ -1406,6 +1790,18 @@ route('PUT', '/api/admin/products/:id', async ({ headers, params, body }) => {
 
   const updated = { ...product, id: existing.id, updatedAt: nowIso() };
   await store.put('products', updated);
+  await recordAudit(store, {
+    action: 'produk.diubah',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: existing.id,
+    detail: {
+      nama: updated.name,
+      harga: { dari: existing.price, ke: updated.price },
+      hpp: { dari: existing.costPrice ?? null, ke: updated.costPrice ?? null },
+      stok: { dari: existing.stock, ke: updated.stock }
+    }
+  });
   return ok({ product: updated, products: await readProducts() });
 });
 
@@ -1430,6 +1826,13 @@ route('POST', '/api/admin/products/:id/duplicate', async ({ headers, params }) =
     updatedAt: nowIso()
   };
   await store.put('products', copy);
+  await recordAudit(store, {
+    action: 'produk.diduplikat',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: copy.id,
+    detail: { dari: existing.id, nama: copy.name }
+  });
   return ok({ product: copy, products: await readProducts() }, 201);
 });
 
@@ -1509,107 +1912,280 @@ route('POST', '/api/admin/telegram/test', async ({ headers, body }) => {
 });
 
 /**
- * Upload gambar produk.
- * - Kalau Supabase Storage dikonfigurasi (SUPABASE_URL + kunci), file disimpan di bucket.
- * - Kalau tidak, file disimpan di folder lokal `public/uploads` (dev / self-host).
- * Body: { dataUrl: 'data:image/png;base64,...', filename?: 'nama.png' }
+ * Upload gambar (produk & bukti transfer) ke Supabase Storage atau folder lokal.
+ * Body: { dataUrl, filename?, kind?: 'product' | 'proof' }
  */
-const EXT_BY_MIME = {
-  'image/png': 'png',
-  'image/jpeg': 'jpg',
-  'image/webp': 'webp',
-  'image/gif': 'gif'
-};
-const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // 3 MB setelah kompresi klien
-
 route('POST', '/api/admin/upload', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
-  const dataUrl = String((body && body.dataUrl) || '');
-  const match = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/.exec(dataUrl);
-  if (!match) return bad('Format gambar tidak dikenali. Gunakan JPG, PNG, atau WEBP.');
-  const mime = match[1].toLowerCase();
-  const ext = EXT_BY_MIME[mime];
-  if (!ext) return bad('Tipe gambar tidak didukung. Gunakan JPG, PNG, atau WEBP.');
-
-  const buffer = Buffer.from(match[2], 'base64');
-  if (buffer.length > MAX_UPLOAD_BYTES) {
-    return bad('Ukuran gambar melebihi 3 MB. Kompres dulu sebelum mengunggah.');
+  const kind = body?.kind === 'proof' ? 'proof' : 'product';
+  const bucket =
+    kind === 'proof'
+      ? process.env.SUPABASE_PROOF_BUCKET || 'payment-proofs'
+      : process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
+  try {
+    const saved = await saveImage({
+      dataUrl: body?.dataUrl,
+      filename: body?.filename,
+      bucket,
+      maxBytes: kind === 'proof' ? MAX_PROOF_BYTES : MAX_UPLOAD_BYTES
+    });
+    return ok({ ...saved, bucket, kind });
+  } catch (err) {
+    return bad(err.message, 400);
   }
-
-  const safeBase = slugify((body && body.filename) || 'gambar') || 'gambar';
-  const filename = `${safeBase}-${Date.now().toString(36)}.${ext}`;
-
-  // Jalur 1: Supabase Storage.
-  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const sbKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SECRET_KEY ||
-    process.env.SUPABASE_SERVICE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    '';
-  const bucket = process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
-
-  if (sbUrl && sbKey) {
-    try {
-      const base = sbUrl.replace(/\/+$/, '');
-      const authHeaders = { apikey: sbKey, 'Content-Type': mime, 'x-upsert': 'true' };
-      if (!sbKey.startsWith('sb_')) authHeaders.Authorization = `Bearer ${sbKey}`;
-      const uploadRes = await fetch(
-        `${base}/storage/v1/object/${bucket}/${encodeURIComponent(filename)}`,
-        { method: 'POST', headers: authHeaders, body: buffer }
-      );
-      if (uploadRes.ok) {
-        return ok({
-          url: `${base}/storage/v1/object/public/${bucket}/${encodeURIComponent(filename)}`,
-          filename,
-          storage: 'supabase',
-          bucket
-        });
-      }
-      const detail = await uploadRes.text().catch(() => '');
-      console.error('[upload] Supabase Storage gagal:', uploadRes.status, detail.slice(0, 200));
-      // jatuh ke penyimpanan lokal di bawah
-      return bad(
-        `Upload ke Supabase Storage gagal (${uploadRes.status}). Pastikan bucket "${bucket}" sudah dibuat dan bersifat Public. Detail: ${detail.slice(
-          0,
-          160
-        )}`,
-        502
-      );
-    } catch (err) {
-      return bad(`Upload ke Supabase Storage gagal: ${err.message}`, 502);
-    }
-  }
-
-  // Jalur 2: penyimpanan lokal (hanya untuk dev / self-host, filesystem writable).
-  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-    try {
-      const fs = await import('node:fs/promises');
-      const path = await import('node:path');
-      const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-      await fs.mkdir(uploadsDir, { recursive: true });
-      await fs.writeFile(path.join(uploadsDir, filename), buffer);
-      return ok({
-        url: `/uploads/${filename}`,
-        filename,
-        storage: 'local',
-        note: 'File disimpan lokal. Di Vercel/Cloudflare filesystem tidak permanen — set SUPABASE_URL + kunci agar upload permanen.'
-      });
-    } catch (err) {
-      return bad(`Gagal menyimpan gambar: ${err.message}`, 500);
-    }
-  }
-
-  return bad(
-    'Penyimpanan gambar belum dikonfigurasi. Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY (opsional: SUPABASE_STORAGE_BUCKET).',
-    501
-  );
 });
 
 route('POST', '/api/admin/settings/reset', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
   await store.replaceAll('settings', [{ ...DEFAULT_SETTINGS, id: 'store-settings' }]);
   return ok({ settings: publicSettings(DEFAULT_SETTINGS) });
+});
+
+/* ---------------- Admin: keuangan ---------------- */
+
+const readVendors = async () => {
+  const docs = await store.list('vendors');
+  return [...docs].sort((a, b) => String(a.name).localeCompare(String(b.name)));
+};
+
+const readExpenses = async () => {
+  const docs = await store.list('expenses');
+  return [...docs].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+};
+
+const normalizeVendor = (payload, existing) => {
+  const errors = [];
+  const base = existing || {};
+  const name = String(payload?.name ?? base.name ?? '').trim();
+  if (!name) errors.push('Nama vendor wajib diisi.');
+  return {
+    errors,
+    vendor: {
+      ...base,
+      id: base.id || payload?.id || `vendor-${Date.now().toString(36)}`,
+      code: String(payload?.code ?? base.code ?? '').trim(),
+      name,
+      contactName: String(payload?.contactName ?? base.contactName ?? '').trim(),
+      phone: String(payload?.phone ?? base.phone ?? '').trim(),
+      email: String(payload?.email ?? base.email ?? '').trim(),
+      address: String(payload?.address ?? base.address ?? '').trim(),
+      category: String(payload?.category ?? base.category ?? 'Produksi').trim(),
+      paymentTerm: Number(payload?.paymentTerm ?? base.paymentTerm ?? 0) || 0,
+      bankAccount: String(payload?.bankAccount ?? base.bankAccount ?? '').trim(),
+      debt: Math.max(0, Number(payload?.debt ?? base.debt ?? 0) || 0),
+      dueDate: String(payload?.dueDate ?? base.dueDate ?? '').trim(),
+      notes: String(payload?.notes ?? base.notes ?? '').trim(),
+      active: (payload?.active ?? base.active) !== false,
+      createdAt: base.createdAt || nowIso(),
+      updatedAt: nowIso()
+    }
+  };
+};
+
+route('GET', '/api/admin/finance/meta', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const [vendors, products] = await Promise.all([readVendors(), readProducts()]);
+  return ok({
+    expenseCategories: EXPENSE_CATEGORIES,
+    vendors,
+    products: products.map((p) => ({
+      id: p.id,
+      name: p.shortName || p.name,
+      sku: p.sku || '',
+      costPrice: p.costPrice || 0,
+      extraCost: p.extraCost || 0,
+      vendorId: p.vendorId || null,
+      vendorName: p.vendorName || '',
+      price: p.price,
+      variants: (p.variants || []).map((v) => ({
+        id: v.id,
+        label: v.label,
+        price: v.price,
+        costPrice: v.costPrice || 0,
+        extraCost: v.extraCost || 0,
+        vendorId: v.vendorId || null
+      }))
+    }))
+  });
+});
+
+/* --- Vendor CRUD --- */
+
+route('GET', '/api/admin/vendors', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  return ok({ vendors: await readVendors() });
+});
+
+route('POST', '/api/admin/vendors', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const { errors, vendor } = normalizeVendor(body || {}, null);
+  if (errors.length) return bad(errors[0], 400, { errors });
+  await store.put('vendors', vendor);
+  await recordAudit(store, {
+    action: 'vendor.dibuat',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: vendor.id,
+    detail: { nama: vendor.name }
+  });
+  return ok({ vendor, vendors: await readVendors() }, 201);
+});
+
+route('PUT', '/api/admin/vendors/:id', async ({ headers, params, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const existing = await store.get('vendors', params.id);
+  if (!existing) return bad('Vendor tidak ditemukan.', 404);
+  const { errors, vendor } = normalizeVendor(body || {}, existing);
+  if (errors.length) return bad(errors[0], 400, { errors });
+  await store.put('vendors', vendor);
+  await recordAudit(store, {
+    action: 'vendor.diubah',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: vendor.id,
+    detail: { nama: vendor.name }
+  });
+  return ok({ vendor, vendors: await readVendors() });
+});
+
+route('DELETE', '/api/admin/vendors/:id', async ({ headers, params }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const existing = await store.get('vendors', params.id);
+  if (!existing) return bad('Vendor tidak ditemukan.', 404);
+  await store.remove('vendors', params.id);
+  await recordAudit(store, {
+    action: 'vendor.dihapus',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: params.id,
+    detail: { nama: existing.name }
+  });
+  return ok({ deleted: params.id, vendors: await readVendors() });
+});
+
+/* --- Pengeluaran (biaya) --- */
+
+const normalizeExpense = (payload, existing) => {
+  const errors = [];
+  const base = existing || {};
+  const amount = Number(payload?.amount ?? base.amount ?? 0);
+  const date = String(payload?.date ?? base.date ?? '').trim() || new Date().toISOString().slice(0, 10);
+  if (!(amount > 0)) errors.push('Nominal pengeluaran harus lebih besar dari 0.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) errors.push('Tanggal pengeluaran tidak valid (format YYYY-MM-DD).');
+  const category = String(payload?.category ?? base.category ?? 'lain-lain');
+  if (!EXPENSE_CATEGORY_LABEL[category]) errors.push('Kategori pengeluaran tidak dikenal.');
+  return {
+    errors,
+    expense: {
+      ...base,
+      id: base.id || `expense-${Date.now().toString(36)}`,
+      date,
+      category,
+      description: String(payload?.description ?? base.description ?? '').trim(),
+      amount: Math.round(amount),
+      account: String(payload?.account ?? base.account ?? 'Kas Toko').trim(),
+      vendorId: payload?.vendorId ?? base.vendorId ?? null,
+      notes: String(payload?.notes ?? base.notes ?? '').trim(),
+      createdAt: base.createdAt || nowIso(),
+      updatedAt: nowIso()
+    }
+  };
+};
+
+route('GET', '/api/admin/expenses', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  let docs = await readExpenses();
+  const from = String(query.from || '');
+  const to = String(query.to || '');
+  if (from) docs = docs.filter((d) => d.date >= from);
+  if (to) docs = docs.filter((d) => d.date <= to);
+  return ok({ expenses: docs, categories: EXPENSE_CATEGORIES });
+});
+
+route('POST', '/api/admin/expenses', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const { errors, expense } = normalizeExpense(body || {}, null);
+  if (errors.length) return bad(errors[0], 400, { errors });
+  await store.put('expenses', expense);
+  await recordAudit(store, {
+    action: 'pengeluaran.dibuat',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: expense.id,
+    detail: { kategori: expense.category, nominal: expense.amount }
+  });
+  return ok({ expense, expenses: await readExpenses() }, 201);
+});
+
+route('PUT', '/api/admin/expenses/:id', async ({ headers, params, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const existing = await store.get('expenses', params.id);
+  if (!existing) return bad('Pengeluaran tidak ditemukan.', 404);
+  const { errors, expense } = normalizeExpense(body || {}, existing);
+  if (errors.length) return bad(errors[0], 400, { errors });
+  await store.put('expenses', expense);
+  return ok({ expense, expenses: await readExpenses() });
+});
+
+route('DELETE', '/api/admin/expenses/:id', async ({ headers, params }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  await store.remove('expenses', params.id);
+  await recordAudit(store, {
+    action: 'pengeluaran.dihapus',
+    actor: 'admin',
+    ip: clientIp(headers),
+    target: params.id
+  });
+  return ok({ deleted: params.id, expenses: await readExpenses() });
+});
+
+/* --- Laporan --- */
+
+route('GET', '/api/admin/finance/profit-loss', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const [orders, expenses, products] = await Promise.all([
+    readOrders(),
+    readExpenses(),
+    readProducts()
+  ]);
+  return ok(
+    buildProfitLoss(
+      { orders, expenses, products },
+      { from: String(query.from || ''), to: String(query.to || '') }
+    )
+  );
+});
+
+route('GET', '/api/admin/finance/margin', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const products = await readProducts();
+  return ok({ products: await readProducts(), rows: buildMarginReport(products) });
+});
+
+route('GET', '/api/admin/finance/sales', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const orders = await readOrders();
+  return ok(
+    buildSalesReport(orders, { from: String(query.from || ''), to: String(query.to || '') })
+  );
+});
+
+route('GET', '/api/admin/finance/cash', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const [orders, expenses] = await Promise.all([readOrders(), readExpenses()]);
+  return ok(
+    buildCashReport(orders, expenses, { from: String(query.from || ''), to: String(query.to || '') })
+  );
+});
+
+route('GET', '/api/admin/finance/receivables', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const [orders, vendors] = await Promise.all([readOrders(), readVendors()]);
+  return ok({
+    receivables: buildReceivables(orders),
+    payables: buildPayables(vendors),
+    totalReceivable: buildReceivables(orders).reduce((sum, r) => sum + num(r.totalAmount), 0)
+  });
 });
 
 /* ---------------- Admin: B2B ---------------- */
@@ -1647,15 +2223,76 @@ route('POST', '/api/admin/seed-demo', async ({ headers }) => {
   return ok({ orders: (await readOrders()).length, inquiries: (await readB2B()).length });
 });
 
+/** Ekspor data untuk backup — TANPA kredensial & dengan nomor HP dimasking. */
 route('GET', '/api/admin/export', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const ip = clientIp(headers);
+  const limit = rateLimit(`export:${ip}`, { max: 3, windowMs: 60 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Ekspor dibatasi 3 kali per jam. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+
   const [orders, products, b2b, settings] = await Promise.all([
     readOrders(),
     readProducts(),
     readB2B(),
     readSettings()
   ]);
-  return ok({ exportedAt: nowIso(), orders, products, b2b, settings });
+
+  const { botToken, chatId, ...safeTelegram } = settings.telegram || {};
+
+  await recordAudit(store, {
+    action: 'data.ekspor',
+    actor: 'admin',
+    ip,
+    status: 'ok',
+    detail: { orders: orders.length, products: products.length, b2b: b2b.length }
+  });
+
+  return ok({
+    exportedAt: nowIso(),
+    note: 'Ekspor ini menyembunyikan kredensial (Telegram) dan menutup sebagian nomor HP pembeli.',
+    orders: orders.map((o) => ({
+      ...o,
+      customerPhone: maskPhone(o.customerPhone)
+    })),
+    products,
+    b2b: b2b.map((b) => ({ ...b, phone: maskPhone(b.phone) })),
+    settings: {
+      ...settings,
+      telegram: {
+        ...safeTelegram,
+        connected: Boolean(botToken && chatId)
+      }
+    }
+  });
+});
+
+/* ---------------- Audit log ---------------- */
+
+route('GET', '/api/admin/audit', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  await pruneAudit(store, 90);
+  let docs = await store.list('audit');
+  docs = docs.sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  const action = String(query.action || '').trim();
+  const q = String(query.q || '').trim().toLowerCase();
+  if (action) docs = docs.filter((d) => String(d.action).startsWith(action));
+  if (q) {
+    docs = docs.filter((d) =>
+      [d.action, d.actor, d.ip, d.target, JSON.stringify(d.detail || '')]
+        .join(' ')
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+  return ok({ total: docs.length, entries: docs.slice(0, 300) });
 });
 
 /* ------------------------------------------------------------------ */

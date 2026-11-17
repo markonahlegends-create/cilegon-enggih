@@ -35,19 +35,24 @@ export const TrackOrderPage: React.FC = () => {
   const initialQuery = searchParams.get('q') || '';
 
   const [query, setQuery] = useState(initialQuery);
+  const [phoneLast4, setPhoneLast4] = useState('');
   const [order, setOrder] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
   const [offline, setOffline] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
 
-  const runTracking = async (code: string) => {
+  const runTracking = async (code: string, last4 = phoneLast4) => {
     if (!code.trim()) return;
+    if (String(last4).replace(/\D/g, '').length < 4) {
+      setErrorMsg('Masukkan 4 digit terakhir nomor WhatsApp Anda untuk membuka data pesanan.');
+      return;
+    }
     setLoading(true);
     setErrorMsg('');
     setOffline(false);
     try {
-      const data = await trackOrder(code.trim());
+      const data = await trackOrder(code.trim(), last4);
       setOrder(data.order);
     } catch (err) {
       const cached = findCachedOrder(code.trim());
@@ -69,18 +74,17 @@ export const TrackOrderPage: React.FC = () => {
   };
 
   useEffect(() => {
+    // Data hanya bisa dibuka dengan 2 faktor (kode + 4 digit WhatsApp),
+    // jadi tidak ada lagi pemuatan contoh otomatis.
     if (initialQuery) {
-      runTracking(initialQuery);
-    } else {
-      runTracking('CE-20261116-102');
-      setQuery('CE-20261116-102');
+      setQuery(initialQuery);
     }
   }, [initialQuery]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setSearchParams(query.trim() ? { q: query.trim() } : {});
-    runTracking(query);
+    runTracking(query, phoneLast4);
   };
 
   const stepIndex = order ? STATUS_STEPS.indexOf(order.status) : -1;
@@ -102,46 +106,41 @@ export const TrackOrderPage: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2.5">
-          <div className="relative flex-1">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+          <div className="relative sm:col-span-7">
             <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Nomor Order (CE-...), No. Resi, atau No. WhatsApp"
+              placeholder="Nomor Order (CE-...), No. Resi, atau No. Invoice"
               className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white text-slate-800 text-sm font-semibold outline-none"
+            />
+          </div>
+          <div className="sm:col-span-3">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={4}
+              value={phoneLast4}
+              onChange={(e) => setPhoneLast4(e.target.value.replace(/\D/g, '').slice(0, 4))}
+              placeholder="4 digit terakhir No. WA"
+              className="w-full px-4 py-3.5 rounded-xl bg-white text-slate-800 text-sm font-semibold outline-none"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="px-6 py-3.5 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 disabled:opacity-60 text-navy-950 font-extrabold text-sm shrink-0"
+            className="sm:col-span-2 px-6 py-3.5 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 disabled:opacity-60 text-navy-950 font-extrabold text-sm shrink-0"
           >
-            {loading ? 'Melacak...' : 'Lacak Sekarang'}
+            {loading ? 'Melacak...' : 'Lacak'}
           </button>
         </form>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="text-slate-300">Coba nomor sampel:</span>
-          {[
-            { code: 'CE-20261116-102', label: 'Dikirim + Resi' },
-            { code: 'CE-20261115-089', label: 'Selesai' },
-            { code: 'CE-20261116-108', label: 'Menunggu Verifikasi' }
-          ].map((s) => (
-            <button
-              key={s.code}
-              type="button"
-              onClick={() => {
-                setQuery(s.code);
-                setSearchParams({ q: s.code });
-              }}
-              className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-amberbrand-200 font-semibold"
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+        <p className="text-[11px] text-slate-300">
+          Demi keamanan, data pesanan hanya bisa dibuka dengan nomor pesanan/resi{' '}
+          <strong>dan</strong> 4 digit terakhir nomor WhatsApp yang Anda pakai saat memesan.
+        </p>
       </div>
 
       {errorMsg && (
