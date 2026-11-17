@@ -53,6 +53,53 @@ if (matchedDomain) {
   fail('canonical & OG meta', 'domain belum diset di index.html');
 }
 
+/* ---- Tidak boleh ada Routing Middleware (pernah mematikan seluruh situs) ---- */
+for (const mw of ['middleware.ts', 'middleware.js', 'middleware.mts']) {
+  if (fs.existsSync(path.join(root, mw))) {
+    fail(
+      'routing middleware',
+      `${mw} terdeteksi — jangan pakai middleware yang memanggil fetch() ke origin sendiri (penyebab 500 MIDDLEWARE_INVOCATION_FAILED).`
+    );
+  }
+}
+
+/* ---- Halaman share statis untuk crawler ter-generate ---- */
+const shareDir = path.join(root, 'public/og');
+const sharePages = fs.existsSync(shareDir)
+  ? fs.readdirSync(shareDir).filter((f) => f.endsWith('.html'))
+  : [];
+if (sharePages.length === 0) {
+  fail('halaman share crawler', 'public/og/*.html kosong — jalankan `npm run og:pages`');
+} else {
+  pass('halaman share crawler', `${sharePages.length} halaman HTML statis`);
+}
+
+/* ---- Rewrite crawler harus ada & destination-nya nyata ---- */
+const vercelPath = path.join(root, 'vercel.json');
+if (fs.existsSync(vercelPath)) {
+  const cfg = JSON.parse(fs.readFileSync(vercelPath, 'utf8'));
+  const crawlerRules = (cfg.rewrites || []).filter((r) => r.has && r.destination?.startsWith('/og/'));
+  if (crawlerRules.length === 0) {
+    fail('rewrite crawler', 'tidak ada aturan rewrite untuk crawler di vercel.json');
+  } else {
+    const broken = crawlerRules.filter(
+      (r) => !fs.existsSync(path.join(root, 'public', r.destination))
+    );
+    if (broken.length) {
+      fail('rewrite crawler', `${broken.length} tujuan tidak ada: ${broken[0].destination}`);
+    } else {
+      pass('rewrite crawler', `${crawlerRules.length} aturan, semua tujuan ada`);
+    }
+  }
+  // Catch-all SPA harus tetap paling akhir agar situs tidak 404.
+  const last = cfg.rewrites[cfg.rewrites.length - 1];
+  if (!last || !last.source.startsWith('/((?!')) {
+    fail('catch-all SPA', 'aturan SPA harus berada di urutan terakhir rewrite');
+  } else {
+    pass('catch-all SPA', last.destination);
+  }
+}
+
 /* ---- Open Graph: gambar preview WAJIB <300KB & 1200x630 ---- */
 const ogFiles = fs.existsSync(path.join(root, 'public/og'))
   ? fs.readdirSync(path.join(root, 'public/og')).filter((f) => f.endsWith('.jpg'))

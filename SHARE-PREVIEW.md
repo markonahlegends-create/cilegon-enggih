@@ -57,7 +57,7 @@ npm run og:images
 
 `scripts/generate-og-data.mjs` membaca `src/data/products.ts` lalu menulis JSON
 berisi judul, deskripsi, harga, dan URL gambar tiap halaman. JSON ini yang
-dipakai `middleware.ts` **dan** `index.html` — satu sumber kebenaran.
+dipakai `scripts/generate-og-pages.mjs` **dan** `index.html` — satu sumber kebenaran.
 
 ```bash
 npm run og:data      # juga otomatis dijalankan sebelum `npm run build`
@@ -72,22 +72,44 @@ image:       https://cilegon-enggih.vercel.app/og/tote-bag-kanvas-premium.jpg
 url:         https://cilegon-enggih.vercel.app/produk/tote-bag-kanvas-premium
 ```
 
-### C. `middleware.ts` — OG berbeda per URL
+### C. Rewrite statis untuk crawler (`vercel.json`)
 
-Vercel Routing Middleware berjalan **sebelum cache** dan **sebelum rewrite**.
-Middleware membaca `og-meta.json`, membuang tag sosial lama dari `index.html`,
-lalu menyuntikkan blok meta yang sesuai.
+> **Penting — jangan pakai middleware lagi.** Percobaan pertama memakai
+> Vercel Routing Middleware yang memanggil `fetch(origin/index.html)`.
+> Panggilan ke origin sendiri dari dalam middleware membuat **seluruh halaman
+> publik mati** dengan `500 MIDDLEWARE_INVOCATION_FAILED`. Middleware sudah
+> dihapus dan sekarang dicegah oleh `npm run preflight`.
 
-Penting untuk diketahui:
+Pendekatan yang dipakai sekarang **tanpa function sama sekali**:
 
-- **Hanya crawler** yang dilayani HTML khusus (WhatsApp, Facebook, Twitter,
-  Telegram, LinkedIn, Slack, Discord, embedly, Googlebot, dll.).
-  Pengunjung biasa tetap mendapat HTML statis dari cache → tidak ada biaya
-  function tambahan dan tidak ada risiko FOUC.
-- Ingin mengaktifkan untuk **semua** request? Set env `OG_ALL_REQUESTS=1`.
-- Aset (`/assets`, `/og`, `/products`), `/api`, dan file ber-ekstensi dilewati.
-- Produk baru dari dashboard otomatis dapat judul dari slug-nya (kartu gambar
-  memakai kartu toko) — tidak menampilkan preview beranda yang menyesatkan.
+1. `scripts/generate-og-pages.mjs` menulis 18 file HTML kecil
+   (`public/og/produk--<slug>.html`, `/og/katalog.html`, dst). Isinya hanya
+   `<head>` + meta OG (≈4 KB) dan tidak memuat React.
+2. Skrip yang sama menulis aturan `rewrites` di `vercel.json`:
+
+```json
+{
+  "source": "/produk/tote-bag-kanvas-premium",
+  "has": [{ "type": "header", "key": "user-agent",
+            "value": { "re": "[Ww]hatsapp|[Ff]acebookexternalhit|..." } }],
+  "destination": "/og/produk--tote-bag-kanvas-premium.html"
+}
+```
+
+3. Pengunjung biasa **tidak pernah** terkena aturan ini — mereka tetap
+   mendapat `/index.html` dari CDN, sama seperti sebelumnya.
+
+Karena semuanya file statis: tidak ada invocation, tidak ada biaya function,
+dan tidak ada jalur yang bisa membuat situs utama error.
+
+**Dua keputusan penting:**
+
+- **Googlebot & Bingbot sengaja TIDAK diarahkan** ke halaman share. Halaman itu
+  bersifat bantuan; bila search engine diarahkan ke sana, halaman produk bisa
+  turun dari hasil pencarian. Search engine tetap menerima SPA seperti biasa
+  (canonical, sitemap, dan JSON-LD tetap benar).
+- **Aturan dibuat eksplisit per halaman**, bukan pola `:slug`. Kalau
+  destination tidak ada, crawler akan menerima 404 — bukan preview beranda.
 
 ### D. Sinkronisasi judul di browser
 
@@ -124,16 +146,19 @@ WhatsApp menyimpan preview sampai berhari-hari. Bila kartu lama masih muncul:
 
 ### 4. Uji lokal (tanpa deploy)
 
-`middleware.ts` hanya aktif di Vercel. Untuk memeriksa logikanya secara lokal:
+Aturan `has` di `vercel.json` hanya aktif di Vercel (tidak di `vercel dev`).
+Yang bisa diuji lokal adalah isi halaman share-nya:
 
 ```bash
-npx esbuild middleware.ts --bundle --format=esm --platform=neutral --outfile=/tmp/mw.mjs
-node -e "import('/tmp/mw.mjs').then(async({default:mw})=>{
-  const r=await mw(new Request('https://x/produk/tote-bag-kanvas-premium',
-    {headers:{'user-agent':'WhatsApp/2'}}));
-  console.log((await r.text()).match(/og:image\" content=\"([^\"]+)/)[1]);
-})"
+npm run build
+npm run preview
+# lalu buka salah satu:
+curl -s localhost:4173/og/produk--tote-bag-kanvas-premium.html | grep og:
+curl -sI localhost:4173/og/tote-bag-kanvas-premium.jpg
 ```
+
+Logika pencocokan crawler diuji oleh `npm run preflight` (cek aturan rewrite,
+keberadaan file tujuan, dan memastikan `middleware.ts` tidak muncul lagi).
 
 ---
 
@@ -145,8 +170,8 @@ di-crop tengah ke 1200×630 lalu dikompres JPEG q82 → 80–130 KB. Secara visu
 tetap foto produk, hanya versi ringan untuk preview chat.
 
 **Apakah ini memperlambat website?**
-Tidak. Middleware hanya jalan untuk crawler; pengunjung biasa dilayani langsung
-dari cache CDN.
+Tidak. Pengunjung biasa dilayani langsung dari cache CDN tanpa function apa pun.
+Hanya crawler social media yang menerima file HTML berbeda (≈4 KB).
 
 **Kalau produk baru ditambahkan lewat dashboard?**
 Preview langsung berfungsi (judul dari nama produk). Kartu gambar spesifiknya

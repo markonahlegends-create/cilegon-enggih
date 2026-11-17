@@ -13,5 +13,5 @@
     "strict": true,
     "resolveJsonModule": true
   },
-  "include": ["vite.config.ts", "middleware.ts"]
+  "include": ["vite.config.ts"]
 }
