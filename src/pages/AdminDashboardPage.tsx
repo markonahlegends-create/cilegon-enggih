@@ -38,6 +38,7 @@ import { useStore } from '../context/StoreContext';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 import { ProductEditor } from '../components/ProductEditor';
 import { FinancePanel } from '../components/FinancePanel';
+import { QrisUploader } from '../components/QrisUploader';
 import { SecurityPanel } from '../components/SecurityPanel';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
 import {
@@ -1168,6 +1169,7 @@ export const AdminDashboardPage: React.FC = () => {
           onTestTelegram={testTelegram}
           testingTelegram={testingTelegram}
           busy={busyId === 'settings' || busyId === 'reset-settings'}
+          pushToast={pushToast}
         />
       )}
 
@@ -1517,7 +1519,17 @@ const SettingsPanel: React.FC<{
   onTestTelegram: () => void;
   testingTelegram: boolean;
   busy: boolean;
-}> = ({ value, onChange, onSave, onReset, onTestTelegram, testingTelegram, busy }) => {
+  pushToast: (title: string, message: string, kind?: 'success' | 'error' | 'info') => void;
+}> = ({
+  value,
+  onChange,
+  onSave,
+  onReset,
+  onTestTelegram,
+  testingTelegram,
+  busy,
+  pushToast
+}) => {
   const [copied, setCopied] = useState('');
   const set = (key: string, val: any) => onChange({ ...value, [key]: val });
   const setNested = (group: string, key: string, val: any) =>
@@ -1721,28 +1733,23 @@ const SettingsPanel: React.FC<{
               <option value="static">Statis (gambar QRIS merchant)</option>
             </select>
           </Field>
-          <Field label="URL Gambar QRIS Statis">
-            <input
-              value={value.qris?.staticImageUrl || ''}
-              onChange={(e) => setNested('qris', 'staticImageUrl', e.target.value)}
-              placeholder="/qris-placeholder.png"
-              className="input-admin"
-            />
-          </Field>
         </div>
-        {(value.qris?.staticImageUrl || '').startsWith('/') && (
-          <div className="flex items-center gap-3 pt-1">
-            <img
-              src={value.qris.staticImageUrl}
-              alt="QRIS"
-              className="w-24 h-24 rounded-lg border border-slate-200 object-contain bg-white"
-            />
-            <p className="text-[10px] text-slate-500">
-              Gambar QRIS statis saat ini. Ganti dengan file QRIS resmi dari bank/merchant Anda di
-              folder <code>public/</code> lalu isi path-nya.
-            </p>
+        <div className="pt-1">
+          <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500 mb-1.5">
+            Gambar QRIS (mode statis)
           </div>
-        )}
+          <QrisUploader
+            value={value.qris?.staticImageUrl || ''}
+            onChange={(url) => setNested('qris', 'staticImageUrl', url)}
+            pushToast={pushToast}
+          />
+          {(value.qris?.staticImageUrl || '').startsWith('/') && (
+            <p className="text-[10px] text-slate-400 mt-1.5">
+              Path lokal <code>public/</code> — masih bisa dipakai, tapi unggahan baru tersimpan
+              permanen di Storage.
+            </p>
+          )}
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
           <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-700">
             <input

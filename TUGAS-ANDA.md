@@ -47,9 +47,10 @@ Ketentuan:
 ### 1.2 Gambar QRIS resmi 🔴
 
 - Buka aplikasi merchant/bank Anda → menu **QRIS** → **Unduh/Simpan gambar QRIS**.
-- Format **PNG/JPG**, minimal **600 × 600 px**, ukuran file < 300 KB.
+- Format **PNG/JPG**, minimal **600 × 600 px**. Tidak perlu dikompres manual — sistem mengompres otomatis (batas 3 MB).
 - Catat **NMID** (16 digit) yang tertera di bawah QR.
 - ⚠️ Harus QRIS **atas nama usaha Anda**, bukan QRIS pribadi orang lain (dana masuk langsung ke pemilik QRIS).
+- Unggah langsung: Dashboard → **Pengaturan** → bagian *Gambar QRIS (mode statis)* → **Unggah Gambar QRIS**. Tidak perlu menyentuh file repo.
 
 ### 1.3 Nomor WhatsApp bisnis 🔴
 
@@ -318,6 +319,14 @@ Tab **Keamanan** → kartu **Verifikasi 2 Langkah** → **Aktifkan 2FA**.
 - Setelah itu, login butuh password **+ kode 6 digit** yang dikirim ke Telegram Anda.
 - Pastikan bot Telegram sudah terhubung dulu (Pengaturan → Notifikasi Telegram → **Tes Koneksi**), kalau tidak tombol aktifnya terkunci.
 - Simpan akses Telegram Anda. Kalau bot terhapus, login masih bisa lewat password dengan peringatan — tapi jangan jadikan kebiasaan.
+
+### 6.4b Cek gambar QRIS setelah unggah 🔴
+
+Setelah mengunggah gambar QRIS di Pengaturan:
+
+1. Pastikan pratinjau muncul (bukan kotak kosong).
+2. **Scan langsung dari layar HP orang lain** dengan aplikasi bank/e-wallet → nama merchant harus benar.
+3. Bila Anda mengganti gambar QRIS **atau nomor rekening**, sistem mengirim notifikasi Telegram + mencatatnya di tab Keamanan. Kalau Anda menerima notifikasi itu padahal tidak merasa mengubah apa pun — **segera ganti password admin**.
 
 ### 6.5 Rutin tiap akhir bulan 🟡
 
