@@ -9,6 +9,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
 
 const target = process.argv[2] || '';
 const root = process.cwd();
@@ -51,6 +52,44 @@ if (matchedDomain) {
   pass('canonical & OG meta', `domain terpasang: ${matchedDomain}`);
 } else {
   fail('canonical & OG meta', 'domain belum diset di index.html');
+}
+
+/* ---- vercel.json harus lolos validasi skema (penyebab 2x deploy gagal) ---- */
+try {
+  execFileSync(process.execPath, [path.join(root, 'scripts/validate-vercel-config.mjs')], {
+    stdio: 'pipe'
+  });
+  pass('vercel.json', 'pola source valid');
+} catch (e) {
+  const detail = String(e.stderr || e.stdout || e.message).split('\n').slice(0, 3).join(' ');
+  fail('vercel.json', detail.trim() || 'tidak valid');
+}
+
+/* ---- File yang dibutuhkan build harus ter-track Git ----
+   Insiden: `.gitignore` berisi `data/` sehingga `src/data/og-meta.json`
+   tidak pernah ter-commit. Cek langsung, bukan mengandalkan ingatan. */
+const mustBeTracked = [
+  'vercel.json',
+  'src/data/products.ts',
+  'scripts/generate-og-data.mjs',
+  'scripts/generate-og-pages.mjs',
+  'scripts/validate-vercel-config.mjs',
+  'public/og/toko-cilegon-enggih.jpg'
+];
+try {
+  const untracked = mustBeTracked.filter((f) => {
+    const ignored = spawnSync('git', ['check-ignore', '-q', f], { cwd: root });
+    if (ignored.status === 0) return true;
+    const tracked = spawnSync('git', ['ls-files', '--error-unmatch', f], { cwd: root });
+    return tracked.status !== 0;
+  });
+  if (untracked.length) {
+    fail('file ter-track Git', `tidak ter-commit / ter-ignore: ${untracked.join(', ')}`);
+  } else {
+    pass('file ter-track Git', `${mustBeTracked.length} file kritis`);
+  }
+} catch {
+  /* git tidak tersedia — lewati pemeriksaan ini */
 }
 
 /* ---- Tidak boleh ada Routing Middleware (pernah mematikan seluruh situs) ---- */

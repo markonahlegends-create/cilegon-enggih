@@ -15,7 +15,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -28,7 +28,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -41,7 +41,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -54,7 +54,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -67,7 +67,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -80,7 +80,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -93,7 +93,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -106,7 +106,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -119,7 +119,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -132,7 +132,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -145,7 +145,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -158,7 +158,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -171,7 +171,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -184,7 +184,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -197,7 +197,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -210,7 +210,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -223,7 +223,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],
@@ -236,7 +236,7 @@
           "type": "header",
           "key": "user-agent",
           "value": {
-            "re": "Whatsapp|facebookexternalhit|TelegramBot|Twitterbot|LinkedInBot|Slackbot|Discordbot|Pinterest|Applebot"
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
           }
         }
       ],

@@ -34,8 +34,10 @@ lerna-debug.log*
 .cache
 
 # Local data store (fallback JSON) — jangan commit data pesanan pelanggan
+# PENTING: pakai awalan "/" agar hanya folder di root yang diabaikan.
+# Tanpa "/", pola `data/` ikut menelan `src/data/` (termasuk og-meta.json).
 server/data/
-data/
+/data/
 .ce-data/
 .env
 .env.local

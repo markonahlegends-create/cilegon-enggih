@@ -218,9 +218,10 @@ const main = () => {
     fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), buildHtml(pageMeta, meta), 'utf8');
     written.push(`${slug}.html`);
 
-    // Halaman produk berakhiran "/" (trailing slash) juga dilayani.
+    // Catatan: tidak perlu aturan untuk "/produk/x/". Dengan trailingSlash
+    // default (false), Vercel sudah 308-redirect ke "/produk/x" SEBELUM
+    // rewrite dievaluasi. Aturan tambahan hanya membuat config membengkak.
     rules.push({ route, dest: `/og/${slug}.html` });
-    if (route.startsWith('/produk/')) rules.push({ route: `${route}/`, dest: `/og/${slug}.html` });
   }
 
   console.log(`[og-pages] ${written.length} halaman share statis di public/og/`);
