@@ -54,6 +54,10 @@ export const createApp = () => {
       body: req.body,
       headers: req.headers
     });
+    // Header tambahan (mis. Set-Cookie untuk sesi HttpOnly).
+    if (result.headers) {
+      for (const [key, value] of Object.entries(result.headers)) res.setHeader(key, value);
+    }
     res.status(result.status).json(result.body);
   });
 

@@ -10,12 +10,23 @@ import {
   Search,
   ShieldCheck,
   ShieldOff,
-  UserX
+  UserX,
+  Database,
+  Download,
+  History,
+  HardDriveDownload,
+  LogOut,
+  MonitorSmartphone
 } from 'lucide-react';
 import {
   adminAuditLog,
   adminSettingsFull,
   adminSetTwoFactor,
+  adminBackups,
+  adminRunBackup,
+  adminRestoreBackup,
+  adminRevokeAllSessions,
+  adminSessions,
   ApiError
 } from '../lib/api';
 
@@ -51,20 +62,83 @@ export const SecurityPanel: React.FC<{ pushToast: (t: string, m: string, k?: any
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Tahap 3: sesi & backup
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [backups, setBackups] = useState<any[]>([]);
+  const [backupMeta, setBackupMeta] = useState<any>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [sessionBusy, setSessionBusy] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [full, audit] = await Promise.all([
+      const [full, audit, sess, bk] = await Promise.all([
         adminSettingsFull().catch(() => null),
-        adminAuditLog({ q: query }).catch(() => ({ total: 0, entries: [] }))
+        adminAuditLog({ q: query }).catch(() => ({ total: 0, entries: [] })),
+        adminSessions().catch(() => ({ sessions: [] })),
+        adminBackups().catch(() => null)
       ]);
       if (full?.settings) setSettings(full.settings);
       setEntries(audit.entries || []);
       setTotal(audit.total || 0);
+      setSessions(sess.sessions || []);
+      if (bk) {
+        setBackups(bk.items || []);
+        setBackupMeta(bk);
+      }
     } finally {
       setLoading(false);
     }
   }, [query]);
+
+  const runBackupNow = async () => {
+    setBackupBusy(true);
+    try {
+      const res = await adminRunBackup();
+      pushToast(
+        'Backup dibuat',
+        `${res.filename} • ${(res.compressedBytes / 1024).toFixed(0)} KB terkompresi`,
+        'success'
+      );
+      await load();
+    } catch (err) {
+      pushToast('Backup gagal', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const restore = async (filename: string) => {
+    const okReplace = window.confirm(
+      `Pulihkan dari ${filename}?\n\nKlik OK = gabungkan (menimpa dokumen dengan ID sama).\nKlik Cancel = batal.`
+    );
+    if (!okReplace) return;
+    setBackupBusy(true);
+    try {
+      const res = await adminRestoreBackup(filename, 'merge');
+      pushToast('Data dipulihkan', res.message, 'success');
+      await load();
+    } catch (err) {
+      pushToast('Pemulihan gagal', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
+
+  const revokeOthers = async () => {
+    if (!window.confirm('Keluarkan semua sesi admin? Anda harus login ulang di semua perangkat.'))
+      return;
+    setSessionBusy(true);
+    try {
+      const res = await adminRevokeAllSessions();
+      pushToast('Sesi dicabut', res.message, 'success');
+      setSessions([]);
+    } catch (err) {
+      pushToast('Gagal', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+    } finally {
+      setSessionBusy(false);
+    }
+  };
 
   useEffect(() => {
     load();
@@ -141,6 +215,18 @@ export const SecurityPanel: React.FC<{ pushToast: (t: string, m: string, k?: any
       label: 'Ekspor data tanpa kredensial',
       ok: true,
       detail: 'Bot token disembunyikan, nomor HP dimasking'
+    },
+    {
+      label: 'Sesi admin di cookie HttpOnly (tidak bisa dibaca JavaScript)',
+      ok: true,
+      detail: 'Token tidak lagi disimpan di localStorage'
+    },
+    {
+      label: 'Backup harian otomatis',
+      ok: Boolean(backupMeta?.total),
+      detail: backupMeta?.total
+        ? `${backupMeta.total} berkas tersimpan`
+        : 'Belum ada backup — klik "Backup Sekarang"'
     }
   ];
 
@@ -258,6 +344,116 @@ export const SecurityPanel: React.FC<{ pushToast: (t: string, m: string, k?: any
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Sesi aktif + backup (Tahap 3) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+            <MonitorSmartphone className="w-3.5 h-3.5 text-navy-700" />
+            <span className="text-xs font-extrabold text-navy-800">Perangkat Terhubung</span>
+            <span className="ml-auto text-[10px] text-slate-400">{sessions.length} sesi</span>
+          </div>
+          <div className="max-h-[190px] overflow-y-auto divide-y divide-slate-100">
+            {sessions.map((sess, i) => (
+              <div key={i} className="px-4 py-2 flex items-start gap-2">
+                <div
+                  className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${
+                    sess.current ? 'bg-forest-500' : 'bg-slate-300'
+                  }`}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-bold text-slate-700">
+                    {sess.ip}{' '}
+                    {sess.current && (
+                      <span className="ml-1 px-1.5 py-0.5 rounded bg-forest-50 text-forest-700 text-[9px]">
+                        PERANGKAT INI
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-slate-400 truncate">
+                    {String(sess.userAgent || 'Perangkat tidak dikenal').slice(0, 60)}
+                  </div>
+                  <div className="text-[9.5px] text-slate-400">{sess.sid}</div>
+                </div>
+                <div className="text-[9.5px] text-slate-400 whitespace-nowrap">
+                  {sess.createdAt
+                    ? new Date(sess.createdAt).toLocaleString('id-ID', {
+                        timeZone: 'Asia/Jakarta',
+                        day: '2-digit',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : '—'}
+                </div>
+              </div>
+            ))}
+            {sessions.length === 0 && (
+              <div className="px-4 py-5 text-center text-[11px] text-slate-400">
+                Tidak ada sesi lain yang tercatat.
+              </div>
+            )}
+          </div>
+          <div className="px-4 py-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={revokeOthers}
+              disabled={sessionBusy}
+              className="w-full py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10.5px] font-extrabold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <LogOut className="w-3 h-3" /> Keluarkan Semua Perangkat
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-slate-100 flex items-center gap-2">
+            <HardDriveDownload className="w-3.5 h-3.5 text-navy-700" />
+            <span className="text-xs font-extrabold text-navy-800">Backup Otomatis</span>
+            <span className="ml-auto text-[10px] text-slate-400">
+              {backupMeta?.total ?? 0} berkas
+            </span>
+          </div>
+          <div className="px-4 py-2 text-[10.5px] text-slate-500 leading-relaxed">
+            {backupMeta?.schedule || 'Harian'} • retensi {backupMeta?.retention ?? 30} berkas.
+            Tersimpan di Supabase Storage (bucket <code>backups</code>), tanpa kredensial.
+          </div>
+          <div className="max-h-[150px] overflow-y-auto divide-y divide-slate-100">
+            {backups.map((b) => (
+              <div key={b.filename} className="px-4 py-1.5 flex items-center gap-2">
+                <Database className="w-3 h-3 text-slate-400 shrink-0" />
+                <span className="text-[10px] font-mono text-slate-600 truncate flex-1">
+                  {b.filename}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => restore(b.filename)}
+                  disabled={backupBusy}
+                  className="text-[9.5px] font-bold text-navy-700 hover:underline disabled:opacity-40"
+                >
+                  Pulihkan
+                </button>
+              </div>
+            ))}
+            {backups.length === 0 && (
+              <div className="px-4 py-4 text-center text-[11px] text-slate-400">
+                Belum ada backup tersimpan.
+              </div>
+            )}
+          </div>
+          <div className="px-4 py-2 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={runBackupNow}
+              disabled={backupBusy}
+              className="w-full py-1.5 rounded-lg bg-forest-600 hover:bg-forest-700 text-white text-[10.5px] font-extrabold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+            >
+              <Download className="w-3 h-3" />
+              {backupBusy ? 'Memproses…' : 'Backup Sekarang'}
+            </button>
+          </div>
         </div>
       </div>
 

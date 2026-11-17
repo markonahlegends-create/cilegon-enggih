@@ -328,12 +328,26 @@ Setelah mengunggah gambar QRIS di Pengaturan:
 2. **Scan langsung dari layar HP orang lain** dengan aplikasi bank/e-wallet → nama merchant harus benar.
 3. Bila Anda mengganti gambar QRIS **atau nomor rekening**, sistem mengirim notifikasi Telegram + mencatatnya di tab Keamanan. Kalau Anda menerima notifikasi itu padahal tidak merasa mengubah apa pun — **segera ganti password admin**.
 
+### 6.4c Nyalakan backup harian 🔴 (Tahap 3)
+
+Backup di paket gratis Supabase **tidak otomatis** — tanpa ini, riwayat pesanan bisa hilang permanen.
+
+1. Buat bucket **`backups`** di Supabase → Storage → New bucket → **Private** (bukan Public).
+2. Buat kunci acak: buka terminal → `openssl rand -hex 32` → salin hasilnya.
+3. Vercel → Settings → Environment Variables → tambah `CRON_SECRET` = hasil langkah 2 (Production).
+4. Redeploy. Backup berjalan otomatis **setiap hari pukul 18:00 WIB**.
+5. Verifikasi: Dashboard → **Keamanan** → panel **Backup Otomatis** → klik **Backup Sekarang** → harus muncul berkas `backup-….json.gz`.
+
+> Kegagalan yang sering: bucket `backups` belum dibuat, atau `CRON_SECRET` kosong. Pesan errornya akan muncul langsung di dashboard.
+
 ### 6.5 Rutin tiap akhir bulan 🟡
 
 1. Tab **Keuangan** → pilih periode **Bulan ini** → cek **Laba Rugi** & **margin per produk**.
 2. Perhatikan produk dengan margin di bawah 15% (ditandai) — naikkan harga atau cari vendor lebih murah.
 3. Cek **Piutang** (order belum lunas) dan **Hutang** (tagihan vendor belum dibayar).
 4. Buka **Keamanan** → lihat log aktivitas: ada login gagal beruntun atau ekspor data yang tidak Anda lakukan?
+5. Cek **Backup Otomatis**: tanggal backup terbaru harus ≤ 24 jam. Kalau kosong, backup gagal — perbaiki sebelum terlambat.
+6. Cek **Perangkat Terhubung**: kalau ada IP/perangkat yang tidak Anda kenali, klik **Keluarkan Semua Perangkat** lalu ganti password admin.
 
 ### Yang TIDAK perlu Anda lakukan di blok ini
 
@@ -376,6 +390,8 @@ Jangan pernah mengirim: password admin, `service_role` key, password database, a
 [ ] Tab Produk → isi HPP + biaya tambahan + vendor tiap produk (Blok 6)
 [ ] Tab Keuangan → catat pengeluaran bulan berjalan
 [ ] Tab Keamanan → 2FA diaktifkan (setelah bot Telegram tersambung)
+[ ] Bucket `backups` (Private) + `CRON_SECRET` di Vercel → backup harian
+[ ] Tab Keamanan → cek "Perangkat Terhubung" hanya berisi perangkat Anda
 [ ] Tes transfer Rp ~20rb + kode unik → verifikasi LUNAS → input resi → lacak → print label
 [ ] Tes QRIS
 [ ] Google Search Console + sitemap
