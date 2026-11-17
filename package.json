@@ -7,13 +7,15 @@
   "license": "MIT",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 5173",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/generate-og-data.mjs && tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
     "server": "node server/index.js",
     "start": "npm run build && node server/index.js",
     "dev:all": "concurrently -k \"node server/index.js\" \"vite --host 0.0.0.0 --port 5173\"",
     "preflight": "node scripts/preflight.mjs",
-    "preflight:live": "node scripts/preflight.mjs"
+    "preflight:live": "node scripts/preflight.mjs",
+    "og:images": "node scripts/generate-og-images.mjs",
+    "og:data": "node scripts/generate-og-data.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

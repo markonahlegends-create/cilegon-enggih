@@ -22,18 +22,26 @@
     <meta name="robots" content="index, follow, max-image-preview:large" />
     <link rel="canonical" href="https://cilegon-enggih.vercel.app/" />
 
-    <!-- Open Graph / WhatsApp / Facebook -->
+    <!-- Open Graph / WhatsApp / Facebook.
+         Gambar WAJIB < 300 KB dan 1200x630; di atas itu WhatsApp membuang
+         preview gambar tanpa pesan error. Tag di bawah ini adalah fallback
+         statis untuk beranda — halaman produk mendapat OG sendiri lewat
+         middleware.ts (og:image per produk). -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Cilegon Enggih Official Store" />
     <meta property="og:locale" content="id_ID" />
-    <meta property="og:title" content="Cilegon Enggih | Oleh-Oleh & Merchandise Khas Kota Baja" />
+    <meta property="og:title" content="Cilegon Enggih | Oleh-Oleh & Merchandise Khas Kota Cilegon" />
     <meta
       property="og:description"
-      content="Merchandise resmi & oleh-oleh modern khas Cilegon. Guest checkout, transfer bank / QRIS toko tanpa biaya gateway, kirim GoSend/JNE/J&T/SiCepat."
+      content="Merchandise resmi & oleh-oleh modern khas Cilegon. Kaos, mug, tumbler, tote bag, souvenir. Guest checkout, transfer bank / QRIS toko tanpa biaya gateway, kirim GoSend/JNE/J&T/SiCepat."
     />
     <meta property="og:url" content="https://cilegon-enggih.vercel.app/" />
-    <meta property="og:image" content="https://cilegon-enggih.vercel.app/products/kaos-distro.png" />
-    <meta property="og:image:alt" content="Kaos Distro Cilegon Enggih" />
+    <meta property="og:image" content="https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg" />
+    <meta property="og:image:secure_url" content="https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg" />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Cilegon Enggih — oleh-oleh & merchandise khas Kota Cilegon" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -42,7 +50,7 @@
       name="twitter:description"
       content="Merchandise & oleh-oleh modern kebanggaan Kota Cilegon. Khas Kota Baja, Bangga Membawanya."
     />
-    <meta name="twitter:image" content="https://cilegon-enggih.vercel.app/products/kaos-distro.png" />
+    <meta name="twitter:image" content="https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg" />
 
     <!-- Structured data (LocalBusiness + Store) untuk Google Rich Result -->
     <script type="application/ld+json">
@@ -55,7 +63,7 @@
         "url": "https://cilegon-enggih.vercel.app/",
         "email": "cilegonenggih@gmail.com",
         "telephone": "+6281927157103",
-        "image": "https://cilegon-enggih.vercel.app/products/kaos-distro.png",
+        "image": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
         "priceRange": "Rp 8.000 - Rp 259.000",
         "currenciesAccepted": "IDR",
         "paymentAccepted": "Transfer Bank, QRIS, DANA",
