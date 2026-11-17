@@ -194,6 +194,11 @@ export const adminBackups = () =>
     schedule: string;
     retention: number;
     configured: boolean;
+    /** Nama bucket yang dicari server (default "backups", huruf kecil). */
+    bucket?: string;
+    bucketReachable?: boolean;
+    cronSecretConfigured?: boolean;
+    diagnostic?: string | null;
   }>('/api/admin/backups', { admin: true });
 
 export const adminRunBackup = () =>

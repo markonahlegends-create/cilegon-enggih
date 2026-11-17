@@ -78,7 +78,12 @@ Checklist lokal:
 
 ### 2b. Aktifkan backup harian (Tahap 3)
 
-1. Buat nilai acak: `openssl rand -hex 32` → simpan sebagai `CRON_SECRET` di Vercel (Production).
+1. Buat nilai acak, simpan sebagai `CRON_SECRET` di Vercel (Production):
+   - Windows: `powershell -Command "$b = New-Object 'System.Byte[]' 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); ($b | ForEach-Object { $_.ToString('x2') }) -join ''"`
+   - Linux/Mac: `openssl rand -hex 32`
+   - Tanpa terminal: <https://generate.plus/en/base64> (48+ karakter)
+
+   Environment Variable baru hanya terbaca setelah **Redeploy**.
 2. Pastikan bucket `backups` sudah ada (langkah 5 di atas).
 3. Redeploy. Jadwal cron sudah ter-commit di `vercel.json`:
 
