@@ -25,6 +25,7 @@ import {
 } from './finance.js';
 import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
 import { checkStock, applyStockMovement, stockAlreadyApplied } from './stock.js';
+import { normalizeEvent, buildInsights, pruneOldEvents, storeDay } from './insights.js';
 import {
   COOKIE_NAME,
   SESSION_TTL_MS,
@@ -1746,6 +1747,109 @@ route('GET', '/api/admin/session', async ({ headers }) => {
 });
 
 /* ---------------- Admin: analytics ---------------- */
+
+/* ------------------------------------------------------------------ */
+/* Analitik trafik (event ringan, tanpa data pribadi)                   */
+/* ------------------------------------------------------------------ */
+
+/**
+ * POST /api/events — penerimaan event dari frontend.
+ *
+ * Sengaja dibuat sangat toleran: kegagalan mencatat event TIDAK boleh
+ * mengganggu pengalaman pembeli. Endpoint selalu membalas 204 walau
+ * payload ditolak, dan dibatasi rate limit agar tidak bisa dibanjiri.
+ */
+route('POST', '/api/events', async ({ body, headers }) => {
+  const ip = clientIp(headers);
+  const limit = rateLimit(`events:${ip}`, { max: 120, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) return { status: 204, body: undefined };
+
+  try {
+    if (body !== null && typeof body !== 'object') return { status: 204, body: undefined };
+    const list = Array.isArray(body?.events) ? body.events.slice(0, 20) : [body];
+    const accepted = list
+      .map((raw) => normalizeEvent(raw, { ip, headers }))
+      .filter(Boolean)
+      // pembeli tidak perlu menunggu penulisan selesai
+      .map((ev) => store.put('analytics_events', ev).catch(() => null));
+    await Promise.all(accepted);
+  } catch (err) {
+    console.error('[analytics] gagal mencatat event:', err.message);
+  }
+  return { status: 204, body: undefined };
+});
+
+/** GET /api/admin/insights?days=30 — laporan trafik & konversi. */
+route('GET', '/api/admin/insights', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const rawDays = Number(query.days) || 30;
+  const days = [7, 30, 90].includes(rawDays) ? rawDays : 30;
+
+  const [events, orders, products] = await Promise.all([
+    store.list('analytics_events'),
+    readOrders(),
+    readProducts()
+  ]);
+
+  // Retensi: event lama dibuang agar data tidak menumpuk selamanya.
+  const fresh = pruneOldEvents(events || [], 180);
+
+  return ok(buildInsights({ events: fresh, orders, products, days }));
+});
+
+/** GET /api/admin/insights/export?days=30 — CSV untuk diolah di Excel. */
+route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const days = [7, 30, 90].includes(Number(query.days)) ? Number(query.days) : 30;
+  const [events, orders, products] = await Promise.all([
+    store.list('analytics_events'),
+    readOrders(),
+    readProducts()
+  ]);
+  const report = buildInsights({ events: pruneOldEvents(events || [], 180), orders, products, days });
+
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const lines = [];
+  lines.push('Laporan;Cilegon Enggih');
+  lines.push(`Periode;${report.period.from} s/d ${report.period.to} (${report.period.days} hari)`);
+  lines.push('');
+  lines.push('TRAFIK HARIAN');
+  lines.push('Tanggal;Kunjungan;Pengunjung Unik;Pesanan;Pendapatan;Konversi %');
+  report.traffic.daily.forEach((d) =>
+    lines.push([d.day, d.views, d.visitors, d.orders, d.revenue, d.conversion].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('PRODUK');
+  lines.push('Produk;Dilihat;Masuk Keranjang;Terjual;Pendapatan;Konversi %;Catatan');
+  report.products.forEach((p) =>
+    lines.push([p.name, p.views, p.carts, p.sold, p.revenue, p.conversion ?? '', p.verdict].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('PROYEKSI STOK');
+  lines.push('Produk;Stok;Terjual;Rata-rata/hari;Perkiraan Habis (hari)');
+  report.stockForecast.forEach((p) =>
+    lines.push([p.name, p.stock, p.sold, p.perDay, p.daysLeft ?? ''].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('LOKASI');
+  lines.push('Zona;Pesanan;Pendapatan;Porsi %');
+  report.byZone.forEach((z) => lines.push([z.label, z.orders, z.revenue, z.share].map(esc).join(';')));
+  lines.push('');
+  lines.push('SUMBER TRAFIK');
+  lines.push('Sumber;Pengunjung;Kunjungan');
+  report.bySource.forEach((s) => lines.push([s.source, s.visitors, s.views].map(esc).join(';')));
+
+  return ok(
+    { csv: lines.join('\n') },
+    200,
+    {
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="insight-cilegon-enggih-${storeDay()}.csv"`
+    }
+  );
+});
 
 route('GET', '/api/admin/analytics', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);

@@ -314,6 +314,18 @@ export const adminSession = () =>
     admin: true
   });
 
+/** Laporan trafik & konversi (analitik). */
+export const adminInsights = (days: 7 | 30 | 90 = 30) =>
+  apiRequest<any>(`/api/admin/insights?days=${days}`, { admin: true });
+
+/** CSV mentah untuk diolah di Excel/Sheets. */
+export const adminInsightsCsv = async (days: 7 | 30 | 90 = 30): Promise<string> => {
+  const res = await apiRequest<{ csv: string }>(`/api/admin/insights/export?days=${days}`, {
+    admin: true
+  });
+  return res.csv;
+};
+
 export const adminAnalytics = () =>
   apiRequest<any>('/api/admin/analytics', { admin: true });
 

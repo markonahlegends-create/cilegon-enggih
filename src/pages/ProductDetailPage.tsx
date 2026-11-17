@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { trackProductView } from '../lib/tracker';
 import {
   Star,
   ShoppingCart,
@@ -56,6 +57,12 @@ export const ProductDetailPage: React.FC = () => {
     setQty(1);
     setNote('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Kunjungan halaman produk (dasar perhitungan konversi per produk).
+    trackProductView({
+      id: product.id,
+      name: product.shortName || product.name,
+      variantId: product.variants?.[0]?.id
+    });
   }, [product]);
 
   const gallery = product.galleryImages?.length

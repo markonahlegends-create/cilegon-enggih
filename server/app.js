@@ -45,6 +45,16 @@ export const createApp = () => {
     return next();
   });
 
+  /**
+   * Body yang tidak bisa di-parse JANGAN menggagalkan request analitik.
+   * Endpoint /api/events bersifat best-effort: lebih baik diabaikan
+   * daripada mengembalikan error ke browser pembeli.
+   */
+  app.use('/api/events', (err, req, res, _next) => {
+    if (err) return res.status(204).end();
+    return res.status(204).end();
+  });
+
   // Semua endpoint /api ditangani core framework-agnostic.
   app.all('/api/*', async (req, res) => {
     const result = await dispatch({
@@ -57,6 +67,12 @@ export const createApp = () => {
     // Header tambahan (mis. Set-Cookie untuk sesi HttpOnly).
     if (result.headers) {
       for (const [key, value] of Object.entries(result.headers)) res.setHeader(key, value);
+    }
+    // 204 tanpa body, CSV dikirim sebagai teks (ekspor insight).
+    if (result.status === 204 || result.body === undefined) return res.status(result.status).end();
+    const ctype = res.getHeader('Content-Type');
+    if (typeof ctype === 'string' && ctype.startsWith('text/csv')) {
+      return res.status(result.status).send(result.body.csv ?? result.body);
     }
     res.status(result.status).json(result.body);
   });

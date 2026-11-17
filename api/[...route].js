@@ -33,5 +33,15 @@ export default async function handler(req, res) {
   if (result.headers) {
     for (const [key, value] of Object.entries(result.headers)) res.setHeader(key, value);
   }
+  // 204: tanpa body. Respons CSV dikirim sebagai teks apa adanya.
+  if (result.status === 204 || result.body === undefined) {
+    res.status(result.status).end();
+    return;
+  }
+  const ctype = res.getHeader('Content-Type');
+  if (typeof ctype === 'string' && ctype.startsWith('text/csv')) {
+    res.status(result.status).send(result.body.csv ?? result.body);
+    return;
+  }
   res.status(result.status).json(result.body);
 }

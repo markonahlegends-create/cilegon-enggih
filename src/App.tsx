@@ -18,11 +18,17 @@ import { LegalPage } from './pages/LegalPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { useDocumentMeta } from './lib/documentMeta';
+import { trackPageView } from './lib/tracker';
 
 const ScrollToTopOnNavigate: React.FC = () => {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    // Trafik dicatat per navigasi. Halaman /admin & /produk/:slug punya
+    // pencatat sendiri agar tidak terhitung dua kali.
+    if (!pathname.startsWith('/admin') && !pathname.startsWith('/produk/')) {
+      trackPageView(pathname);
+    }
   }, [pathname]);
   return null;
 };
