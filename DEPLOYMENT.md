@@ -72,7 +72,7 @@ Checklist lokal:
 4. Buat bucket Storage (**Storage → New bucket → Public**):
    - `product-images` — foto produk (wajib bila mengunggah foto dari dashboard)
    - `store-assets` — gambar QRIS & aset toko
-   - `payment-proofs` — bukti transfer pembeli (disarankan **Private**; sistem memakai URL publik hanya untuk pratinjau admin, jadi bila di-private bukti tetap tersimpan dan hanya bisa dibuka lewat dashboard)
+   - `payment-proofs` — bukti transfer pembeli. **Harus Public** untuk saat ini: URL gambar dibentuk dengan path `/object/public/...` sehingga bucket Private membuat pratinjau bukti gagal terbuka di dashboard. Isi bucket ini hanya foto bukti transfer (bukan dokumen lain), dan pertimbangkan memindahkannya ke Private bila nanti URL bertanda tangan (signed URL) sudah didukung.
 5. Restart backend. Cek: `GET /api/health` → `"storage": "supabase"`.
 
 > ⚠️ **Jangan** pernah memakai `service_role` key di kode frontend. Key ini hanya berada di environment variable server (Vercel Functions / VPS). RLS aktif tanpa policy publik sehingga anon key tidak bisa membaca data.
