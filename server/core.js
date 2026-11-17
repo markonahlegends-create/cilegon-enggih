@@ -23,6 +23,7 @@ import {
   EXPENSE_CATEGORY_LABEL,
   num
 } from './finance.js';
+import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
 import {
   rateLimit,
   isBlocked,
@@ -1853,8 +1854,44 @@ route('POST', '/api/admin/products/reset', async ({ headers }) => {
 
 /* ---------------- Admin: settings, banks, QRIS, vouchers ---------------- */
 
+/**
+ * Bandingkan settings lama vs baru, kembalikan daftar field sensitif yang berubah.
+ * Dipakai untuk audit + notifikasi Telegram: penggantian rekening atau gambar QRIS
+ * adalah jalur paling berbahaya (uang pembeli bisa dialihkan), jadi harus berjejak.
+ * Nilai rahasia tidak pernah ikut dicatat — hanya nama field-nya.
+ */
+const SENSITIVE_SETTINGS_FIELDS = [
+  ['qris', 'staticImageUrl', 'Gambar QRIS'],
+  ['qris', 'nmid', 'NMID QRIS'],
+  ['qris', 'merchantName', 'Nama merchant QRIS'],
+  ['qris', 'mode', 'Mode QRIS'],
+  ['telegram', 'chatId', 'Chat ID Telegram'],
+  ['telegram', 'botToken', 'Bot Token Telegram'],
+  ['telegram', 'otpEnabled', 'Verifikasi 2 langkah'],
+  ['payment', 'codEnabled', 'Opsi COD']
+];
+
+const diffSensitiveSettings = (before, after) => {
+  const changed = [];
+  for (const [group, field, label] of SENSITIVE_SETTINGS_FIELDS) {
+    const a = before?.[group]?.[field];
+    const b = after?.[group]?.[field];
+    if (JSON.stringify(a ?? null) !== JSON.stringify(b ?? null)) {
+      changed.push({ group, field, label });
+    }
+  }
+  // Rekening bank: bandingkan daftar nomor rekening saja (bukan nama pemilik).
+  const bankSig = (s) =>
+    JSON.stringify((Array.isArray(s?.banks) ? s.banks : []).map((b) => `${b.bankId || ''}:${b.accountNumber || ''}`));
+  if (bankSig(before) !== bankSig(after)) {
+    changed.push({ group: 'banks', field: 'accountNumber', label: 'Nomor rekening bank' });
+  }
+  return changed;
+};
+
 route('PUT', '/api/admin/settings', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const ip = clientIp(headers);
   const current = await readSettings();
   const payload = body || {};
   const merged = {
@@ -1870,7 +1907,33 @@ route('PUT', '/api/admin/settings', async ({ headers, body }) => {
     updatedAt: nowIso()
   };
   await store.put('settings', { ...merged, id: 'store-settings' });
-  return ok({ settings: publicSettings(merged) });
+
+  const changed = diffSensitiveSettings(current, merged);
+  if (changed.length) {
+    await recordAudit(store, {
+      action: 'settings.sensitif-diubah',
+      actor: 'admin',
+      ip,
+      status: 'ok',
+      target: changed.map((c) => c.label).join(', ').slice(0, 200),
+      detail: { fields: changed.map((c) => `${c.group}.${c.field}`) }
+    });
+
+    // Kabari pemilik toko lewat Telegram — kalau ini bukan Anda, langsung ketahuan.
+    await notifySafe(
+      merged,
+      [
+        '<b>⚠️ Pengaturan pembayaran diubah</b>',
+        `Yang berubah: ${changed.map((c) => c.label).join(', ')}`,
+        `Waktu: ${wibStamp()}`,
+        `IP: ${ip || '-'}`,
+        '',
+        'Jika ini bukan Anda, segera ganti password admin dan matikan sesi.'
+      ].join('\n')
+    );
+  }
+
+  return ok({ settings: publicSettings(merged), sensitiveChanges: changed.map((c) => c.label) });
 });
 
 /** Settings lengkap untuk dashboard (termasuk kredensial Telegram). */
@@ -1915,20 +1978,65 @@ route('POST', '/api/admin/telegram/test', async ({ headers, body }) => {
  * Upload gambar (produk & bukti transfer) ke Supabase Storage atau folder lokal.
  * Body: { dataUrl, filename?, kind?: 'product' | 'proof' }
  */
+const UPLOAD_KINDS = {
+  product: {
+    bucket: () => process.env.SUPABASE_STORAGE_BUCKET || 'product-images',
+    maxBytes: MAX_UPLOAD_BYTES,
+    prefix: 'produk'
+  },
+  qris: {
+    // Aset toko (gambar QRIS): memang publik, tapi dipisah dari foto produk
+    // supaya mudah diaudit dan tidak tercampur dengan unggahan rutin.
+    bucket: () => process.env.SUPABASE_ASSET_BUCKET || 'store-assets',
+    maxBytes: MAX_UPLOAD_BYTES,
+    prefix: 'qris'
+  },
+  proof: {
+    bucket: () => process.env.SUPABASE_PROOF_BUCKET || 'payment-proofs',
+    maxBytes: MAX_PROOF_BYTES,
+    prefix: 'bukti'
+  }
+};
+
 route('POST', '/api/admin/upload', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
-  const kind = body?.kind === 'proof' ? 'proof' : 'product';
-  const bucket =
-    kind === 'proof'
-      ? process.env.SUPABASE_PROOF_BUCKET || 'payment-proofs'
-      : process.env.SUPABASE_STORAGE_BUCKET || 'product-images';
+  const ip = clientIp(headers);
+
+  const kind = Object.prototype.hasOwnProperty.call(UPLOAD_KINDS, body?.kind)
+    ? body.kind
+    : 'product';
+  const conf = UPLOAD_KINDS[kind];
+
+  // Batasi spam upload (kuota storage gratis) — 30 per jam per IP.
+  const limit = rateLimit(`upload:${ip}`, { max: 30, windowMs: 60 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Terlalu banyak unggahan (30 per jam). Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+
+  const bucket = conf.bucket();
   try {
     const saved = await saveImage({
       dataUrl: body?.dataUrl,
-      filename: body?.filename,
+      filename: body?.filename || `${conf.prefix}`,
       bucket,
-      maxBytes: kind === 'proof' ? MAX_PROOF_BYTES : MAX_UPLOAD_BYTES
+      maxBytes: conf.maxBytes
     });
+
+    // Jejak audit: siapa mengganti gambar apa & kapan.
+    await recordAudit(store, {
+      action: `upload.${kind}`,
+      actor: 'admin',
+      ip,
+      status: 'ok',
+      target: body?.filename ? String(body.filename).slice(0, 120) : conf.prefix,
+      detail: { storage: saved.storage, bytes: saved.bytes, filename: saved.filename }
+    });
+
     return ok({ ...saved, bucket, kind });
   } catch (err) {
     return bad(err.message, 400);

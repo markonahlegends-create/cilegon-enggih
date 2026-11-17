@@ -69,7 +69,11 @@ Checklist lokal:
 3. Buka **Project Settings → API**:
    - `Project URL` → `SUPABASE_URL`
    - `service_role secret` → `SUPABASE_SERVICE_ROLE_KEY`
-4. Restart backend. Cek: `GET /api/health` → `"storage": "supabase"`.
+4. Buat bucket Storage (**Storage → New bucket → Public**):
+   - `product-images` — foto produk (wajib bila mengunggah foto dari dashboard)
+   - `store-assets` — gambar QRIS & aset toko
+   - `payment-proofs` — bukti transfer pembeli. **Harus Public** untuk saat ini: URL gambar dibentuk dengan path `/object/public/...` sehingga bucket Private membuat pratinjau bukti gagal terbuka di dashboard. Isi bucket ini hanya foto bukti transfer (bukan dokumen lain), dan pertimbangkan memindahkannya ke Private bila nanti URL bertanda tangan (signed URL) sudah didukung.
+5. Restart backend. Cek: `GET /api/health` → `"storage": "supabase"`.
 
 > ⚠️ **Jangan** pernah memakai `service_role` key di kode frontend. Key ini hanya berada di environment variable server (Vercel Functions / VPS). RLS aktif tanpa policy publik sehingga anon key tidak bisa membaca data.
 
@@ -174,6 +178,10 @@ Lihat `.env.example`. Ringkasnya:
 | Rate limit ekspor | 3 ekspor / jam per IP | di `server/core.js` |
 | Lacak pesanan 2 faktor | Nomor pesanan + 4 digit terakhir WhatsApp | tidak |
 | 2FA admin (OTP Telegram) | 6 digit, berlaku 10 menit, maks. 5 coba | dashboard → tab Keamanan |
+| Upload gambar | JPG/PNG/WEBP saja, divalidasi dari **isi file** (magic bytes); SVG & file menyamar ditolak; nama file dibuat server | di `server/storage.js` |
+| Batas ukuran upload | 3 MB (foto produk/QRIS), 2 MB (bukti transfer) | `server/storage.js` |
+| Rate limit upload | 30 unggahan / jam per IP | di `server/core.js` |
+| Audit perubahan pembayaran | Ganti gambar QRIS, NMID, atau **nomor rekening** → tercatat + notifikasi Telegram | otomatis |
 | Audit log | 90 hari, tanpa kredensial | `pruneAudit(store, 90)` |
 | Bukti transfer | URL Supabase Storage (bukan base64 di order) | butuh Supabase aktif |
 

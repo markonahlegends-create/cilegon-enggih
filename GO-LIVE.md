@@ -338,9 +338,12 @@ Semua rekening saat ini **placeholder**. Untuk tiap baris:
 Pilih salah satu:
 
 **Mode statis (paling umum untuk toko kecil):**
-1. Simpan gambar QRIS resmi ke `public/qris-merchant.png` (kompres < 300 KB).
-2. Dashboard → Pengaturan → **Mode QRIS = Statis** → **URL Gambar** = `/qris-merchant.png`.
-3. Simpan & redeploy (`git push` memicu build otomatis) atau upload lewat commit.
+1. Dashboard → Pengaturan → **Gambar QRIS (mode statis)** → tombol **Unggah Gambar QRIS** → pilih file dari HP/laptop.
+   Gambar otomatis dikompres & disimpan di Supabase Storage (bucket `store-assets`), jadi tidak perlu commit file ke repo.
+2. Set **Mode QRIS = Statis**, lalu **Simpan Pengaturan**.
+3. Cek pratinjau gambar muncul dan QR terlihat utuh (jangan terpotong). Uji dengan scan dari HP.
+
+> Cara lama (`public/qris-merchant.png` + isi URL manual) masih didukung, tapi unggahan dari dashboard lebih praktis dan langsung permanen di Storage.
 
 **Mode dinamis (nominal otomatis di layar):**
 1. Biarkan `Mode = Dinamis`.

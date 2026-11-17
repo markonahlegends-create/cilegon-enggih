@@ -301,9 +301,16 @@ export const adminDuplicateProduct = (id: string) =>
 export const adminUploadImage = (payload: {
   dataUrl: string;
   filename?: string;
-  kind?: 'product' | 'proof';
+  kind?: 'product' | 'proof' | 'qris';
 }) =>
-  apiRequest<{ url: string; filename: string; storage: string; note?: string }>(
+  apiRequest<{
+    url: string;
+    filename: string;
+    storage: string;
+    note?: string;
+    kind?: string;
+    bucket?: string;
+  }>(
     '/api/admin/upload',
     { method: 'POST', body: payload, admin: true }
   );
