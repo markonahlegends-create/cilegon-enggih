@@ -1,3 +1,4 @@
+import { trackAddToCart } from '../lib/tracker';
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Product,
@@ -358,6 +359,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   ) => {
     const chosenVariant = variant || product.variants?.[0];
     const key = `${product.id}::${chosenVariant?.id || 'default'}`;
+    // Analitik: minat terhadap produk (dasar konversi dilihat → keranjang).
+    trackAddToCart({
+      productId: product.id,
+      productName: product.shortName || product.name,
+      variantId: chosenVariant?.id
+    });
 
     setCart((prev) => {
       const existingIndex = prev.findIndex((item) => item.key === key);

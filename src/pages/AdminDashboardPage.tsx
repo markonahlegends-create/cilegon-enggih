@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
+import { InsightsPanel } from '../components/InsightsPanel';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 import { ProductEditor } from '../components/ProductEditor';
 import { FinancePanel } from '../components/FinancePanel';
@@ -84,7 +85,7 @@ import {
   ApiError
 } from '../lib/api';
 
-type Tab = 'overview' | 'orders' | 'products' | 'b2b' | 'finance' | 'security' | 'settings';
+type Tab = 'overview' | 'insight' | 'orders' | 'products' | 'b2b' | 'finance' | 'security' | 'settings';
 
 const ORDER_STATUS_OPTIONS = [
   'MENUNGGU_KONFIRMASI',
@@ -728,6 +729,7 @@ export const AdminDashboardPage: React.FC = () => {
       <div className="flex gap-1.5 overflow-x-auto no-scrollbar bg-white rounded-2xl border border-slate-200 p-1.5">
         {[
           { id: 'overview', label: 'Analitik', icon: LayoutDashboard },
+          { id: 'insight', label: 'Insight', icon: TrendingUp },
           { id: 'orders', label: `Pesanan (${orders.length})`, icon: ShoppingBag },
           { id: 'products', label: `Produk (${products.length})`, icon: Package },
           { id: 'b2b', label: `B2B (${inquiries.length})`, icon: Building2 },
@@ -871,6 +873,9 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ------------------------------ INSIGHT ------------------------------ */}
+      {tab === 'insight' && <InsightsPanel />}
 
       {/* ------------------------------ ORDERS ------------------------------ */}
       {tab === 'orders' && (

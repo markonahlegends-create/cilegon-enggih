@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { trackCheckoutStart } from '../lib/tracker';
 import {
   X,
   CreditCard,
@@ -60,6 +61,7 @@ const compressImage = (file: File, maxSize = 900, quality = 0.62): Promise<strin
   });
 
 export const CheckoutModal: React.FC = () => {
+
   const {
     cart,
     isCheckoutOpen,
@@ -87,6 +89,18 @@ export const CheckoutModal: React.FC = () => {
     zoneLabel: 'Kota Cilegon',
     zoneId: 'cilegon-pusat'
   });
+
+  // Analitik: catat niat checkout (funnel: keranjang → checkout → pesanan).
+  useEffect(() => {
+    if (!isCheckoutOpen || cart.length === 0) return;
+    trackCheckoutStart({
+      value: Number(cartSubtotal) || 0,
+      qty: cart.reduce((sum, item) => sum + item.qty, 0),
+      zone: selectedCourier.zoneId || null
+    });
+    // sengaja hanya saat modal dibuka, bukan setiap render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCheckoutOpen]);
 
   const [paymentMethod, setPaymentMethod] = useState<'bank' | 'qris'>('bank');
   const [selectedBankId, setSelectedBankId] = useState(settings.banks[0]?.id || 'bca');
