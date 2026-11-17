@@ -43,6 +43,18 @@ end
 $$;
 
 -- ---------------------------------------------------------------------
+-- Bukti hasil: tampilkan indeks yang barusan dibuat.
+-- Kalau tabel ce_documents ada, akan muncul 2 baris.
+-- Kalau kosong, artinya tabelnya belum ada (lihat pesan NOTICE).
+-- ---------------------------------------------------------------------
+select indexname as indeks_analitik, tablename
+  from pg_indexes
+ where schemaname = 'public'
+   and tablename = 'ce_documents'
+   and indexname like '%analytics%'
+ order by 1;
+
+-- ---------------------------------------------------------------------
 -- Kebijakan retensi: event lebih lama dari 180 hari dibuang.
 -- Pembersihan ini sudah dijalankan otomatis oleh server
 -- (pruneOldEvents di server/insights.js). Query manual bila perlu:
