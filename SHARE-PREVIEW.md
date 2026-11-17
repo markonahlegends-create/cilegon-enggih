@@ -183,3 +183,59 @@ Umumnya bisa. Bila setelah semua perbaikan ini gambar tetap tidak muncul di
 WhatsApp padahal Facebook Debugger sudah benar, penyebabnya biasanya cache
 WhatsApp — bukan tag-nya. Menghubungkan domain sendiri (`cilegonenggih.com`)
 juga menghilangkan keraguan soal reputasi domain.
+
+---
+
+## ⚠️ Insiden: `vercel.json` tidak valid → deploy tidak pernah dibuat
+
+Setelah dokumen ini pertama ditulis, terjadi dua kegagalan deploy beruntun yang
+**tidak terlihat sebagai error build**. Gejalanya membingungkan:
+
+- Deploy Hook menjawab `{"state":"PENDING"}` tapi **tidak ada deployment muncul**
+- Push ke `main` tidak memicu apa pun
+- Tidak ada entri berstatus *Error* di daftar Deployments
+- Situs tetap menyajikan build lama
+
+Penyebabnya satu baris di `vercel.json`:
+
+```json
+"source": "/og/*.jpg"      // ❌ bukan pola yang sah
+"source": "/og/(.*)\\.jpg" // ❌ backslash tidak sah
+```
+
+Vercel menolak pola itu **saat mem-parse konfigurasi, sebelum build dimulai**.
+Karena belum sampai tahap build, tidak ada Build Logs dan tidak ada entri Error.
+Gejala terakhir yang akhirnya menunjukkan penyebab sebenarnya:
+
+```
+$ vercel --prod
+Error: Header at index 3 has invalid `source` pattern "/og/*.jpg".
+```
+
+**Aturan pola `source` di Vercel:** literal path (`/katalog`), parameter
+(`/produk/:slug`), atau grup regex dalam kurung (`/og/(.*)`). Glob `*` dan
+escape backslash tidak diizinkan di `source`.
+
+### Pencegahan yang sekarang terpasang
+
+`scripts/validate-vercel-config.mjs` memeriksa `vercel.json` terhadap aturan
+tersebut **sebelum** build:
+
+```bash
+npm run validate:vercel     # juga otomatis di `npm run build`
+```
+
+Yang diperiksa: JSON valid, `source` diawali `/`, tidak ada backslash, tidak ada
+glob di luar grup, kurung seimbang, `has`/`missing` valid (termasuk menolak flag
+regex `(?i)` yang tidak didukung), `destination` untuk `/og/*` benar-benar ada,
+dan cron lengkap.
+
+`npm run preflight` juga menjalankan validator ini, plus pemeriksaan baru:
+**file yang dibutuhkan build harus ter-track Git** — supaya kejadian seperti
+`src/data/og-meta.json` yang tidak pernah ter-commit langsung ketahuan.
+
+### Catatan `.gitignore`
+
+`.gitignore` sebelumnya berisi `data/`, dan pola itu **ikut menelan
+`src/data/`** — termasuk `og-meta.json`. Sekarang diubah menjadi `/data/`
+(hanya folder di root). Jangan dikembalikan ke `data/` tanpa awalan garis miring.

@@ -1,0 +1,189 @@
+{
+  "generatedAt": "2026-11-17T05:44:07.134Z",
+  "domain": "cilegon-enggih.vercel.app",
+  "baseUrl": "https://cilegon-enggih.vercel.app",
+  "defaultImage": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
+  "fallbackImage": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+  "imageWidth": 1200,
+  "imageHeight": 630,
+  "imageType": "image/jpeg",
+  "siteName": "Cilegon Enggih Official Store",
+  "pages": {
+    "/": {
+      "title": "Cilegon Enggih | Oleh-Oleh & Merchandise Khas Kota Cilegon",
+      "description": "Merchandise resmi & oleh-oleh modern khas Cilegon. Kaos, mug, tumbler, tote bag, souvenir. Guest checkout, transfer bank / QRIS, kirim GoSend/JNE/J&T/SiCepat.",
+      "image": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
+      "url": "https://cilegon-enggih.vercel.app/"
+    },
+    "/katalog": {
+      "title": "Katalog Produk | Cilegon Enggih",
+      "description": "Lihat semua merchandise dan oleh-oleh khas Cilegon: kaos distro, mug keramik, tumbler, tote bag, payung, gantungan kunci, dan paket hemat.",
+      "image": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
+      "url": "https://cilegon-enggih.vercel.app/katalog"
+    },
+    "/custom-korporat": {
+      "title": "Custom Merchandise & Souvenir Korporat | Cilegon Enggih",
+      "description": "Pesan souvenir korporat custom: hardbox eksekutif, tote bag, tumbler, dan paket souvenir dengan logo instansi Anda. Melayani seluruh Indonesia.",
+      "image": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+      "url": "https://cilegon-enggih.vercel.app/custom-korporat"
+    },
+    "/tentang-kami": {
+      "title": "Tentang Cilegon Enggih | CV Cilegon Enggih Kreatif",
+      "description": "Kami memproduksi oleh-oleh dan merchandise modern khas Kota Cilegon — Khas Kota Baja, Bangga Membawanya.",
+      "image": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+      "url": "https://cilegon-enggih.vercel.app/tentang-kami"
+    },
+    "/cara-order-faq": {
+      "title": "Cara Order & FAQ | Cilegon Enggih",
+      "description": "Panduan cara memesan di Cilegon Enggih: pilih produk, checkout tanpa daftar akun, transfer bank atau QRIS, lalu lacak pesanan dengan nomor order.",
+      "image": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+      "url": "https://cilegon-enggih.vercel.app/cara-order-faq"
+    },
+    "/lacak-pesanan": {
+      "title": "Lacak Pesanan | Cilegon Enggih",
+      "description": "Lacak status dan nomor resi pesanan Anda di Cilegon Enggih.",
+      "image": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+      "url": "https://cilegon-enggih.vercel.app/lacak-pesanan"
+    },
+    "/legalitas": {
+      "title": "Legalitas & Kebijakan | Cilegon Enggih",
+      "description": "Informasi legalitas CV Cilegon Enggih Kreatif, kebijakan privasi, pengiriman, retur, dan syarat ketentuan.",
+      "image": "https://cilegon-enggih.vercel.app/og/cilegon-enggih-toko.jpg",
+      "url": "https://cilegon-enggih.vercel.app/legalitas"
+    }
+  },
+  "products": {
+    "/produk/gantungan-kunci-karet-3d": {
+      "slug": "gantungan-kunci-karet-3d",
+      "id": "prod-1",
+      "name": "Gantungan Kunci Karet 3D Landmark Cilegon",
+      "title": "Gantungan Kunci Karet 3D | Cilegon Enggih",
+      "description": "Bawa selalu kebanggaan Kota Baja di setiap langkah Anda! Gantungan kunci 3D eksklusif edisi \"CILEGON ENGGIH\" hadir. Rp 15.000 – Rp 25.000.",
+      "category": "Aksesoris & Dekorasi",
+      "priceRange": "Rp 15.000 – Rp 25.000",
+      "image": "https://cilegon-enggih.vercel.app/og/gantungan-kunci-karet-3d.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/gantungan-kunci-karet-3d"
+    },
+    "/produk/lampu-tidur-3d-arsitektur": {
+      "slug": "lampu-tidur-3d-arsitektur",
+      "id": "prod-2",
+      "name": "Lampu Tidur 3D Arsitektur Landmark Cilegon",
+      "title": "Lampu Tidur 3D Arsitektur | Cilegon Enggih",
+      "description": "Hadirkan nuansa hangat dan elegan di kamar tidur atau meja kerja Anda dengan Lampu Tidur 3D \"CILEGON ENGGIH\". Rp 145.000 – Rp 195.000.",
+      "category": "Aksesoris & Dekorasi",
+      "priceRange": "Rp 145.000 – Rp 195.000",
+      "image": "https://cilegon-enggih.vercel.app/og/lampu-tidur-3d-arsitektur.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/lampu-tidur-3d-arsitektur"
+    },
+    "/produk/kalender-dinding-eksklusif-a3": {
+      "slug": "kalender-dinding-eksklusif-a3",
+      "id": "prod-3",
+      "name": "Kalender Dinding Eksklusif Ukuran A3 (Edisi 2027)",
+      "title": "Kalender Dinding A3 | Cilegon Enggih",
+      "description": "Atur jadwal harian Anda dengan penuh inspirasi bersama Kalender Dinding A3 edisi \"CILEGON ENGGIH\". Rp 35.000 – Rp 50.000.",
+      "category": "Perlengkapan & Cetak",
+      "priceRange": "Rp 35.000 – Rp 50.000",
+      "image": "https://cilegon-enggih.vercel.app/og/kalender-dinding-eksklusif-a3.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/kalender-dinding-eksklusif-a3"
+    },
+    "/produk/kaos-distro-cilegon-enggih": {
+      "slug": "kaos-distro-cilegon-enggih",
+      "id": "prod-4",
+      "name": "Kaos / T-Shirt Distro Edisi Cilegon Enggih",
+      "title": "Kaos Distro Cilegon Enggih | Cilegon Enggih",
+      "description": "Tampil kasual dan bangga dengan identitas lokal lewat Kaos \"CILEGON ENGGIH\". Rp 95.000 – Rp 135.000.",
+      "category": "Apparel & Tas",
+      "priceRange": "Rp 95.000 – Rp 135.000",
+      "image": "https://cilegon-enggih.vercel.app/og/kaos-distro-cilegon-enggih.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/kaos-distro-cilegon-enggih"
+    },
+    "/produk/mug-keramik-souvenir": {
+      "slug": "mug-keramik-souvenir",
+      "id": "prod-5",
+      "name": "Mug Keramik Souvenir Landmark Cilegon",
+      "title": "Mug Keramik Souvenir | Cilegon Enggih",
+      "description": "Temani momen ngopi atau ngeteh pagi Anda dengan Mug Keramik \"CILEGON ENGGIH\". Rp 30.000 – Rp 45.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 30.000 – Rp 45.000",
+      "image": "https://cilegon-enggih.vercel.app/og/mug-keramik-souvenir.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/mug-keramik-souvenir"
+    },
+    "/produk/stiker-vinyl-die-cut": {
+      "slug": "stiker-vinyl-die-cut",
+      "id": "prod-6",
+      "name": "Stiker Vinyl Die-Cut Landmark Cilegon",
+      "title": "Stiker Vinyl Die-Cut | Cilegon Enggih",
+      "description": "Ekspresikan kecintaan Anda pada Kota Cilegon di mana saja dengan Stiker Die-Cut \"CILEGON ENGGIH\". Rp 5.000 – Rp 10.000 / Paket Rp 20.000.",
+      "category": "Aksesoris & Dekorasi",
+      "priceRange": "Rp 5.000 – Rp 10.000 / Paket Rp 20.000",
+      "image": "https://cilegon-enggih.vercel.app/og/stiker-vinyl-die-cut.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/stiker-vinyl-die-cut"
+    },
+    "/produk/tumbler-stainless-steel-sporty": {
+      "slug": "tumbler-stainless-steel-sporty",
+      "id": "prod-7",
+      "name": "Tumbler Stainless Steel Sporty 304 Cilegon Enggih",
+      "title": "Tumbler Stainless Sporty | Cilegon Enggih",
+      "description": "Tetap terhidrasi dengan gaya elegan menggunakan Tumbler \"CILEGON ENGGIH\". Rp 85.000 – Rp 125.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 85.000 – Rp 125.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tumbler-stainless-steel-sporty.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tumbler-stainless-steel-sporty"
+    },
+    "/produk/payung-desain-geometris": {
+      "slug": "payung-desain-geometris",
+      "id": "prod-8",
+      "name": "Payung Lipat / Standar Desain Geometris Cilegon Enggih",
+      "title": "Payung Desain Geometris | Cilegon Enggih",
+      "description": "Siap menghadapi cuaca hujan maupun terik matahari dengan Payung Eksklusif \"CILEGON ENGGIH\". Rp 75.000 – Rp 110.000.",
+      "category": "Perlengkapan & Cetak",
+      "priceRange": "Rp 75.000 – Rp 110.000",
+      "image": "https://cilegon-enggih.vercel.app/og/payung-desain-geometris.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/payung-desain-geometris"
+    },
+    "/produk/tote-bag-kanvas-premium": {
+      "slug": "tote-bag-kanvas-premium",
+      "id": "prod-9",
+      "name": "Goodie Bag / Tote Bag Kanvas Premium Cilegon Enggih",
+      "title": "Tote Bag Kanvas Premium | Cilegon Enggih",
+      "description": "Bawa seluruh kebutuhan harian Anda dengan praktis dan penuh gaya menggunakan Tote Bag Kanvas \"CILEGON ENGGIH\". Rp 55.000 – Rp 80.000.",
+      "category": "Apparel & Tas",
+      "priceRange": "Rp 55.000 – Rp 80.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tote-bag-kanvas-premium.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tote-bag-kanvas-premium"
+    },
+    "/produk/paket-hemat-wisatawan": {
+      "slug": "paket-hemat-wisatawan",
+      "id": "bundle-1",
+      "name": "Paket Hemat Wisatawan Cilegon Enggih (3-in-1)",
+      "title": "Paket Hemat Wisatawan | Cilegon Enggih",
+      "description": "Solusi praktis dan hemat bagi wisatawan maupun perantau yang ingin membawa pulang buah tangan khas Kota Baja!. Hemat Rp 14.000 dari harga satuan.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Hemat Rp 14.000 dari harga satuan",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-hemat-wisatawan.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-hemat-wisatawan"
+    },
+    "/produk/paket-eksekutif-korporat": {
+      "slug": "paket-eksekutif-korporat",
+      "id": "bundle-2",
+      "name": "Paket Eksekutif / Korporat Hardbox Eksklusif",
+      "title": "Paket Eksekutif / Korporat | Cilegon Enggih",
+      "description": "Rangkaian suvenir kelas eksekutif untuk tamu kehormatan, relasi bisnis industri, pembicara seminar, maupun gathering perusahaan di Kota Cilegon. Sudah termasuk Hardbox Magnetik Eksklusif.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Sudah termasuk Hardbox Magnetik Eksklusif",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-eksekutif-korporat.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-eksekutif-korporat"
+    },
+    "/produk/paket-meja-kerja-inspiratif": {
+      "slug": "paket-meja-kerja-inspiratif",
+      "id": "bundle-3",
+      "name": "Paket Meja Kerja & Dekorasi Cilegon Enggih (4-in-1)",
+      "title": "Paket Meja Kerja 4-in-1 | Cilegon Enggih",
+      "description": "Hadirkan atmosfer hangat dan produktif di ruang kerja atau kamar tidur dengan Paket Meja Kerja 4-in-1 Cilegon Enggih. Hemat Rp 28.000 (4 Produk Lengkap).",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Hemat Rp 28.000 (4 Produk Lengkap)",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-meja-kerja-inspiratif.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-meja-kerja-inspiratif"
+    }
+  }
+}
