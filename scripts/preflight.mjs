@@ -53,6 +53,40 @@ if (matchedDomain) {
   fail('canonical & OG meta', 'domain belum diset di index.html');
 }
 
+/* ---- Open Graph: gambar preview WAJIB <300KB & 1200x630 ---- */
+const ogFiles = fs.existsSync(path.join(root, 'public/og'))
+  ? fs.readdirSync(path.join(root, 'public/og')).filter((f) => f.endsWith('.jpg'))
+  : [];
+if (ogFiles.length === 0) {
+  fail('og image', 'public/og kosong — jalankan `npm run og:images`');
+} else {
+  const heavy = ogFiles.filter(
+    (f) => fs.statSync(path.join(root, 'public/og', f)).size > 300 * 1024
+  );
+  if (heavy.length) {
+    fail('og image', `${heavy.length} file >300KB — WhatsApp akan mengabaikannya`);
+  } else {
+    pass('og image', `${ogFiles.length} kartu, semua <300KB`);
+  }
+}
+
+/* index.html harus menunjuk kartu OG, bukan PNG produk 1MB */
+if (indexHtml.includes('/og/toko-cilegon-enggih.jpg')) {
+  pass('og:image beranda', '/og/toko-cilegon-enggih.jpg');
+} else {
+  fail('og:image beranda', 'masih memakai gambar produk besar / bukan kartu OG');
+}
+
+/* metadata per halaman ter-generate */
+const ogMetaPath = path.join(root, 'src/data/og-meta.json');
+if (fs.existsSync(ogMetaPath)) {
+  const meta = JSON.parse(fs.readFileSync(ogMetaPath, 'utf-8'));
+  const n = Object.keys(meta.products || {}).length;
+  pass('og-meta.json', `${n} produk + ${Object.keys(meta.pages || {}).length} halaman`);
+} else {
+  fail('og-meta.json', 'belum digenerate — jalankan `npm run og:data`');
+}
+
 /* sitemap.xml harus ikut ter-build (sebelumnya bisa hilang tanpa disadari) */
 if (fs.existsSync(path.join(root, 'dist/sitemap.xml'))) {
   const sm = fs.readFileSync(path.join(root, 'dist/sitemap.xml'), 'utf-8');

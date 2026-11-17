@@ -17,6 +17,7 @@ import { TrackOrderPage } from './pages/TrackOrderPage';
 import { LegalPage } from './pages/LegalPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { useDocumentMeta } from './lib/documentMeta';
 
 const ScrollToTopOnNavigate: React.FC = () => {
   const { pathname } = useLocation();
@@ -26,11 +27,19 @@ const ScrollToTopOnNavigate: React.FC = () => {
   return null;
 };
 
+/** Judul tab & meta description mengikuti URL (crawler ditangani middleware). */
+const DocumentMeta: React.FC = () => {
+  const { pathname } = useLocation();
+  useDocumentMeta(pathname);
+  return null;
+};
+
 export const App: React.FC = () => {
   return (
     <BrowserRouter>
       <StoreProvider>
         <ScrollToTopOnNavigate />
+        <DocumentMeta />
         <div className="min-h-screen flex flex-col bg-surface">
           <Navbar />
           <main className="flex-1">
