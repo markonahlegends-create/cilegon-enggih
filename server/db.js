@@ -103,6 +103,15 @@ const normalize = (doc, fallbackId) => {
 /** Settings & dokumen singleton tetap butuh id agar bisa di-UPSERT. */
 const SINGLETON_IDS = { settings: 'store-settings' };
 
+/** Baca file koleksi apa adanya (tanpa normalisasi) — dipakai penanda seed. */
+const readLocalRaw = (collection) => {
+  try {
+    return fs.readFileSync(fileOf(collection), 'utf-8');
+  } catch {
+    return null;
+  }
+};
+
 const readLocal = (collection) => {
   if (memoryStore.has(collection)) return memoryStore.get(collection);
   if (fileCache.has(collection)) return fileCache.get(collection);
@@ -142,11 +151,73 @@ const seedFor = (collection) => {
   return [];
 };
 
+const SEED_MARKER_FILE = 'seed-initialized.json';
+
+const readSeedMarkers = () => {
+  try {
+    const raw = readLocalRaw(SEED_MARKER_FILE);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+const seedAlreadyDone = async (collection) => {
+  if (USING_SUPABASE && remoteAvailable()) {
+    try {
+      const rows = await remoteRequest(
+        `?collection=eq.__seed&select=id&limit=10`
+      );
+      return (rows || []).some((r) => r.id === `seed-${collection}`);
+    } catch {
+      return Boolean(readSeedMarkers()[collection]);
+    }
+  }
+  return Boolean(readSeedMarkers()[collection]);
+};
+
+const markSeedDone = async (collection) => {
+  if (USING_SUPABASE && remoteAvailable()) {
+    try {
+      await store.put('__seed', {
+        id: `seed-${collection}`,
+        collection,
+        seededAt: new Date().toISOString()
+      });
+      return;
+    } catch (err) {
+      console.error('[storage] gagal menandai seed:', err.message);
+    }
+  }
+  const markers = readSeedMarkers();
+  markers[collection] = new Date().toISOString();
+  try {
+    memoryStore.delete(SEED_MARKER_FILE);
+    fileCache.delete(SEED_MARKER_FILE);
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(fileOf(SEED_MARKER_FILE), JSON.stringify(markers, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[storage] gagal menyimpan penanda seed:', err.message);
+  }
+};
+
 const ensureLocalSeed = (collection) => {
   const existing = readLocal(collection);
   if (existing && existing.length > 0) return existing;
+  // Sudah pernah disemai lalu dikosongkan admin → biarkan kosong.
+  if (readSeedMarkers()[collection]) return [];
   const seeded = seedFor(collection).map((doc) => normalize(doc, SINGLETON_IDS[collection]));
-  if (seeded.length) writeLocal(collection, seeded);
+  if (seeded.length) {
+    writeLocal(collection, seeded);
+    const markers = readSeedMarkers();
+    markers[collection] = new Date().toISOString();
+    try {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+      fs.writeFileSync(fileOf(SEED_MARKER_FILE), JSON.stringify(markers, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('[storage] gagal menyimpan penanda seed:', err.message);
+    }
+  }
   return seeded;
 };
 
@@ -232,9 +303,20 @@ export const store = {
       );
       const docs = (rows || []).map((r) => normalize({ ...r.data, id: r.id }));
       if (docs.length > 0) return docs;
+
+      /**
+       * PENTING: data contoh hanya boleh dibuat sekali.
+       * Sebelumnya `list()` menyemai ulang setiap kali koleksi kosong,
+       * sehingga pesanan yang sengaja dihapus admin **muncul kembali**.
+       * Sekarang jejak `seed-initialized` disimpan permanen; bila sudah ada,
+       * koleksi kosong berarti memang kosong.
+       */
+      if (await seedAlreadyDone(collection)) return [];
+
       const seeded = seedFor(collection).map((doc) => normalize(doc, SINGLETON_IDS[collection]));
       if (seeded.length) {
         await Promise.all(seeded.map((doc) => store.put(collection, doc)));
+        await markSeedDone(collection);
       }
       return seeded;
     } catch (err) {
@@ -293,6 +375,8 @@ export const store = {
   },
 
   async remove(collection, id) {
+    // Admin menghapus isi koleksi → tandai agar data contoh tidak disemai ulang.
+    if (seedFor(collection).length) await markSeedDone(collection);
     if (!USING_SUPABASE || !remoteAvailable()) {
       const list = ensureLocalSeed(collection).filter((d) => String(d.id) !== String(id));
       writeLocal(collection, list);
@@ -311,6 +395,7 @@ export const store = {
   },
 
   async replaceAll(collection, docs) {
+    if (seedFor(collection).length) await markSeedDone(collection);
     if (!USING_SUPABASE || !remoteAvailable()) {
       writeLocal(collection, docs);
       return docs;

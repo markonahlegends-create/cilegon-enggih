@@ -16,7 +16,7 @@ export const STORE = {
   email: 'cilegonenggih@gmail.com',
   whatsapp: '6281927157103',
   whatsappDisplay: '0819-2715-7103',
-  domain: 'cilegonenggih.com',
+  domain: process.env.STORE_DOMAIN || 'cilegon-enggih.vercel.app',
   instagram: 'https://instagram.com/cilegonenggih',
   mapsUrl: 'https://maps.google.com/?q=Karang+Asem+Cibeber+Kota+Cilegon',
   openHours: 'Senin – Minggu: 08.30 – 20.30 WIB',

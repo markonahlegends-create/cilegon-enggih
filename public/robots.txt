@@ -4,4 +4,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api/
 
-Sitemap: https://cilegonenggih.com/sitemap.xml
+Sitemap: https://cilegon-enggih.vercel.app/sitemap.xml

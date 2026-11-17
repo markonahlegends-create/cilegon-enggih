@@ -332,6 +332,19 @@ export const adminUpdateOrder = (orderId: string, payload: Record<string, unknow
     admin: true
   });
 
+export const adminDeleteOrder = (orderId: string) =>
+  apiRequest<{ deleted: string; stockRestored: boolean; message: string }>(
+    `/api/admin/orders/${encodeURIComponent(orderId)}`,
+    { method: 'DELETE', admin: true }
+  );
+
+/** Hapus SEMUA pesanan (bersih-bersih data uji). Perlu konfirmasi teks. */
+export const adminResetOrders = () =>
+  apiRequest<{ deletedOrders: number; stockRestored: number; message: string }>(
+    '/api/admin/orders/reset',
+    { method: 'POST', body: { confirm: 'HAPUS SEMUA' }, admin: true }
+  );
+
 export const adminCreateProduct = (payload: Record<string, unknown>) =>
   apiRequest<{ product: any; products: any[] }>('/api/admin/products', {
     method: 'POST',
