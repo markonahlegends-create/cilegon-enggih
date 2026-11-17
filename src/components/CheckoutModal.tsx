@@ -96,7 +96,11 @@ export const CheckoutModal: React.FC = () => {
   );
 
   const [qrPayload, setQrPayload] = useState<string>('');
-  const [staticQris, setStaticQris] = useState<string>('');
+  // Gambar QRIS resmi milik merchant (dari Pengaturan). Ini yang dipakai
+  // pembeli untuk benar-benar membayar.
+  const [qrisImage, setQrisImage] = useState<string>('');
+  const [qrisImageLabel, setQrisImageLabel] = useState<string>('');
+  const [qrisWarning, setQrisWarning] = useState<string>('');
   const [proofNote, setProofNote] = useState('');
   const [proofImage, setProofImage] = useState('');
   const [proofUploading, setProofUploading] = useState(false);
@@ -228,15 +232,31 @@ export const CheckoutModal: React.FC = () => {
       cacheOrderLocally(result.order);
 
       if (paymentMethod === 'qris') {
+        // Prioritas: gambar QRIS resmi merchant. QR yang dibangun sendiri dari
+        // NMID tidak bisa dibayar karena tidak membawa tanda tangan PSP.
+        const officialImage = (settings.qris.staticImageUrl || '').trim();
+        setQrisImage(officialImage);
+        setQrisImageLabel('');
+        setQrisWarning('');
+        setQrPayload('');
         try {
           const qris = await requestQris(result.order.totalAmount, result.order.orderId);
-          if (qris.mode === 'static') setStaticQris(qris.imageUrl || '');
-          else setQrPayload(qris.payload || '');
+          if (qris.imageUrl) {
+            setQrisImage(qris.imageUrl);
+          } else if (!officialImage && qris.payload) {
+            setQrPayload(qris.payload);
+            setQrisImageLabel(
+              'QR dinamis (uji coba) — belum tentu bisa dibayar. Gunakan rekening bank atau hubungi kami.'
+            );
+          }
+          if (qris.warning) setQrisWarning(qris.warning);
         } catch {
-          setStaticQris(settings.qris.staticImageUrl);
+          if (!officialImage) {
+            setQrisWarning(
+              'Gambar QRIS belum tersedia. Silakan transfer via rekening bank atau hubungi kami di WhatsApp.'
+            );
+          }
         }
-      } else if (settings.qris.staticImageUrl) {
-        setStaticQris(settings.qris.staticImageUrl);
       }
 
       setStep('payment');
@@ -635,8 +655,17 @@ export const CheckoutModal: React.FC = () => {
                   <div className="text-xs font-extrabold text-navy-800 tracking-wider uppercase mb-2">
                     QRIS Resmi {settings.qris.merchantName}
                   </div>
-                  <QrisImage payload={qrPayload} fallbackSrc={staticQris} />
+                  <QrisImage
+                    payload={qrPayload}
+                    generatedSrc={qrisImage}
+                    generatedLabel={qrisImageLabel}
+                  />
                   <p className="text-[11px] text-slate-500 mt-2">{settings.qris.note}</p>
+                  {qrisWarning && (
+                    <p className="text-[10px] font-semibold text-amberbrand-700 mt-1.5 leading-snug">
+                      {qrisWarning}
+                    </p>
+                  )}
                   <p className="text-[10px] text-slate-400 mt-1">
                     NMID: {settings.qris.nmid} • Nominal: {formatRupiah(createdOrder.totalAmount)}
                   </p>
@@ -859,20 +888,34 @@ export const CheckoutModal: React.FC = () => {
   );
 };
 
-/** Render QRIS payload → gambar, render di klien (library open-source `qrcode`). */
-const QrisImage: React.FC<{ payload: string; fallbackSrc?: string }> = ({
-  payload,
-  fallbackSrc
-}) => {
+/**
+ * Render payload QRIS menjadi gambar QR.
+ *
+ * Penting: QRIS nyata yang dipindai aplikasi pembayaran harus berupa **gambar
+ * QRIS resmi dari bank/merchant** (berisi tanda tangan PSP), bukan QR yang
+ * dibangun sendiri dari NMID. Karena itu urutannya:
+ *   1. `qrImageUrl` — gambar QRIS resmi yang diunggah admin (mode statis)
+ *   2. render payload dinamis (hanya untuk uji coba)
+ *   3. pesan jelas — bukan spinner yang menggantung selamanya
+ */
+const QrisImage: React.FC<{
+  payload: string;
+  generatedSrc?: string;
+  generatedLabel?: string;
+}> = ({ payload, generatedSrc, generatedLabel }) => {
   const [dataUrl, setDataUrl] = useState('');
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let active = true;
-    if (!payload) {
+    setFailed(false);
+    if (!payload || generatedSrc) {
       setDataUrl('');
       return;
     }
+    // Batas waktu: jangan biarkan pengguna melihat spinner selamanya kalau
+    // chunk gagal dimuat (jaringan lambat, cache rusak, dsb).
+    const timer = setTimeout(() => active && setFailed(true), 6000);
     import('qrcode')
       .then((mod) => {
         const QR = (mod as any).default || mod;
@@ -888,23 +931,60 @@ const QrisImage: React.FC<{ payload: string; fallbackSrc?: string }> = ({
       })
       .catch(() => {
         if (active) setFailed(true);
-      });
+      })
+      .finally(() => clearTimeout(timer));
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [payload]);
+  }, [payload, generatedSrc]);
 
-  if (dataUrl) {
-    return <img src={dataUrl} alt="QRIS Cilegon Enggih" className="w-52 h-52 mx-auto rounded-xl" />;
-  }
-  if (fallbackSrc && (failed || !payload)) {
+  // 1. Gambar QRIS resmi dari merchant (cara yang benar untuk menerima uang).
+  if (generatedSrc) {
     return (
-      <img src={fallbackSrc} alt="QRIS Cilegon Enggih" className="w-52 h-52 mx-auto rounded-xl" />
+      <div className="space-y-1">
+        <img
+          src={generatedSrc}
+          alt="QRIS Cilegon Enggih"
+          className="w-52 h-52 mx-auto rounded-xl object-contain bg-white border border-slate-200"
+        />
+        {generatedLabel && (
+          <p className="text-[10px] font-bold text-amberbrand-700">{generatedLabel}</p>
+        )}
+      </div>
     );
   }
+
+  // 2. QR hasil render payload (uji coba / dinamis).
+  if (dataUrl) {
+    return (
+      <img
+        src={dataUrl}
+        alt="QRIS Cilegon Enggih"
+        className="w-52 h-52 mx-auto rounded-xl"
+      />
+    );
+  }
+
+  // 3. Gagal memuat — beri tahu, jangan diam.
+  if (failed) {
+    return (
+      <div className="w-52 h-52 mx-auto bg-amberbrand-50 border border-amberbrand-200 rounded-xl flex flex-col items-center justify-center gap-1 px-3 text-center">
+        <QrCode className="w-7 h-7 text-amberbrand-600" />
+        <p className="text-[11px] font-bold text-amberbrand-800">Gambar QRIS belum tersedia</p>
+        <p className="text-[10px] text-amberbrand-700 leading-snug">
+          Silakan transfer via rekening bank, atau hubungi kami di WhatsApp.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-52 h-52 mx-auto bg-slate-100 rounded-xl flex items-center justify-center text-xs text-slate-500">
-      <Smartphone className="w-5 h-5 mr-1.5" /> Memuat QRIS...
+    <div
+      className="w-52 h-52 mx-auto bg-slate-100 rounded-xl flex items-center justify-center text-xs text-slate-500"
+      aria-busy="true"
+    >
+      <Smartphone className="w-5 h-5 mr-1.5 animate-pulse" /> Memuat QRIS...
     </div>
   );
 };

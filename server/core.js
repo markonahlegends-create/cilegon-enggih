@@ -606,19 +606,35 @@ const crc16 = (input) => {
   return crc.toString(16).toUpperCase().padStart(4, '0');
 };
 
-export const buildQrisPayload = ({ amount, merchantName = 'CILEGON ENGGIH' }) => {
-  const merchantAccount = tlv('00', 'ID.CO.QRIS.WWW') + tlv('02', 'ID1020030405060') + tlv('03', 'UMI');
+/**
+ * Bangun payload QRIS dinamis (EMVCo TLV + CRC16-CCITT).
+ *
+ * PENTING: NMID & data merchant HARUS berasal dari pengaturan toko. Sebelumnya
+ * fungsi ini memakai NMID contoh yang di-hardcode, sehingga QR yang terunduh
+ * tidak dikenali aplikasi pembayaran walau tampilannya normal.
+ */
+export const buildQrisPayload = ({
+  amount,
+  merchantName = 'CILEGON ENGGIH',
+  nmid = '',
+  city = 'CILEGON',
+  postalCode = '42425'
+}) => {
+  const accountInfo = nmid
+    ? tlv('00', 'ID.CO.QRIS.WWW') + tlv('02', String(nmid)) + tlv('03', 'UMI')
+    : // Tanpa NMID, QR ini hanya contoh dan TIDAK akan bisa dibayar.
+      tlv('00', 'ID.CO.QRIS.WWW') + tlv('03', 'UMI');
   const body =
     tlv('00', '01') +
     tlv('01', '12') +
-    tlv('26', merchantAccount) +
+    tlv('26', accountInfo) +
     tlv('52', '5499') +
     tlv('53', '360') +
     tlv('54', String(Math.round(Number(amount) || 0))) +
     tlv('58', 'ID') +
     tlv('59', String(merchantName).slice(0, 25).toUpperCase()) +
-    tlv('60', 'CILEGON') +
-    tlv('61', '42425') +
+    tlv('60', String(city).slice(0, 15).toUpperCase()) +
+    tlv('61', String(postalCode).slice(0, 10)) +
     '6304';
   return body + crc16(body);
 };
@@ -900,9 +916,14 @@ route('POST', '/api/payment/qris', async ({ body }) => {
       note: settings.qris.note
     });
   }
+  const nmid = String(settings.qris.nmid || '').trim();
+  const isPlaceholderNmid = !nmid || nmid === 'ID1020030405060';
   const payload = buildQrisPayload({
     amount,
-    merchantName: settings.qris.merchantName || 'CILEGON ENGGIH'
+    merchantName: settings.qris.merchantName || 'CILEGON ENGGIH',
+    nmid: isPlaceholderNmid ? '' : nmid,
+    city: settings.qris.city || 'CILEGON',
+    postalCode: settings.originPostal || '42425'
   });
   // QR image dirender di sisi klien memakai library open-source `qrcode`,
   // jadi API tetap ringan & tidak butuh canvas/native module di serverless.
@@ -913,7 +934,13 @@ route('POST', '/api/payment/qris', async ({ body }) => {
     orderRef,
     merchantName: settings.qris.merchantName,
     nmid: settings.qris.nmid,
-    note: settings.qris.note
+    note: settings.qris.note,
+    // Jujur ke klien: QR tanpa NMID asli tidak akan bisa dipindai-bayar.
+    usable: !isPlaceholderNmid,
+    warning: isPlaceholderNmid
+      ? 'NMID QRIS belum diisi di Pengaturan, sehingga QR dinamis tidak bisa dipakai membayar. Isi NMID asli atau gunakan mode Statis dengan gambar QRIS resmi.'
+      : null,
+    fallbackImageUrl: settings.qris.staticImageUrl || null
   });
 });
 
