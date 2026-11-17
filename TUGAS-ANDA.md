@@ -333,7 +333,15 @@ Setelah mengunggah gambar QRIS di Pengaturan:
 Backup di paket gratis Supabase **tidak otomatis** — tanpa ini, riwayat pesanan bisa hilang permanen.
 
 1. Buat bucket **`backups`** di Supabase → Storage → New bucket → **Private** (bukan Public).
-2. Buat kunci acak: buka terminal → `openssl rand -hex 32` → salin hasilnya.
+2. Buat kunci acak (pilih salah satu):
+   - **Windows (PowerShell)** — tekan Win+R, ketik `powershell`, lalu tempel:
+     ```powershell
+     $b = New-Object 'System.Byte[]' 32; [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); ($b | ForEach-Object { $_.ToString('x2') }) -join ''
+     ```
+   - **Linux / Mac** — `openssl rand -hex 32`
+   - **Tanpa terminal** — buka <https://generate.plus/en/base64>, buat 48+ karakter acak
+
+   Yang penting panjang dan tidak bisa ditebak (bukan `rahasia123`).
 3. Vercel → Settings → Environment Variables → tambah `CRON_SECRET` = hasil langkah 2 (Production).
 4. Redeploy. Backup berjalan otomatis **setiap hari pukul 18:00 WIB**.
 5. Verifikasi: Dashboard → **Keamanan** → panel **Backup Otomatis** → klik **Backup Sekarang** → harus muncul berkas `backup-….json.gz`.
