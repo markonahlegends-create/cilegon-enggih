@@ -61,7 +61,8 @@ export const ProductDetailPage: React.FC = () => {
     trackProductView({
       id: product.id,
       name: product.shortName || product.name,
-      variantId: product.variants?.[0]?.id
+      variantId: product.variants?.[0]?.id,
+      variantLabel: product.variants?.[0]?.label
     });
   }, [product]);
 
