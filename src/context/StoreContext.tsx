@@ -363,7 +363,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     trackAddToCart({
       productId: product.id,
       productName: product.shortName || product.name,
-      variantId: chosenVariant?.id
+      variantId: chosenVariant?.id,
+      variantLabel: chosenVariant?.label
     });
 
     setCart((prev) => {

@@ -60,10 +60,51 @@ export const storeHour = (date = new Date()) => {
   return wib.getUTCHours();
 };
 
+/**
+ * Daftar kode kampanye yang dibuat lewat alat "Buat link kampanye" di dashboard.
+ *
+ * Kalau parameter `?src=` cocok dengan daftar ini, nilainya dipakai APA ADANYA
+ * sebagai sumber. Tanpa ini, semua kampanye akan menumpuk jadi satu baris
+ * "instagram" sehingga tidak kelihatan mana yang benar-benar mendatangkan
+ * pengunjung (bio vs story vs broadcast WA).
+ */
+const CAMPAIGN_CODES = new Set([
+  'ig-bio',
+  'ig-story',
+  'tiktok-bio',
+  'wa-broadcast',
+  'wa-katalog',
+  'fb-page',
+  'offline-qr'
+]);
+
+/** Label ramah untuk sumber trafik yang ditampilkan di dashboard. */
+export const SOURCE_LABEL = {
+  langsung: 'Langsung / tidak diketahui',
+  instagram: 'Instagram',
+  'ig-bio': 'Instagram — bio',
+  'ig-story': 'Instagram — story',
+  'tiktok-bio': 'TikTok — bio',
+  'wa-broadcast': 'WhatsApp — broadcast',
+  'wa-katalog': 'WhatsApp — katalog',
+  'fb-page': 'Facebook — halaman',
+  'offline-qr': 'QR offline',
+  whatsapp: 'WhatsApp',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  google: 'Google / pencarian',
+  twitter: 'X / Twitter',
+  email: 'Email',
+  internal: 'Navigasi dalam situs',
+  lainnya: 'Lainnya'
+};
+
 /** Klasifikasi sumber trafik dari referrer. */
 export const classifyReferrer = (referrer, utm = '') => {
-  const u = String(utm || '').toLowerCase();
+  const u = String(utm || '').toLowerCase().trim();
   if (u) {
+    // Kode kampanye spesifik dari dashboard → simpan apa adanya.
+    if (CAMPAIGN_CODES.has(u)) return u;
     if (/ig|instagram/.test(u)) return 'instagram';
     if (/wa|whatsapp/.test(u)) return 'whatsapp';
     if (/fb|facebook/.test(u)) return 'facebook';
@@ -108,11 +149,14 @@ export const normalizeEvent = (raw, { ip, headers } = {}) => {
     path,
     productId,
     variantId,
+    variantLabel: raw.variantLabel ? String(raw.variantLabel).slice(0, 60) : null,
     productName: raw.productName ? String(raw.productName).slice(0, 120) : null,
     // untuk checkout_start: nilai keranjang (bukan data pembeli)
     cartValue: Number.isFinite(Number(raw.cartValue)) ? Math.max(0, Number(raw.cartValue)) : null,
     cartQty: Number.isFinite(Number(raw.cartQty)) ? Math.max(0, Number(raw.cartQty)) : null,
     zone: raw.zone ? String(raw.zone).slice(0, 40) : null,
+    // Zona pengunjung dari header hosting (nama kota saja, tanpa IP/koordinat).
+    geoZone: raw.geoZone ? String(raw.geoZone).slice(0, 30) : null,
     keyword: raw.keyword ? String(raw.keyword).slice(0, 60) : null,
     source: classifyReferrer(raw.referrer, raw.utm),
     visitor: dailyVisitorHash(ip, day),
@@ -120,6 +164,48 @@ export const normalizeEvent = (raw, { ip, headers } = {}) => {
       ? 'mobile'
       : 'desktop'
   };
+};
+
+/**
+ * Terjemahkan isyarat lokasi dari infrastruktur hosting menjadi zona toko.
+ *
+ * PENTING — privasi: fungsi ini HANYA memakai nama kota/region/provinsi.
+ * Koordinat & IP diabaikan sepenuhnya di pemanggil (lihat geoHintFromHeaders),
+ * sehingga tidak ada lokasi presisi yang pernah tersimpan.
+ */
+export const zoneFromGeo = ({ city = '', region = '', country = '' } = {}) => {
+  const hay = `${city} ${region}`.toLowerCase();
+  // Pengunjung luar negeri dibedakan supaya tidak tercampur data domestik.
+  if (country && !/^id$/i.test(country)) return 'mancanegara';
+  if (!hay.trim()) return null;
+  if (/cilegon barat|ciwandan|anyer|pulomerak|grogol|gerogol/.test(hay)) return 'local-cilegon-west';
+  if (/cilegon/.test(hay)) return 'local-cilegon';
+  if (/serang|pandeglang|lebak|banten|tangerang/.test(hay)) return 'banten-near';
+  if (/jakarta|bekasi|bogor|depok/.test(hay)) return 'jabodetabek';
+  if (/bandung|jawa barat|west java|banjar|ciamis|tasik|garut|sukabumi|cirebon/.test(hay)) return 'jabar';
+  if (/semarang|yogya|solo|surakarta|jawa tengah|central java|magelang|purwokerto/.test(hay))
+    return 'jateng';
+  if (/surabaya|malang|jawa timur|east java|denpasar|bali/.test(hay)) return 'jatim';
+  if (/lampung|palembang|medan|sumatera|sumatra|aceh|padang|batam|jambi|bengkulu/.test(hay))
+    return 'sumatera';
+  if (/balikpapan|banjarmasin|makassar|samarinda|pontianak|manado|kalimantan|sulawesi|papua/.test(hay))
+    return 'timur';
+  if (/dki|indonesia|jawa|java/.test(hay)) return 'lainnya';
+  return null;
+};
+
+/**
+ * Ambil isyarat lokasi KASAR dari header hosting.
+ * Hanya nama kota & negara — tidak ada IP, tidak ada koordinat.
+ */
+export const geoHintFromHeaders = (headers = {}) => {
+  const h = headers || {};
+  const city = decodeURIComponent(String(h['x-vercel-ip-city'] || '')).trim();
+  const region = decodeURIComponent(String(h['x-vercel-ip-country-region'] || '')).trim();
+  const country = String(h['x-vercel-ip-country'] || '').trim();
+  if (!city && !region && !country) return null;
+  const zone = zoneFromGeo({ city, region, country });
+  return zone ? { zone, city: city.slice(0, 40) || null, country: country || null } : null;
 };
 
 /** Rentang tanggal (YYYY-MM-DD) untuk N hari terakhir, termasuk hari ini. */
@@ -139,10 +225,12 @@ const ZONE_LABEL = {
   'banten-near': 'Serang & Banten',
   'jabodetabek': 'Jabodetabek',
   jabar: 'Jawa Barat',
+  lainnya: 'Lainnya',
   jateng: 'Jawa Tengah & Yogyakarta',
   jatim: 'Jawa Timur & Bali',
   sumatera: 'Sumatera',
-  timur: 'Indonesia Timur'
+  timur: 'Indonesia Timur',
+  mancanegara: 'Luar Negeri'
 };
 
 /** Tebak zona dari label destinasi pada pesanan lama. */
@@ -167,8 +255,16 @@ const zoneFromDestination = (destination) => {
 export const buildInsights = ({ events = [], orders = [], products = [], days = 30 }) => {
   const period = rangeDays(days);
   const inPeriod = new Set(period);
+
+  // Rentang sebelumnya (panjang sama) untuk pembanding "naik/turun".
+  const prevPeriod = rangeDays(days * 2).slice(0, days);
+  const inPrev = new Set(prevPeriod);
+
+  const dayOfOrder = (o) => storeDay(new Date(o.createdAt || Date.now()));
   const evs = events.filter((e) => inPeriod.has(e.day));
-  const ord = orders.filter((o) => inPeriod.has(storeDay(new Date(o.createdAt || Date.now()))));
+  const ord = orders.filter((o) => inPeriod.has(dayOfOrder(o)));
+  const prevEvs = events.filter((e) => inPrev.has(e.day));
+  const prevOrd = orders.filter((o) => inPrev.has(dayOfOrder(o)));
 
   /* ---------- A. Trafik harian ---------- */
   const traffic = period.map((day) => {
@@ -296,8 +392,189 @@ export const buildInsights = ({ events = [], orders = [], products = [], days = 
     sourceMap.set(e.source, row);
   });
   const bySource = [...sourceMap.values()]
-    .map((s) => ({ source: s.source, visitors: s.visitors.size, views: s.views }))
+    .map((s) => ({
+      source: s.source,
+      label: SOURCE_LABEL[s.source] || s.source,
+      visitors: s.visitors.size,
+      views: s.views
+    }))
     .sort((a, b) => b.views - a.views || b.visitors - a.visitors);
+
+  /* ---------- F. Perangkat ---------- */
+  // Berguna untuk memutuskan prioritas desain: HP vs desktop.
+  const deviceMap = { mobile: new Set(), desktop: new Set() };
+  evs.forEach((e) => {
+    const key = e.device === 'mobile' ? 'mobile' : 'desktop';
+    if (e.visitor) deviceMap[key].add(e.visitor);
+  });
+  const deviceTotal = deviceMap.mobile.size + deviceMap.desktop.size;
+  const byDevice = ['mobile', 'desktop'].map((device) => {
+    const visitors = deviceMap[device].size;
+    return {
+      device,
+      label: device === 'mobile' ? 'HP / Tablet' : 'Komputer',
+      visitors,
+      share: deviceTotal > 0 ? Number(((visitors / deviceTotal) * 100).toFixed(1)) : 0
+    };
+  });
+
+  /* ---------- G. Halaman paling sering dibuka ---------- */
+  // Halaman "pintu masuk" menentukan halaman mana yang layak dioptimalkan.
+  const pathMap = new Map();
+  evs
+    .filter((e) => e.type === 'page_view')
+    .forEach((e) => {
+      const row = pathMap.get(e.path) || { path: e.path, views: 0, visitors: new Set() };
+      row.views += 1;
+      if (e.visitor) row.visitors.add(e.visitor);
+      pathMap.set(e.path, row);
+    });
+  const topPaths = [...pathMap.values()]
+    .map((p) => ({
+      path: p.path,
+      // Nama ramah untuk halaman yang dikenal
+      label:
+        p.path === '/' ? 'Beranda'
+        : p.path.startsWith('/katalog') ? 'Katalog'
+        : p.path.startsWith('/produk/') ? 'Halaman produk'
+        : p.path.startsWith('/lacak') ? 'Lacak pesanan'
+        : p.path.startsWith('/tentang') ? 'Tentang'
+        : p.path.startsWith('/kontak') ? 'Kontak'
+        : p.path,
+      views: p.views,
+      visitors: p.visitors.size
+    }))
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 8);
+
+  /* ---------- H. Varian produk (dilihat vs dibeli) ---------- */
+  // Sangat penting untuk produksi: varian mana yang paling diminati.
+  const variantMap = new Map();
+  const ensureVariant = (productId, variantId, variantLabel) => {
+    const key = `${productId || 'produk'}::${variantId || 'default'}`;
+    if (!variantMap.has(key)) {
+      variantMap.set(key, {
+        productId: productId || null,
+        variantId: variantId || null,
+        label: variantLabel || 'Tanpa varian',
+        productName: null,
+        views: 0,
+        carts: 0,
+        sold: 0,
+        revenue: 0
+      });
+    }
+    return variantMap.get(key);
+  };
+  evs.forEach((e) => {
+    if (!e.productId) return;
+    if (e.type === 'product_view' && e.variantId) {
+      ensureVariant(e.productId, e.variantId, e.variantLabel).views += 1;
+    }
+    if (e.type === 'add_to_cart' && e.variantId) {
+      const row = ensureVariant(e.productId, e.variantId, e.variantLabel);
+      row.carts += 1;
+      if (!row.productName && e.productName) row.productName = e.productName;
+    }
+  });
+  ord.forEach((o) => {
+    (o.items || []).forEach((it) => {
+      if (!it.variantId) return;
+      const row = ensureVariant(it.productId, it.variantId, it.variantLabel);
+      row.sold += Number(it.qty) || 0;
+      row.revenue += (Number(it.price) || 0) * (Number(it.qty) || 0);
+      if (!row.productName && it.name) row.productName = String(it.name).split(' (')[0];
+    });
+  });
+  const variants = [...variantMap.values()]
+    .filter((v) => v.views > 0 || v.carts > 0 || v.sold > 0)
+    .map((v) => ({ ...v, label: String(v.label).slice(0, 60) }))
+    .sort((a, b) => b.sold - a.sold || b.carts - a.carts || b.views - a.views)
+    .slice(0, 15);
+
+  /* ---------- I. Lokasi pengunjung (bukan hanya pembeli) ---------- */
+  // Diambil dari header hosting: hanya nama kota, tanpa IP/koordinat.
+  const visitorZoneMap = new Map();
+  evs.forEach((e) => {
+    if (!e.geoZone) return;
+    const row = visitorZoneMap.get(e.geoZone) || { zone: e.geoZone, visitors: new Set(), views: 0 };
+    if (e.visitor) row.visitors.add(e.visitor);
+    if (e.type === 'page_view' || e.type === 'product_view') row.views += 1;
+    visitorZoneMap.set(e.geoZone, row);
+  });
+  const visitorZoneRows = [...visitorZoneMap.values()].map((z) => ({
+    zone: z.zone,
+    label: ZONE_LABEL[z.zone] || z.zone,
+    visitors: z.visitors.size,
+    views: z.views
+  }));
+  const visitorZoneTotal = visitorZoneRows.reduce((sum, z) => sum + z.visitors, 0);
+  const byVisitorZone = visitorZoneRows
+    .map((z) => ({
+      ...z,
+      share: visitorZoneTotal > 0 ? Number(((z.visitors / visitorZoneTotal) * 100).toFixed(1)) : 0
+    }))
+    .sort((a, b) => b.visitors - a.visitors);
+
+  /* ---------- J. Peta panas jam x hari ---------- */
+  // Digabung supaya jadwal promosi lebih tepat daripada melihat jam/hari terpisah.
+  const WEEKDAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+  const heatCells = [];
+  const heatIndex = new Map();
+  for (let d = 0; d < 7; d += 1) {
+    for (let h = 0; h < 24; h += 1) {
+      const cell = { weekday: d, day: WEEKDAYS[d], hour: h, views: 0, visitors: new Set() };
+      heatCells.push(cell);
+      heatIndex.set(`${d}-${h}`, cell);
+    }
+  }
+  evs.forEach((e) => {
+    if (e.type !== 'page_view' && e.type !== 'product_view') return;
+    // storeDay -> Date pada tengah malam WIB, agar nama hari konsisten.
+    const wib = new Date(`${e.day}T00:00:00+07:00`);
+    const weekday = (wib.getUTCDay() + 6) % 7; // Senin = 0
+    const cell = heatIndex.get(`${weekday}-${Number(e.hour) || 0}`);
+    if (!cell) return;
+    cell.views += 1;
+    if (e.visitor) cell.visitors.add(e.visitor);
+  });
+  const peakSlots = [...heatCells]
+    .map((c) => ({ day: c.day, hour: c.hour, views: c.views, visitors: c.visitors.size }))
+    .filter((c) => c.views > 0)
+    .sort((a, b) => b.views - a.views)
+    .slice(0, 5);
+  /**
+   * `grid` selalu berisi 7 x 24 sel agar tampilan peta panas utuh.
+   * `max` = nilai tertinggi (0 bila belum ada kunjungan) sehingga UI bisa
+   * membedakan "belum ada data" dari "semua sel kosong".
+   */
+  const heatmap = {
+    weekdays: WEEKDAYS,
+    // grid[hari][jam] = jumlah kunjungan
+    grid: WEEKDAYS.map((_, d) =>
+      Array.from({ length: 24 }, (_, h) => heatIndex.get(`${d}-${h}`).views)
+    ),
+    peakSlots,
+    max: Math.max(...heatCells.map((c) => c.views), 0),
+    filledCells: heatCells.filter((c) => c.views > 0).length
+  };
+
+  /* ---------- K. Pembanding periode sebelumnya ---------- */
+  const prevVisitors = new Set(prevEvs.map((e) => e.visitor).filter(Boolean)).size;
+  const prevViews = prevEvs.filter((e) => e.type === 'page_view' || e.type === 'product_view').length;
+  const delta = (now, before) => {
+    if (!before) return now > 0 ? null : 0; // null = tidak ada pembanding
+    return Number((((now - before) / before) * 100).toFixed(1));
+  };
+  const comparison = {
+    hasPreviousData: prevEvs.length > 0,
+    prevVisitors,
+    prevViews,
+    prevOrders: prevOrd.length,
+    visitors: delta(totalVisitors, prevVisitors),
+    views: delta(totalViews, prevViews),
+    orders: delta(ord.length, prevOrd.length)
+  };
 
   /* ---------- Funnel ---------- */
   const funnel = {
@@ -344,8 +621,14 @@ export const buildInsights = ({ events = [], orders = [], products = [], days = 
     products: productRows.sort((a, b) => b.sold - a.sold),
     stockForecast,
     byZone,
+    byVisitorZone,
     hours: { buckets: hourBuckets, busiest: busiestHours, byWeekday: dayBuckets },
+    heatmap,
     bySource,
+    byDevice,
+    topPaths,
+    variants,
+    comparison,
     funnel,
     /** Penanda agar UI bisa menjelaskan kenapa angkanya masih kosong. */
     dataStatus: {

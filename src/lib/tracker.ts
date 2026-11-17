@@ -17,6 +17,7 @@ type EventPayload = {
   path?: string;
   productId?: string | null;
   variantId?: string | null;
+  variantLabel?: string | null;
   productName?: string | null;
   cartValue?: number | null;
   cartQty?: number | null;
@@ -27,6 +28,39 @@ type EventPayload = {
 let queue: EventPayload[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 let disabled = false;
+
+/**
+ * Kunci penyimpanan opt-out di perangkat ini.
+ *
+ * Alasan: pemilik toko & karyawan sering membuka situs sendiri. Kalau ikut
+ * tercatat, jam ramai dan sumber trafik jadi bias — justru dua data yang
+ * paling dipakai untuk menentukan jadwal promosi.
+ */
+const OPT_OUT_KEY = 'ce-analytics-optout';
+
+/** Apakah perangkat ini memilih untuk tidak dicatat? */
+export const isTrackingOptedOut = (): boolean => {
+  try {
+    return localStorage.getItem(OPT_OUT_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** Nyalakan/matikan pencatatan untuk perangkat ini saja. */
+export const setTrackingOptOut = (optOut: boolean) => {
+  try {
+    if (optOut) localStorage.setItem(OPT_OUT_KEY, '1');
+    else localStorage.removeItem(OPT_OUT_KEY);
+  } catch {
+    /* localStorage bisa diblokir — abaikan, tidak boleh merusak toko */
+  }
+  if (optOut) {
+    queue = [];
+    if (timer) clearTimeout(timer);
+    timer = null;
+  }
+};
 
 /** Hormati Do Not Track bila diaktifkan pengguna. */
 const dntEnabled = (): boolean => {
@@ -93,7 +127,7 @@ const flush = () => {
 };
 
 const enqueue = (payload: EventPayload) => {
-  if (disabled || dntEnabled()) return;
+  if (disabled || dntEnabled() || isTrackingOptedOut()) return;
   // Halaman admin tidak dicatat: trafik Anda sendiri akan mengotori data.
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')) return;
 
@@ -115,25 +149,29 @@ export const trackProductView = (product: {
   id?: string;
   name?: string;
   variantId?: string;
+  variantLabel?: string;
 }) =>
   enqueue({
     type: 'product_view',
     path: typeof window !== 'undefined' ? window.location.pathname : '/',
     productId: product.id ?? null,
     productName: product.name ?? null,
-    variantId: product.variantId ?? null
+    variantId: product.variantId ?? null,
+    variantLabel: product.variantLabel ?? null
   });
 
 export const trackAddToCart = (item: {
   productId?: string;
   productName?: string;
   variantId?: string;
+  variantLabel?: string;
 }) =>
   enqueue({
     type: 'add_to_cart',
     productId: item.productId ?? null,
     productName: item.productName ?? null,
-    variantId: item.variantId ?? null
+    variantId: item.variantId ?? null,
+    variantLabel: item.variantLabel ?? null
   });
 
 export const trackCheckoutStart = (cart: {

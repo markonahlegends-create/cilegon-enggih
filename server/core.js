@@ -25,7 +25,13 @@ import {
 } from './finance.js';
 import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
 import { checkStock, applyStockMovement, stockAlreadyApplied } from './stock.js';
-import { normalizeEvent, buildInsights, pruneOldEvents, storeDay } from './insights.js';
+import {
+  normalizeEvent,
+  buildInsights,
+  pruneOldEvents,
+  storeDay,
+  geoHintFromHeaders
+} from './insights.js';
 import {
   COOKIE_NAME,
   SESSION_TTL_MS,
@@ -1767,8 +1773,10 @@ route('POST', '/api/events', async ({ body, headers }) => {
   try {
     if (body !== null && typeof body !== 'object') return { status: 204, body: undefined };
     const list = Array.isArray(body?.events) ? body.events.slice(0, 20) : [body];
+    // Lokasi kasar pengunjung (nama kota saja) — bukan IP, bukan koordinat.
+    const geo = geoHintFromHeaders(headers);
     const accepted = list
-      .map((raw) => normalizeEvent(raw, { ip, headers }))
+      .map((raw) => normalizeEvent(geo ? { ...raw, geoZone: geo.zone } : raw, { ip, headers }))
       .filter(Boolean)
       // pembeli tidak perlu menunggu penulisan selesai
       .map((ev) => store.put('analytics_events', ev).catch(() => null));
@@ -1839,7 +1847,50 @@ route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
   lines.push('');
   lines.push('SUMBER TRAFIK');
   lines.push('Sumber;Pengunjung;Kunjungan');
-  report.bySource.forEach((s) => lines.push([s.source, s.visitors, s.views].map(esc).join(';')));
+  report.bySource.forEach((s) =>
+    lines.push([s.label || s.source, s.visitors, s.views].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('PERANGKAT');
+  lines.push('Perangkat;Pengunjung;Porsi %');
+  report.byDevice.forEach((d) => lines.push([d.label, d.visitors, d.share].map(esc).join(';')));
+  lines.push('');
+  lines.push('HALAMAN TERATAS');
+  lines.push('Halaman;Path;Kunjungan;Pengunjung');
+  report.topPaths.forEach((p) => lines.push([p.label, p.path, p.views, p.visitors].map(esc).join(';')));
+  lines.push('');
+  lines.push('VARIAN PRODUK');
+  lines.push('Produk;Varian;Dilihat;Masuk Keranjang;Terjual;Omzet');
+  report.variants.forEach((v) =>
+    lines.push(
+      [v.productName || v.productId || '', v.label, v.views, v.carts, v.sold, v.revenue]
+        .map(esc)
+        .join(';')
+    )
+  );
+  lines.push('');
+  lines.push('LOKASI PENGUNJUNG (perkiraan kota, tanpa IP)');
+  lines.push('Zona;Pengunjung;Porsi %');
+  (report.byVisitorZone || []).forEach((z) =>
+    lines.push([z.label, z.visitors, z.share].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('JAM TERSIBUK (hari x jam, WIB)');
+  lines.push('Hari;Jam;Kunjungan');
+  (report.heatmap?.peakSlots || []).forEach((p) =>
+    lines.push([p.day, `${String(p.hour).padStart(2, '0')}:00`, p.views].map(esc).join(';'))
+  );
+  lines.push('');
+  lines.push('PEMBANDING PERIODE SEBELUMNYA');
+  lines.push('Ukuran;Periode Ini;Periode Lalu;Perubahan %');
+  const cmp = report.comparison || {};
+  lines.push(
+    ['Pengunjung', report.traffic.totalVisitors, cmp.prevVisitors ?? 0, cmp.visitors ?? '']
+      .map(esc)
+      .join(';')
+  );
+  lines.push(['Kunjungan', report.traffic.totalViews, cmp.prevViews ?? 0, cmp.views ?? ''].map(esc).join(';'));
+  lines.push(['Pesanan', report.traffic.totalOrders, cmp.prevOrders ?? 0, cmp.orders ?? ''].map(esc).join(';'));
 
   return ok(
     { csv: lines.join('\n') },
