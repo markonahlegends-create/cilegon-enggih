@@ -29,5 +29,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Cache-Control', 'no-store');
+  // Header tambahan (mis. Set-Cookie untuk sesi HttpOnly).
+  if (result.headers) {
+    for (const [key, value] of Object.entries(result.headers)) res.setHeader(key, value);
+  }
   res.status(result.status).json(result.body);
 }

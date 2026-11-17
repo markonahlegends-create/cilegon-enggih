@@ -73,7 +73,25 @@ Checklist lokal:
    - `product-images` — foto produk (wajib bila mengunggah foto dari dashboard)
    - `store-assets` — gambar QRIS & aset toko
    - `payment-proofs` — bukti transfer pembeli. **Harus Public** untuk saat ini: URL gambar dibentuk dengan path `/object/public/...` sehingga bucket Private membuat pratinjau bukti gagal terbuka di dashboard. Isi bucket ini hanya foto bukti transfer (bukan dokumen lain), dan pertimbangkan memindahkannya ke Private bila nanti URL bertanda tangan (signed URL) sudah didukung.
-5. Restart backend. Cek: `GET /api/health` → `"storage": "supabase"`.
+5. Buat bucket keempat: `backups` — **Private** (hanya diakses server dengan service key).
+6. Restart backend. Cek: `GET /api/health` → `"storage": "supabase"`.
+
+### 2b. Aktifkan backup harian (Tahap 3)
+
+1. Buat nilai acak: `openssl rand -hex 32` → simpan sebagai `CRON_SECRET` di Vercel (Production).
+2. Pastikan bucket `backups` sudah ada (langkah 5 di atas).
+3. Redeploy. Jadwal cron sudah ter-commit di `vercel.json`:
+
+```json
+"crons": [{ "path": "/api/cron/backup", "schedule": "0 11 * * *" }]
+```
+
+`0 11 * * *` = 11:00 UTC = **18:00 WIB** setiap hari.
+
+4. Uji manual: dashboard → **Keamanan** → **Backup Sekarang**. Berkas harus muncul di daftar dengan nama `backup-YYYYMMDD-HHMMSS.json.gz`.
+5. Memulihkan: klik **Pulihkan** pada berkas yang diinginkan (mode *merge* — menimpa dokumen dengan ID yang sama, tidak menghapus yang lain).
+
+> ⚠️ **Penting:** Vercel paket Hobby membatasi cron **1x per hari**. Itu cukup untuk toko kecil. Kalau butuh lebih sering, panggil `/api/cron/backup` dari layanan cron gratis (UptimeRobot / cron-job.org) dengan header `Authorization: Bearer <CRON_SECRET>`.
 
 > ⚠️ **Jangan** pernah memakai `service_role` key di kode frontend. Key ini hanya berada di environment variable server (Vercel Functions / VPS). RLS aktif tanpa policy publik sehingga anon key tidak bisa membaca data.
 
@@ -182,6 +200,10 @@ Lihat `.env.example`. Ringkasnya:
 | Batas ukuran upload | 3 MB (foto produk/QRIS), 2 MB (bukti transfer) | `server/storage.js` |
 | Rate limit upload | 30 unggahan / jam per IP | di `server/core.js` |
 | Audit perubahan pembayaran | Ganti gambar QRIS, NMID, atau **nomor rekening** → tercatat + notifikasi Telegram | otomatis |
+| **Sesi admin (Tahap 3)** | Cookie `HttpOnly` + `SameSite=Strict` + `Secure` (di HTTPS); token tidak lagi di localStorage | tidak perlu setting |
+| Pencabutan sesi | Logout / "Keluarkan semua perangkat" mencabut token di server, bukan hanya menghapus cookie | tombol di tab Keamanan |
+| **Backup harian (Tahap 3)** | Vercel Cron 18:00 WIB → `GET /api/cron/backup` (autentikasi `CRON_SECRET`), gzip, simpan di bucket `backups`, retensi 30 | `CRON_SECRET`, `BACKUP_RETENTION` |
+| Kredensial di backup | `botToken`/`chatId` **tidak pernah** ikut dicadangkan | by design |
 | Audit log | 90 hari, tanpa kredensial | `pruneAudit(store, 90)` |
 | Bukti transfer | URL Supabase Storage (bukan base64 di order) | butuh Supabase aktif |
 

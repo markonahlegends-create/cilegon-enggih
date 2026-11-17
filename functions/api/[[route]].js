@@ -48,7 +48,7 @@ export const onRequest = async (context) => {
 
   const target = `${origin}${url.pathname}${url.search}`;
   const headers = new Headers();
-  ['content-type', 'authorization', 'accept'].forEach((key) => {
+  ['content-type', 'authorization', 'accept', 'cookie'].forEach((key) => {
     const value = request.headers.get(key);
     if (value) headers.set(key, value);
   });
@@ -60,12 +60,13 @@ export const onRequest = async (context) => {
   });
 
   const responseBody = await upstream.text();
-  return new Response(responseBody, {
-    status: upstream.status,
-    headers: {
-      ...cors,
-      'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
-      'Cache-Control': 'no-store'
-    }
-  });
+  const responseHeaders = {
+    ...cors,
+    'Content-Type': upstream.headers.get('content-type') || 'application/json; charset=utf-8',
+    'Cache-Control': 'no-store'
+  };
+  // Teruskan Set-Cookie (sesi HttpOnly) ke browser.
+  const setCookie = upstream.headers.get('set-cookie');
+  if (setCookie) responseHeaders['Set-Cookie'] = setCookie;
+  return new Response(responseBody, { status: upstream.status, headers: responseHeaders });
 };

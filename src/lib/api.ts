@@ -9,23 +9,25 @@
 const RAW_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) || '';
 export const API_BASE = RAW_BASE.replace(/\/+$/, '');
 
-const TOKEN_KEY = 'cilegon_enggih_admin_token_v1';
+/**
+ * Sesi admin disimpan di cookie **HttpOnly** yang dipasang server.
+ * JavaScript tidak bisa (dan tidak perlu) membacanya — ini menutup pencurian
+ * token lewat XSS. Token lama di localStorage dibersihkan saat aplikasi
+ * dimuat agar tidak tertinggal di perangkat yang pernah dipakai.
+ */
+const LEGACY_TOKEN_KEY = 'cilegon_enggih_admin_token_v1';
 
-export const getAdminToken = (): string => {
-  try {
-    return localStorage.getItem(TOKEN_KEY) || '';
-  } catch {
-    return '';
-  }
-};
+try {
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+} catch {
+  // localStorage bisa diblokir mode privat — abaikan.
+}
 
-export const setAdminToken = (token: string) => {
-  try {
-    if (token) localStorage.setItem(TOKEN_KEY, token);
-    else localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    // ignore
-  }
+/** @deprecated Token tidak lagi disimpan di klien. Selalu string kosong. */
+export const getAdminToken = (): string => '';
+/** @deprecated Tidak ada efek — sesi diatur server lewat Set-Cookie. */
+export const setAdminToken = (_token: string): void => {
+  void _token;
 };
 
 export class ApiError extends Error {
@@ -49,16 +51,15 @@ export const apiRequest = async <T = any>(
 ): Promise<T> => {
   const headers: Record<string, string> = {};
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  if (admin) {
-    const token = getAdminToken();
-    if (token) headers.Authorization = `Bearer ${token}`;
-  }
 
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, {
       method,
       headers,
+      // Sertakan cookie sesi HttpOnly. `include` diperlukan bila API berada
+      // di domain berbeda (VITE_API_BASE_URL); same-origin juga tetap aman.
+      credentials: 'include',
       body: body === undefined ? undefined : JSON.stringify(body),
       signal
     });
@@ -140,7 +141,6 @@ export const submitB2B = (payload: Record<string, unknown>) =>
 
 export const adminLogin = (password: string, username = 'admin') =>
   apiRequest<{
-    token?: string;
     otpRequired?: boolean;
     challengeId?: string;
     expiresInSeconds?: number;
@@ -148,12 +148,67 @@ export const adminLogin = (password: string, username = 'admin') =>
     storage?: string;
     expiresInHours?: number;
     warning?: string;
+    /** true = sesi dipasang lewat cookie HttpOnly (bukan token di body). */
+    cookieAuth?: boolean;
+    sid?: string | null;
+    expiresAt?: number;
   }>('/api/admin/login', { method: 'POST', body: { password, username } });
 
 export const adminVerifyOtp = (challengeId: string, code: string) =>
-  apiRequest<{ token: string; username: string; storage: string; expiresInHours: number }>(
-    '/api/admin/verify-otp',
-    { method: 'POST', body: { challengeId, code } }
+  apiRequest<{
+    username: string;
+    storage: string;
+    expiresInHours: number;
+    cookieAuth?: boolean;
+    sid?: string | null;
+    expiresAt?: number;
+  }>('/api/admin/verify-otp', { method: 'POST', body: { challengeId, code } });
+
+/* ---------------------- Sesi (Tahap 3) --------------------------- */
+
+/** Cek apakah cookie sesi masih berlaku (dipakai saat halaman dimuat). */
+export const adminMe = () =>
+  apiRequest<{ username: string; via: string; expiresAt: number; storage: string }>(
+    '/api/admin/me',
+    { admin: true }
+  );
+
+export const adminLogout = () =>
+  apiRequest<{ loggedOut: boolean }>('/api/admin/logout', { method: 'POST', admin: true });
+
+export const adminSessions = () =>
+  apiRequest<{ sessions: any[]; currentSid: string | null }>('/api/admin/sessions', { admin: true });
+
+export const adminRevokeAllSessions = () =>
+  apiRequest<{ revoked: number; message: string }>('/api/admin/sessions', {
+    method: 'DELETE',
+    admin: true
+  });
+
+/* ---------------------- Backup (Tahap 3) ------------------------- */
+
+export const adminBackups = () =>
+  apiRequest<{
+    total: number;
+    items: { filename: string; createdAt: string | null }[];
+    schedule: string;
+    retention: number;
+    configured: boolean;
+  }>('/api/admin/backups', { admin: true });
+
+export const adminRunBackup = () =>
+  apiRequest<{
+    filename: string;
+    bytes: number;
+    compressedBytes: number;
+    counts: Record<string, number>;
+    message: string;
+  }>('/api/admin/backups', { method: 'POST', admin: true });
+
+export const adminRestoreBackup = (filename: string, mode: 'merge' | 'replace' = 'merge') =>
+  apiRequest<{ restored: Record<string, number>; mode: string; message: string }>(
+    '/api/admin/backups/restore',
+    { method: 'POST', body: { filename, mode }, admin: true }
   );
 
 export const adminSetTwoFactor = (enabled: boolean) =>

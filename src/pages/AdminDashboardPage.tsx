@@ -77,8 +77,8 @@ import {
   adminB2B,
   adminUpdateB2B,
   adminExport,
-  getAdminToken,
-  setAdminToken,
+  adminMe,
+  adminLogout,
   ApiError
 } from '../lib/api';
 
@@ -132,8 +132,10 @@ const statusBadge = (status: string) => {
 export const AdminDashboardPage: React.FC = () => {
   const { settings, refreshStorefront, pushToast } = useStore();
 
-  const [authed, setAuthed] = useState<boolean>(Boolean(getAdminToken()));
-  const [checking, setChecking] = useState<boolean>(Boolean(getAdminToken()));
+  // Sesi ada di cookie HttpOnly — status awal tidak bisa dibaca dari JS,
+  // jadi kita mulai "memeriksa" dan tanyakan ke server lewat /api/admin/me.
+  const [authed, setAuthed] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -187,22 +189,18 @@ export const AdminDashboardPage: React.FC = () => {
   });
   const [newProduct, setNewProduct] = useState<any>(blankProduct());
 
-  const token = getAdminToken();
-
   /* ---------------------------- auth ---------------------------- */
+  // Pulihkan sesi dari cookie saat halaman dimuat / di-refresh.
   useEffect(() => {
-    if (!token) {
-      setChecking(false);
-      return;
-    }
-    adminSession()
-      .then(() => setAuthed(true))
-      .catch(() => {
-        setAdminToken('');
-        setAuthed(false);
-      })
-      .finally(() => setChecking(false));
-  }, [token]);
+    let alive = true;
+    adminMe()
+      .then(() => alive && setAuthed(true))
+      .catch(() => alive && setAuthed(false))
+      .finally(() => alive && setChecking(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,12 +217,6 @@ export const AdminDashboardPage: React.FC = () => {
         return;
       }
 
-      if (!res.token) {
-        setLoginError('Respons server tidak mengandung token. Coba lagi.');
-        return;
-      }
-
-      setAdminToken(res.token);
       setAuthed(true);
       setPassword('');
       if (res.warning) pushToast('Perhatian', res.warning, 'info');
@@ -243,8 +235,7 @@ export const AdminDashboardPage: React.FC = () => {
     setLoggingIn(true);
     setLoginError('');
     try {
-      const res = await adminVerifyOtp(otpChallenge, otpCode);
-      setAdminToken(res.token);
+      await adminVerifyOtp(otpChallenge, otpCode);
       setAuthed(true);
       setOtpChallenge('');
       setOtpCode('');
@@ -257,12 +248,16 @@ export const AdminDashboardPage: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setOtpChallenge('');
     setOtpCode('');
-    setAdminToken('');
+    try {
+      await adminLogout();
+    } catch {
+      // Sesi mungkin sudah kedaluwarsa — tetap bersihkan tampilan.
+    }
     setAuthed(false);
-    pushToast('Logout', 'Sesi admin diakhiri', 'info');
+    pushToast('Logout', 'Sesi admin diakhiri di server', 'info');
   };
 
   /* ---------------------------- data ---------------------------- */
@@ -290,7 +285,6 @@ export const AdminDashboardPage: React.FC = () => {
         .catch(() => setVendorOptions([]));
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
-        setAdminToken('');
         setAuthed(false);
       } else {
         pushToast('Gagal Memuat Data', err instanceof ApiError ? err.message : 'Coba lagi', 'error');

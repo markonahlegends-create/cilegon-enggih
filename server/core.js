@@ -25,6 +25,27 @@ import {
 } from './finance.js';
 import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
 import {
+  COOKIE_NAME,
+  SESSION_TTL_MS,
+  createSessionToken,
+  verifySessionToken,
+  parseCookies,
+  sessionCookie,
+  clearSessionCookie,
+  registerSession,
+  isSessionRevoked,
+  sessionSecret,
+  revokeSession,
+  revokeAllSessions
+} from './session.js';
+import {
+  runBackup,
+  listBackups,
+  readBackup,
+  restoreBackup,
+  snapshotStats
+} from './backup.js';
+import {
   rateLimit,
   isBlocked,
   resetRateLimit,
@@ -65,8 +86,9 @@ const ADMIN_TOKEN_SECRET =
   process.env.ADMIN_TOKEN_SECRET || `cilegon-enggih::${ADMIN_PASSWORD}::fadil-labs`;
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12; // 12 jam
 
-const ok = (body, status = 200) => ({ status, body });
-const bad = (message, status = 400, extra = {}) => ({ status, body: { error: message, ...extra } });
+const ok = (body, status = 200, headers = null) => ({ status, body, headers: headers || undefined });
+const bad = (message, status = 400, extra = {}) =>
+  ({ status, body: { error: message, ...extra } });
 
 const b64url = (input) =>
   Buffer.from(input).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -103,7 +125,68 @@ const bearer = (headers = {}) => {
   return String(raw).replace(/^Bearer\s+/i, '').trim();
 };
 
-const isAdmin = (headers) => Boolean(verifyAdminToken(bearer(headers)));
+/**
+ * Ambil sesi admin.
+ *  1. Cookie HttpOnly `ce_admin_session` (cara utama, tidak bisa dibaca JS).
+ *  2. Header Authorization (kompatibilitas: script CLI & sesi lama).
+ * Cookie diprioritaskan karena SameSite=Strict membuatnya otomatis aman
+ * terhadap CSRF antarsitus.
+ */
+const readAdminSession = (headers = {}) => {
+  const secret = sessionSecret(ADMIN_PASSWORD);
+  const fromCookie = verifySessionToken(parseCookies(headers)[COOKIE_NAME], { secret });
+  if (fromCookie) return { ...fromCookie, via: 'cookie' };
+
+  const raw = bearer(headers);
+  if (!raw) return null;
+  const legacy = verifySessionToken(raw, { secret });
+  if (legacy) return { ...legacy, via: 'bearer' };
+  const old = verifyAdminToken(raw);
+  if (old) return { id: null, u: old.u, exp: old.exp, via: 'bearer-legacy' };
+  return null;
+};
+
+const isAdmin = (headers) => Boolean(readAdminSession(headers));
+
+/**
+ * Penjaga tambahan: sesi yang sudah dicabut (logout / "keluarkan semua
+ * perangkat" / password diganti) harus ditolak walau tanda tangannya masih
+ * valid. Dipanggil sekali per request untuk semua route /api/admin/*.
+ */
+const SESSION_EXEMPT = new Set([
+  'POST /api/admin/login',
+  'POST /api/admin/verify-otp',
+  'POST /api/admin/logout',
+  // Endpoint ini sengaja mencabut sesinya sendiri — responsnya tetap 200
+  // supaya dashboard bisa menampilkan konfirmasi, lalu cookie dihapus.
+  'DELETE /api/admin/sessions'
+]);
+
+const guardRevokedSession = async (method, path, headers, result) => {
+  if (!path.startsWith('/api/admin')) return result;
+  if (SESSION_EXEMPT.has(`${method} ${path}`)) return result;
+  const session = readAdminSession(headers);
+  if (!session?.sid) return result;
+  if (await isSessionRevoked(store, session.sid)) {
+    return bad('Sesi sudah berakhir. Silakan login ulang.', 401);
+  }
+  return result;
+};
+
+/** Daftar sesi admin aktif (untuk tab Keamanan). */
+const activeSessions = async () => {
+  const docs = await store.list('sessions').catch(() => []);
+  return docs
+    .filter((d) => !d.revokedAt)
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 20)
+    .map((d) => ({
+      sid: String(d.sid || '').slice(0, 6) + '…',
+      ip: d.ip,
+      userAgent: d.userAgent,
+      createdAt: d.createdAt
+    }));
+};
 
 /** OTP aktif hanya jika bot Telegram sudah dikonfigurasi (kalau tidak, login biasa). */
 const otpEnabled = (settings) => {
@@ -1222,6 +1305,31 @@ route('POST', '/api/b2b', async ({ body }) => {
 
 /* ---------------- Admin auth ---------------- */
 
+/**
+ * Terbitkan sesi: cookie HttpOnly + catat ke daftar sesi.
+ * Token di body hanya disertakan sebagai mode kompatibilitas (lihat
+ * `tokenDelivery` di respons) supaya script/CLI lama tetap bisa memakai
+ * header Authorization.
+ */
+const issueSession = async ({ headers, username = 'admin' }) => {
+  const secret = sessionSecret(ADMIN_PASSWORD);
+  const { token, expiresAt } = createSessionToken({ secret, username });
+  const claims = verifySessionToken(token, { secret }) || {};
+  await registerSession(store, {
+    sid: claims.sid,
+    username,
+    ip: clientIp(headers),
+    userAgent: headers?.['user-agent'] || headers?.['User-Agent']
+  });
+  return {
+    cookie: sessionCookie(token, { headers }),
+    session: {
+      sid: claims.sid ? `${String(claims.sid).slice(0, 6)}…` : null,
+      expiresAt
+    }
+  };
+};
+
 route('POST', '/api/admin/login', async ({ body, headers }) => {
   const ip = clientIp(headers);
   const { username = 'admin', password = '' } = body || {};
@@ -1287,15 +1395,21 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
 
     if (!sent.sent) {
       // Jangan kunci admin keluar kalau Telegram bermasalah.
-      return ok({
-        otpRequired: false,
-        token: signAdminToken(username),
-        username: 'admin',
-        expiresInHours: 12,
-        storage: store.mode,
-        warning:
-          'Kode 2FA gagal dikirim ke Telegram sehingga verifikasi dilewati. Periksa Bot Token/Chat ID di Pengaturan.'
-      });
+      const issued = await issueSession({ headers, username });
+      return ok(
+        {
+          otpRequired: false,
+          username: 'admin',
+          expiresInHours: SESSION_TTL_MS / 3_600_000,
+          storage: store.mode,
+          cookieAuth: true,
+          ...issued.session,
+          warning:
+            'Kode 2FA gagal dikirim ke Telegram sehingga verifikasi dilewati. Periksa Bot Token/Chat ID di Pengaturan.'
+        },
+        200,
+        { 'Set-Cookie': issued.cookie }
+      );
     }
 
     return ok({
@@ -1309,13 +1423,20 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
   resetRateLimit(`login:${ip}`);
   await recordAudit(store, { action: 'login.sukses', actor: 'admin', ip, status: 'ok' });
 
-  return ok({
-    token: signAdminToken(username),
-    username: 'admin',
-    expiresInHours: 12,
-    storage: store.mode,
-    otpRequired: false
-  });
+  const issued = await issueSession({ headers, username });
+  return ok(
+    {
+      // Sesi dikirim lewat cookie HttpOnly; body hanya metadata.
+      username: 'admin',
+      expiresInHours: SESSION_TTL_MS / 3_600_000,
+      storage: store.mode,
+      otpRequired: false,
+      cookieAuth: true,
+      ...issued.session
+    },
+    200,
+    { 'Set-Cookie': issued.cookie }
+  );
 });
 
 /** Langkah 2 login: tukar kode OTP dengan token admin. */
@@ -1348,12 +1469,83 @@ route('POST', '/api/admin/verify-otp', async ({ body, headers }) => {
   resetRateLimit(`login:${ip}`);
   await recordAudit(store, { action: 'login.sukses-2fa', actor: 'admin', ip, status: 'ok' });
 
+  const issued = await issueSession({ headers, username: 'admin' });
+  return ok(
+    {
+      username: 'admin',
+      expiresInHours: SESSION_TTL_MS / 3_600_000,
+      storage: store.mode,
+      cookieAuth: true,
+      ...issued.session
+    },
+    200,
+    { 'Set-Cookie': issued.cookie }
+  );
+});
+
+/**
+ * Logout: cabut sesi di server (token tidak bisa dipakai ulang walau cookie
+ * sempat dicuri) lalu hapus cookie di browser.
+ */
+route('POST', '/api/admin/logout', async ({ headers }) => {
+  const session = readAdminSession(headers);
+  if (session?.sid) await revokeSession(store, session.sid);
+  await recordAudit(store, {
+    action: 'login.logout',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: 'ok'
+  });
+  return ok({ loggedOut: true }, 200, { 'Set-Cookie': clearSessionCookie(headers) });
+});
+
+/** Siapa saya? Dipakai dashboard untuk memulihkan sesi setelah reload. */
+route('GET', '/api/admin/me', async ({ headers }) => {
+  const session = readAdminSession(headers);
+  if (!session) return bad('Belum login.', 401);
+  if (session.sid && (await isSessionRevoked(store, session.sid))) {
+    return bad('Sesi sudah berakhir. Silakan login lagi.', 401);
+  }
   return ok({
-    token: signAdminToken('admin'),
     username: 'admin',
-    expiresInHours: 12,
+    via: session.via,
+    expiresAt: session.exp,
     storage: store.mode
   });
+});
+
+/** Daftar sesi aktif + cabut semua perangkat lain. */
+route('GET', '/api/admin/sessions', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const session = readAdminSession(headers);
+  const current = session?.sid ? `${String(session.sid).slice(0, 6)}…` : null;
+  const list = await activeSessions();
+  return ok({
+    sessions: list.map((s) => ({ ...s, current: s.sid === current })),
+    currentSid: current
+  });
+});
+
+route('DELETE', '/api/admin/sessions', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const ip = clientIp(headers);
+  const result = await revokeAllSessions(store, { ip });
+  await recordAudit(store, {
+    action: 'security.sesi-dicabut',
+    actor: 'admin',
+    ip,
+    status: 'ok',
+    detail: { jumlah: result.revoked }
+  });
+  return ok(
+    {
+      revoked: result.revoked,
+      message:
+        'Semua sesi admin dikeluarkan. Anda perlu login ulang di perangkat ini dan perangkat lain.'
+    },
+    200,
+    { 'Set-Cookie': clearSessionCookie(headers) }
+  );
 });
 
 /** Nyalakan/matikan 2FA (hanya bisa kalau Telegram sudah terhubung). */
@@ -2382,6 +2574,133 @@ route('GET', '/api/admin/export', async ({ headers }) => {
   });
 });
 
+/* ---------------- Backup & pemulihan ---------------- */
+
+/** Status backup untuk dashboard (dipakai tab Keamanan). */
+route('GET', '/api/admin/backups', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  try {
+    const items = await listBackups();
+    return ok({
+      total: items.length,
+      items: items.slice(0, 40),
+      schedule: 'Harian otomatis pukul 18:00 WIB (Vercel Cron)',
+      retention: Number(process.env.BACKUP_RETENTION) || 30,
+      configured: Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+    });
+  } catch (err) {
+    return bad(`Gagal membaca daftar backup: ${err.message}`, 502);
+  }
+});
+
+/** Jalankan backup manual dari dashboard. */
+route('POST', '/api/admin/backups', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const ip = clientIp(headers);
+  // Batasi supaya tidak dipakai menjejali storage.
+  const limit = rateLimit(`backup:${ip}`, { max: 6, windowMs: 60 * 60 * 1000 });
+  if (!limit.allowed) {
+    return bad(
+      `Backup manual dibatasi 6 kali per jam. Coba lagi dalam ${Math.ceil(
+        limit.retryAfterSeconds / 60
+      )} menit.`,
+      429
+    );
+  }
+  try {
+    const result = await runBackup(store);
+    await recordAudit(store, {
+      action: 'backup.dibuat',
+      actor: 'admin',
+      ip,
+      status: 'ok',
+      target: result.filename,
+      detail: { bytes: result.bytes, compressed: result.compressedBytes, counts: result.counts }
+    });
+    return ok({
+      ...result,
+      message: 'Backup tersimpan di Supabase Storage (bucket backups).'
+    });
+  } catch (err) {
+    await recordAudit(store, {
+      action: 'backup.gagal',
+      actor: 'admin',
+      ip,
+      status: 'failed',
+      detail: { alasan: String(err.message).slice(0, 200) }
+    });
+    return bad(err.message, 502);
+  }
+});
+
+/** Pulihkan dari berkas backup. `mode=replace` menimpa total. */
+route('POST', '/api/admin/backups/restore', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const ip = clientIp(headers);
+  const filename = String(body?.filename || '');
+  const mode = body?.mode === 'replace' ? 'replace' : 'merge';
+  if (!filename) return bad('Nama berkas backup wajib diisi.');
+
+  try {
+    const snapshot = await readBackup(filename);
+    const report = await restoreBackup(store, snapshot, { mode });
+    await recordAudit(store, {
+      action: 'backup.dipulihkan',
+      actor: 'admin',
+      ip,
+      status: 'ok',
+      target: filename,
+      detail: { mode, report }
+    });
+    return ok({
+      restored: report,
+      mode,
+      message:
+        mode === 'replace'
+          ? 'Data diganti sepenuhnya dari backup. Muat ulang dashboard.'
+          : 'Data digabungkan dari backup (per ID). Muat ulang dashboard.'
+    });
+  } catch (err) {
+    return bad(err.message, 400);
+  }
+});
+
+/**
+ * Endpoint cron untuk backup harian.
+ * Vercel Cron memanggil ini dengan header `Authorization: Bearer $CRON_SECRET`.
+ * Sengaja TIDAK memakai sesi admin — cron tidak punya cookie.
+ */
+route('GET', '/api/cron/backup', async ({ headers }) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return bad(
+      'CRON_SECRET belum diisi di environment. Tambahkan lalu redeploy agar backup harian aktif.',
+      503
+    );
+  }
+  const provided = bearer(headers);
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(secret));
+  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!valid) return bad('Tidak diizinkan.', 401);
+
+  try {
+    const result = await runBackup(store);
+    await recordAudit(store, {
+      action: 'backup.otomatis',
+      actor: 'cron',
+      ip: clientIp(headers),
+      status: 'ok',
+      target: result.filename,
+      detail: { bytes: result.bytes, counts: result.counts }
+    });
+    return ok({ ok: true, ...result });
+  } catch (err) {
+    console.error('[cron] backup gagal:', err.message);
+    return bad(`Backup otomatis gagal: ${err.message}`, 500);
+  }
+});
+
 /* ---------------- Audit log ---------------- */
 
 route('GET', '/api/admin/audit', async ({ headers, query }) => {
@@ -2461,7 +2780,8 @@ export const dispatch = async ({ method = 'GET', path = '/', query = {}, body = 
       body,
       headers
     });
-    return result || ok({ success: true });
+    const out = result || ok({ success: true });
+    return await guardRevokedSession(method, url.pathname, headers, out);
   } catch (err) {
     console.error('[api] handler error:', err);
     return bad(`Terjadi kesalahan server: ${err.message}`, 500);
