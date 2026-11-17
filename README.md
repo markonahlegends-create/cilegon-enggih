@@ -1,4 +1,5 @@
 # Cilegon Enggih — Official Store E-Commerce
+test lagi
 
 > **Baru:** editor produk lengkap (varian, gambar, spesifikasi, badge), label pre-order, dan notifikasi Telegram — lihat [EDITOR-PRODUK.md](EDITOR-PRODUK.md).
 
