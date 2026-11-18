@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStore, cacheOrderLocally } from '../context/StoreContext';
 import { formatRupiah, buildWhatsAppUrlFor, buildWhatsAppUrl } from '../data/products';
+import { useBackClose } from '../hooks/useBackClose';
 import { ShippingCalculator } from './ShippingCalculator';
 import { InvoiceDocument } from './InvoiceDocument';
 import { createOrder, requestQris, uploadPaymentProof, ApiError } from '../lib/api';
@@ -130,11 +131,20 @@ export const CheckoutModal: React.FC = () => {
    * Di HP, tanpa ini latar belakang ikut bergulir saat pembeli menggeser
    * form checkout — sangat mengganggu dan sering membuat salah tekan.
    */
+  /*
+   * Tombol kembali HP menutup popup checkout.
+   * Sebelumnya di sini hanya ada listener `Escape` — dan HP tidak punya
+   * tombol Escape, sehingga "kembali" meninggalkan halaman sementara popup
+   * tetap terbuka. `useBackClose` mendorong entri riwayat penanda dan
+   * menutup modal saat entri itu dikonsumsi.
+   */
+  useBackClose(isCheckoutOpen, () => setIsCheckoutOpen(false));
+
   useEffect(() => {
     if (!isCheckoutOpen) return undefined;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    // Tombol back HP / Escape menutup modal, bukan meninggalkan halaman.
+    // Escape untuk pengguna desktop; tombol kembali HP ditangani useBackClose.
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsCheckoutOpen(false);
     };
@@ -372,7 +382,7 @@ export const CheckoutModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto print:static print:block print:overflow-visible print:p-0">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto print:static print:block print:overflow-visible print:p-0">
       <div
         onClick={() => setIsCheckoutOpen(false)}
         className="fixed inset-0 bg-navy-950/60 backdrop-blur-xs print:hidden"

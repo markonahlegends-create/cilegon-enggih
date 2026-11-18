@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { CheckCircle2, Info, AlertCircle, X, MessageCircle } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { buildWhatsAppUrl } from '../data/products';
@@ -52,6 +53,32 @@ export const ToastContainer: React.FC = () => {
 };
 
 export const FloatingWhatsApp: React.FC = () => {
+  const location = useLocation();
+
+  /*
+   * Di halaman produk pada HP, bilah beli melayang SUDAH memenuhi bagian
+   * bawah layar. Tombol WA hijau yang juga melayang akan menutupi tombol
+   * "Beli Sekarang" — terlihat jelas pada pengujian 360px. Karena itu
+   * tombol WA disembunyikan khusus di halaman produk pada layar kecil;
+   * dari desktop ia tetap tampil, dan di HP pembeli tetap bisa menghubungi
+   * admin lewat menu (Chat Admin) atau tombol WhatsApp di dalam keranjang.
+   */
+  const isProductPage = location.pathname.startsWith('/produk/');
+
+  /*
+   * Tombol WA melayang juga disembunyikan saat menu HP terbuka.
+   * Tanpa ini tombol hijau menembus panel menu dan menutupi tombol
+   * "Lacak Pesanan" di dalamnya (terlihat pada pengujian 360px).
+   */
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  React.useEffect(() => {
+    const read = () => setMenuOpen(document.body.dataset.mobileMenuOpen === '1');
+    read();
+    const obs = new MutationObserver(read);
+    obs.observe(document.body, { attributes: true, attributeFilter: ['data-mobile-menu-open'] });
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <a
       href={buildWhatsAppUrl(
@@ -67,8 +94,15 @@ export const FloatingWhatsApp: React.FC = () => {
         halaman digulir. Sekarang ikut safe-area agar tidak tertutup
         gesture bar.
       */
-      className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 inline-flex items-center gap-2 p-3 sm:px-4 sm:py-3 rounded-full bg-forest-600 hover:bg-forest-700 text-white shadow-card-hover transition-transform hover:scale-105 mb-safe"
-      style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      /*
+        Jarak bawah = tinggi bilah navigasi (52px) + safe-area + 12px.
+        Sebelumnya menempel di bottom-4 sehingga menutupi tab "Toko"
+        begitu bilah navigasi bawah dipasang.
+      */
+      className={`fixed bottom-[calc(64px+env(safe-area-inset-bottom,0px))] right-4 sm:bottom-5 sm:right-5 z-40 items-center gap-2 p-3 sm:px-4 sm:py-3 rounded-full bg-forest-600 hover:bg-forest-700 text-white shadow-card-hover transition-transform hover:scale-105 ${
+        isProductPage || menuOpen ? 'hidden lg:inline-flex' : 'inline-flex'
+      }`}
+      style={{ marginBottom: '0px' }}
     >
       <MessageCircle className="w-5 h-5 shrink-0" />
       <span className="text-xs font-extrabold hidden sm:inline">

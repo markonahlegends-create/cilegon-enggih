@@ -4,6 +4,7 @@ import { StoreProvider } from './context/StoreContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
 import { CartDrawer } from './components/CartDrawer';
+import { BottomNav } from './components/BottomNav';
 import { CheckoutModal } from './components/CheckoutModal';
 import { ToastContainer, FloatingWhatsApp } from './components/ToastContainer';
 
@@ -46,7 +47,12 @@ export const App: React.FC = () => {
       <StoreProvider>
         <ScrollToTopOnNavigate />
         <DocumentMeta />
-        <div className="min-h-screen flex flex-col bg-surface">
+        {/*
+          Padding bawah di HP memberi ruang untuk bilah navigasi bawah
+          (52px + safe-area). Tanpa ini, baris terakhir halaman tertutup
+          bilah tersebut. Di desktop padding dimatikan (lg:pb-0).
+        */}
+        <div className="min-h-screen flex flex-col bg-surface pb-[calc(52px+env(safe-area-inset-bottom,0px))] lg:pb-0">
           <Navbar />
           <main className="flex-1">
             <Routes>
@@ -65,6 +71,7 @@ export const App: React.FC = () => {
             </Routes>
           </main>
           <Footer />
+          <BottomNav />
           <CartDrawer />
           <CheckoutModal />
           <ToastContainer />

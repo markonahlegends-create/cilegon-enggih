@@ -28,6 +28,7 @@ import {
 import { useStore } from '../context/StoreContext';
 import { ShippingCalculator } from '../components/ShippingCalculator';
 import { ProductCard } from '../components/ProductCard';
+import { useBackClose } from '../hooks/useBackClose';
 
 export const ProductDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -53,6 +54,20 @@ export const ProductDetailPage: React.FC = () => {
   const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
   const desktopBuyRef = useRef<HTMLDivElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  /*
+   * Tombol kembali HP menutup popup yang sedang terbuka, bukan
+   * meninggalkan halaman produk. Lightbox galeri dan popup ukuran boleh
+   * terbuka bersamaan dari sudut pandang state, jadi kalau keduanya
+   * terbuka kita tutup yang paling atas dulu (popup ukuran).
+   */
+  useBackClose(lightboxIndex !== null || showSizeChartModal, () => {
+    if (showSizeChartModal) {
+      setShowSizeChartModal(false);
+      return;
+    }
+    setLightboxIndex(null);
+  });
 
   useEffect(() => {
     setSelectedVariant(product.variants?.[0]);
@@ -819,7 +834,13 @@ export const ProductDetailPage: React.FC = () => {
         tidak tertutup gesture bar iPhone/Android.
       */}
       <div
-        className={`lg:hidden fixed bottom-0 left-0 right-0 w-full max-w-full box-border z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] px-3 pt-2.5 pb-2.5 pb-safe transition-transform duration-200 ${
+        /*
+          Ditempel DI ATAS bilah navigasi bawah (bottom = 52px + safe-area),
+          bukan menimpanya. Kalau keduanya di bottom-0, tombol "Beli
+          Sekarang" akan menutupi tab navigasi dan tab tidak bisa ditekan.
+        */
+        style={{ bottom: 'calc(52px + env(safe-area-inset-bottom, 0px))' }}
+        className={`lg:hidden fixed left-0 right-0 w-full max-w-full box-border z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] px-3 pt-2.5 pb-2.5 transition-transform duration-200 ${
           showMobileBuyBar && !showSizeChartModal && lightboxIndex === null
             ? 'translate-y-0'
             : 'translate-y-full'
