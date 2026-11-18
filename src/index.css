@@ -6,12 +6,57 @@
   html {
     scroll-behavior: smooth;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* iOS: cegah teks membesar sendiri saat ponsel diputar ke mode lanskap. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   body {
     background-color: #F8FAF8;
     color: #1e293b;
+    /* Cegah halaman melebar ke samping gara-gara satu elemen (mis. tabel
+       lebar). Tanpa ini, seluruh situs ikut bisa digeser horizontal di HP. */
+    overflow-x: hidden;
   }
+
+  /*
+   * iOS Safari memperbesar halaman otomatis bila fokus ke input dengan
+   * ukuran huruf < 16px — pembeli jadi harus zoom manual saat checkout.
+   * Aturan ini menahan ukuran minimum 16px HANYA di layar kecil, sehingga
+   * tampilan desktop tidak berubah.
+   */
+  @media (max-width: 640px) {
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Jangan pernah memunculkan scroll horizontal pada elemen apa pun. */
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+}
+
+@layer utilities {
+  /*
+   * Padding aman untuk perangkat berponi / gesture bar.
+   * Dipakai pada header, drawer bawah, dan tombol melayang.
+   */
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mb-safe {
+    margin-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
 }
 
 .no-scrollbar::-webkit-scrollbar {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   X,
@@ -26,6 +26,25 @@ export const CartDrawer: React.FC = () => {
     cartSubtotal,
     cartWeightGrams
   } = useStore();
+
+  /**
+   * Kunci gulir latar belakang selama keranjang terbuka.
+   * Di HP tanpa ini, halaman di belakang drawer ikut bergulir dan pembeli
+   * bisa kehilangan posisi saat menutup keranjang.
+   */
+  useEffect(() => {
+    if (!isCartOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCartOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isCartOpen, setIsCartOpen]);
 
   if (!isCartOpen) return null;
 
@@ -59,7 +78,7 @@ export const CartDrawer: React.FC = () => {
       />
 
       {/* Drawer Panel */}
-      <div className="relative z-10 w-full max-w-md bg-white h-full shadow-2xl flex flex-col">
+      <div className="relative z-10 w-full sm:max-w-md bg-white h-full shadow-2xl flex flex-col">
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-navy-800 text-white">
           <div className="flex items-center gap-2.5">
@@ -209,7 +228,7 @@ export const CartDrawer: React.FC = () => {
 
         {/* Footer Dual Checkout Buttons */}
         {cart.length > 0 && (
-          <div className="p-5 border-t border-slate-200 bg-white space-y-3">
+          <div className="p-4 sm:p-5 border-t border-slate-200 bg-white space-y-3 pb-safe">
             <div className="flex items-center justify-between text-xs text-slate-500">
               <span>Total Berat Estimasi ({cartCount} item)</span>
               <span>{(cartWeightGrams / 1000).toFixed(2)} kg</span>

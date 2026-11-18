@@ -233,7 +233,8 @@ export const CustomCorporatePage: React.FC = () => {
               onChange={(e) => setQuantity(Number(e.target.value))}
               className="w-full accent-forest-600"
             />
-            <div className="grid grid-cols-4 gap-2 text-[11px] text-center pt-1">
+            {/* 4 tier harga bisa terpotong di layar 320-360px → jadi 2x2 */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-center pt-1">
               {[
                 { label: '25+ pcs', disc: 'Diskon 10%' },
                 { label: '50+ pcs', disc: 'Diskon 16%' },

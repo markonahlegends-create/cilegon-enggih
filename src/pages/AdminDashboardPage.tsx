@@ -496,9 +496,14 @@ export const AdminDashboardPage: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
+      // iOS Safari mengabaikan click() pada <a> yang belum masuk DOM.
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.download = `cilegon-enggih-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      // Beri jeda: Safari butuh waktu memulai unduhan sebelum URL dicabut.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       pushToast('Backup Diunduh', 'File JSON berisi order, produk, B2B & settings', 'success');
     } catch {
       pushToast('Export Gagal', 'Coba lagi', 'error');
@@ -703,23 +708,29 @@ export const AdminDashboardPage: React.FC = () => {
               type="button"
               onClick={loadAll}
               disabled={loading}
-              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold inline-flex items-center gap-1.5"
+              aria-label="Muat ulang data"
+              className="px-2.5 sm:px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold inline-flex items-center gap-1.5"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
             </button>
             <button
               type="button"
               onClick={exportJson}
-              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold inline-flex items-center gap-1.5"
+              aria-label="Unduh backup data"
+              className="px-2.5 sm:px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold inline-flex items-center gap-1.5"
             >
-              <Download className="w-3.5 h-3.5" /> Backup
+              <Download className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Backup</span>
             </button>
             <button
               type="button"
               onClick={handleLogout}
-              className="px-3 py-2 rounded-xl bg-red-500/90 hover:bg-red-600 text-xs font-bold inline-flex items-center gap-1.5"
+              aria-label="Keluar dari dashboard"
+              className="px-2.5 sm:px-3 py-2 rounded-xl bg-red-500/90 hover:bg-red-600 text-xs font-bold inline-flex items-center gap-1.5"
             >
-              <LogOut className="w-3.5 h-3.5" /> Logout
+              <LogOut className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
@@ -977,7 +988,7 @@ export const AdminDashboardPage: React.FC = () => {
                 value={productQuery}
                 onChange={(e) => setProductQuery(e.target.value)}
                 placeholder="Cari nama, kategori, atau slug produk…"
-                className="input-admin !pl-8 !text-[11px] !py-1.5"
+                className="input-admin !pl-8 !py-1.5"
               />
             </div>
             <select
@@ -1012,7 +1023,7 @@ export const AdminDashboardPage: React.FC = () => {
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[640px] text-xs">
                 <thead className="bg-slate-50 text-slate-600">
                   <tr>
                     <th className="text-left px-3 py-2.5 font-bold">Produk</th>
