@@ -117,17 +117,18 @@ export const CustomCorporatePage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-4 sm:py-8 space-y-4 sm:space-y-10">
       {/* Hero B2B */}
-      <div className="rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-forest-700 text-white p-6 sm:p-10 shadow-card-hover grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-        <div className="lg:col-span-8 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-amberbrand-300 text-xs font-bold uppercase tracking-wider">
-            <Building2 className="w-3.5 h-3.5" /> Divisi Custom & Korporat (B2B) Kota Cilegon
+      <div className="rounded-xl sm:rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-forest-700 text-white p-3.5 sm:p-10 sm:shadow-card-hover grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-6 items-center">
+        <div className="lg:col-span-8 space-y-1.5 sm:space-y-3">
+          <div className="inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/10 border border-white/15 text-amberbrand-300 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-wider">
+            <Building2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" /> Divisi Custom &amp; Korporat (B2B)
           </div>
-          <h1 className="text-2xl sm:text-4xl font-extrabold leading-tight">
-            Suvenir Resmi Industri, BUMN, Instansi Pemerintah & Seminar
+          <h1 className="text-[17px] sm:text-4xl font-extrabold leading-tight">
+            Suvenir Resmi Industri, BUMN, Instansi Pemerintah &amp; Seminar
           </h1>
-          <p className="text-xs sm:text-base text-slate-200 leading-relaxed max-w-2xl">
+          {/* Deskripsi panjang disembunyikan di HP agar CTA langsung terlihat */}
+          <p className="hidden sm:block text-xs sm:text-base text-slate-200 leading-relaxed max-w-2xl">
             Sandingkan logo perusahaan atau acara Anda bersama ikon kebanggaan{' '}
             <strong>Landmark Simpang Tiga Cilegon</strong>. Dilengkapi layanan gratis
             desain mockup digital, dokumen penawaran resmi (Quotation/Invoice/Faktur),
@@ -135,9 +136,9 @@ export const CustomCorporatePage: React.FC = () => {
           </p>
         </div>
 
-        <div className="lg:col-span-4 bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/15 space-y-2.5 text-xs">
-          <div className="font-extrabold text-amberbrand-300 uppercase tracking-wider">
-            Keunggulan Pengadaan B2B Kami
+        <div className="lg:col-span-4 bg-white/10 backdrop-blur-md rounded-lg sm:rounded-2xl p-2.5 sm:p-5 border border-white/15 space-y-1 sm:space-y-2.5 text-[11px] sm:text-xs">
+          <div className="font-extrabold text-amberbrand-300 uppercase tracking-wide sm:tracking-wider text-[10px] sm:text-xs">
+            Keunggulan B2B
           </div>
           {[
             'Gratis Tambah Logo Perusahaan min. 100 pcs',
@@ -145,8 +146,8 @@ export const CustomCorporatePage: React.FC = () => {
             'Opsi Kemasan Hardbox Magnetik + Kartu VIP',
             'Pengiriman Prioritas Kawasan Industri Cilegon'
           ].map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2 text-slate-100">
-              <CheckCircle2 className="w-4 h-4 text-forest-300 shrink-0" />
+            <div key={idx} className="flex items-start gap-1.5 text-slate-100">
+              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4 text-forest-300 shrink-0 mt-0.5" />
               <span>{item}</span>
             </div>
           ))}
@@ -162,11 +163,11 @@ export const CustomCorporatePage: React.FC = () => {
               <Calculator className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-extrabold text-navy-800">
-                Simulasi Harga Grosir & Kustomisasi
+              <h2 className="text-[15px] sm:text-lg font-extrabold text-navy-800 leading-tight">
+                Simulasi Harga Grosir
               </h2>
-              <p className="text-xs text-slate-500">
-                Hitung estimasi anggaran suvenir acara Anda secara transparan
+              <p className="text-[11px] sm:text-xs text-slate-500 leading-snug">
+                Hitung estimasi anggaran suvenir acara Anda
               </p>
             </div>
           </div>
@@ -179,7 +180,7 @@ export const CustomCorporatePage: React.FC = () => {
             <select
               value={selectedProdId}
               onChange={(e) => setSelectedProdId(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-bold text-navy-800 focus:border-forest-600 outline-none"
+              className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 text-[13px] font-bold text-navy-800 focus:border-forest-600 outline-none truncate"
             >
               {products.map((p) => (
                 <option key={p.id} value={p.id}>

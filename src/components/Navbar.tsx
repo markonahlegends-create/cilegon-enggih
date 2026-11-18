@@ -76,6 +76,8 @@ export const Navbar: React.FC = () => {
   const location = useLocation();
   const searchRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  /** Tombol ☰/X di header — dikecualikan dari deteksi "sentuh di luar". */
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -89,12 +91,19 @@ export const Navbar: React.FC = () => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
-      // Menu HP menutup sendiri saat pengguna menyentuh area di luarnya.
-      if (
-        mobileMenuOpen &&
-        mobileMenuRef.current &&
-        !mobileMenuRef.current.contains(e.target as Node)
-      ) {
+      /*
+       * Menu HP menutup sendiri saat pengguna menyentuh area di luarnya.
+       *
+       * PENTING: tombol ☰/X di header DIKECUALIKAN.
+       * Sebelumnya tombol X tidak bisa dipakai: `touchstart` pada X
+       * dianggap "sentuhan di luar menu" -> menu langsung ditutup dan
+       * ikon berubah jadi ☰ -> event `click` yang sama lalu men-toggle
+       * menu TERBUKA lagi. Akibatnya X terasa mati total dan menu hanya
+       * bisa ditutup dengan menyentuh area luar.
+       */
+      const target = e.target as Node;
+      const onMenuButton = menuButtonRef.current?.contains(target);
+      if (mobileMenuOpen && mobileMenuRef.current && !mobileMenuRef.current.contains(target) && !onMenuButton) {
         setMobileMenuOpen(false);
       }
     };
@@ -451,6 +460,7 @@ export const Navbar: React.FC = () => {
             </a>
 
             <button
+              ref={menuButtonRef}
               type="button"
               onClick={() => setMobileMenuOpen((v) => !v)}
               className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100"

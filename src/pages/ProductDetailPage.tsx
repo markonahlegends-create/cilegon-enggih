@@ -668,38 +668,36 @@ export const ProductDetailPage: React.FC = () => {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* 2 kolom di HP agar tidak menjadi kartu raksasa satu per satu */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {bundleSuggestions.slice(0, 2).map((b) => (
               <div
                 key={b.id}
-                className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-soft"
+                className="bg-white rounded-xl p-2.5 border border-slate-200/80 flex flex-col gap-2 justify-between"
               >
-                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
+                <div className="min-w-0">
                   <img
                     src={b.image}
                     alt={b.shortName}
-                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-slate-100 shrink-0"
+                    className="w-full h-24 rounded-lg object-cover border border-slate-100"
                   />
                   {/*
                     `min-w-0` WAJIB pada anak flex yang berisi teks panjang.
                     Tanpa ini, teks tidak mau menyusut dan mendorong kartu
                     melewati lebar layar (overflow 3px di layar 280px).
                   */}
-                  <div className="min-w-0">
+                  <div className="min-w-0 mt-1.5">
                     <Link
                       to={`/produk/${b.slug}`}
-                      className="text-sm font-extrabold text-navy-800 hover:text-forest-700"
+                      className="text-[12px] leading-snug font-bold text-slate-700 line-clamp-2 hover:text-navy-800"
                     >
                       {b.name}
                     </Link>
-                    <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
-                      {b.bundleItems?.slice(0, 3).join(' • ')}
-                    </p>
-                    <div className="mt-1.5 flex items-baseline gap-2">
-                      <span className="text-base font-extrabold text-navy-800">
+                    <div className="mt-1 flex items-baseline gap-1 flex-wrap">
+                      <span className="text-[13px] font-extrabold text-forest-700 whitespace-nowrap">
                         {formatRupiah(b.price)}
                       </span>
-                      <span className="text-xs text-slate-400 line-through">
+                      <span className="text-[10px] text-slate-400 line-through whitespace-nowrap">
                         {formatRupiah(b.originalPrice)}
                       </span>
                     </div>
@@ -708,7 +706,7 @@ export const ProductDetailPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => addToCart(b, 1, b.variants?.[0])}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold shrink-0"
+                  className="w-full px-2 py-1.5 rounded-lg bg-forest-600 active:bg-forest-700 text-white text-[11px] font-bold shrink-0"
                 >
                   + Ambil Paket
                 </button>
@@ -720,10 +718,10 @@ export const ProductDetailPage: React.FC = () => {
 
       {/* Produk Lainnya */}
       <section className="space-y-4">
-        <h2 className="text-lg sm:text-xl font-extrabold text-navy-800">
-          Pilihan Merchandise Cilegon Enggih Lainnya
+        <h2 className="text-base sm:text-xl font-extrabold text-navy-800">
+          Produk Lainnya
         </h2>
-        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           {relatedProducts.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
