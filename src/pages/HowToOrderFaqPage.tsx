@@ -68,38 +68,40 @@ export const HowToOrderFaqPage: React.FC = () => {
   const [openIdx, setOpenIdx] = useState<number>(0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-4 sm:py-8 space-y-5 sm:space-y-12">
       {/* Header */}
-      <div className="text-center max-w-2xl mx-auto space-y-2">
-        <span className="text-xs font-extrabold uppercase tracking-wider text-forest-600">
+      <div className="sm:text-center max-w-2xl sm:mx-auto space-y-1">
+        <span className="text-[10px] sm:text-xs font-extrabold uppercase tracking-wider text-forest-600">
           Panduan Pelanggan Resmi
         </span>
-        <h1 className="text-2xl sm:text-4xl font-extrabold text-navy-800">
+        <h1 className="text-lg sm:text-4xl font-extrabold text-navy-800 leading-tight">
           Cara Order, Estimasi Ongkir & FAQ
         </h1>
-        <p className="text-xs sm:text-sm text-slate-600">
+        <p className="text-[11.5px] sm:text-sm text-slate-600 leading-snug">
           Belanja mudah secara mandiri via sistem otomatis website atau berbincang
           langsung dengan admin ramah kami.
         </p>
       </div>
 
       {/* 4 Steps */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-5">
         {ORDER_STEPS.map((s) => {
           const Icon = s.icon;
           return (
             <div
               key={s.step}
-              className="bg-white rounded-3xl border border-slate-200 p-6 shadow-soft space-y-3 relative overflow-hidden"
+              className="bg-white rounded-xl border border-slate-200 p-3 sm:p-6 space-y-2 sm:space-y-3 relative overflow-hidden"
             >
-              <span className="text-4xl font-extrabold text-slate-100 absolute top-4 right-5 select-none">
+              <span className="text-3xl sm:text-4xl font-extrabold text-slate-100 absolute top-3 right-3 select-none">
                 {s.step}
               </span>
-              <div className="w-12 h-12 rounded-2xl bg-forest-50 text-forest-700 flex items-center justify-center">
-                <Icon className="w-6 h-6" />
+              <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-lg sm:rounded-2xl bg-forest-50 text-forest-700 flex items-center justify-center">
+                <Icon className="w-4 h-4 sm:w-6 sm:h-6" />
               </div>
-              <h3 className="text-base font-extrabold text-navy-800">{s.title}</h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+              <h3 className="text-[12.5px] sm:text-base font-extrabold text-navy-800 leading-snug">
+                {s.title}
+              </h3>
+              <p className="text-[11px] sm:text-sm text-slate-600 leading-snug">
                 {s.desc}
               </p>
             </div>
@@ -108,7 +110,7 @@ export const HowToOrderFaqPage: React.FC = () => {
       </div>
 
       {/* Shipping Sim + Guarantee */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
         <div className="lg:col-span-6 space-y-4">
           <h2 className="text-lg sm:text-xl font-extrabold text-navy-800">
             Cek Estimasi Ongkir dari Kota Cilegon

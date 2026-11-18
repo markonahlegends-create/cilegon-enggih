@@ -17,7 +17,7 @@ import { useStore } from '../context/StoreContext';
 export const AboutPage: React.FC = () => {
   const { settings } = useStore();
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-4 sm:py-8 space-y-4 sm:space-y-12">
       {/* Hero Banner */}
       <div className="rounded-3xl bg-gradient-to-br from-navy-900 via-navy-800 to-forest-700 text-white p-6 sm:p-12 shadow-card-hover grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
         <div className="lg:col-span-7 space-y-4">
