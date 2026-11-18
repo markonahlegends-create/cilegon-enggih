@@ -1,293 +1,383 @@
-import React, { useMemo, useState } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
-  SlidersHorizontal,
   Search,
+  SlidersHorizontal,
+  X,
+  Check,
   RotateCcw,
   Heart,
+  ChevronRight,
   Sparkles,
-  Check
+  ArrowUpDown
 } from 'lucide-react';
-import {
-  CategorySlug,
-  formatRupiah
-} from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { useStore } from '../context/StoreContext';
+import { useBackClose } from '../hooks/useBackClose';
 
-type SortMode = 'terlaris' | 'termurah' | 'termahal' | 'rating';
+type SortMode = 'terlaris' | 'rating' | 'termurah' | 'termahal';
+type PriceRange = 'all' | 'under50' | '50to120' | 'above120';
+
+const SORT_LABEL: Record<SortMode, string> = {
+  terlaris: 'Paling Laris',
+  rating: 'Ulasan Tertinggi',
+  termurah: 'Harga Terendah',
+  termahal: 'Harga Tertinggi'
+};
+
+const PRICE_LABEL: Record<PriceRange, string> = {
+  all: 'Semua Harga',
+  under50: '≤ Rp 50rb',
+  '50to120': 'Rp 50rb – 120rb',
+  above120: '> Rp 120rb'
+};
 
 export const CatalogPage: React.FC = () => {
+  const { products, wishlist, categories } = useStore();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { wishlist, products, categories } = useStore();
+  const [sortBy, setSortBy] = useState<SortMode>('terlaris');
+  const [priceRange, setPriceRange] = useState<PriceRange>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
-  const activeCat = (searchParams.get('kategori') || 'semua') as CategorySlug;
+  /*
+   * Tombol kembali HP menutup panel filter, bukan meninggalkan halaman.
+   * Konsisten dengan keranjang & checkout (lihat hooks/useBackClose).
+   */
+  useBackClose(showFilters, () => setShowFilters(false));
+
+  const activeCat = searchParams.get('kategori') || 'semua';
   const queryParam = searchParams.get('q') || '';
   const wishlistOnly = searchParams.get('wishlist') === '1';
 
-  const [sortBy, setSortBy] = useState<SortMode>('terlaris');
-  // Di HP filter memakan 1 layar penuh sebelum produk terlihat → dilipat.
-  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
-  const [priceRange, setPriceRange] = useState<'all' | 'under50' | '50to120' | 'above120'>('all');
-
-  const setCategory = (slug: CategorySlug) => {
+  const setCategory = (slug: string) => {
     const next = new URLSearchParams(searchParams);
-    if (slug === 'semua') {
-      next.delete('kategori');
-    } else {
-      next.set('kategori', slug);
-    }
+    if (slug === 'semua') next.delete('kategori');
+    else next.set('kategori', slug);
     next.delete('wishlist');
     setSearchParams(next);
   };
 
   const filteredProducts = useMemo(() => {
-    return products.filter((p) => {
-      if (wishlistOnly && !wishlist.includes(p.id)) return false;
-      if (activeCat !== 'semua' && p.categorySlug !== activeCat) return false;
-
-      if (queryParam.trim()) {
-        const q = queryParam.toLowerCase();
-        const match =
+    let list = [...products];
+    if (wishlistOnly) {
+      list = list.filter((p) => wishlist.includes(p.id));
+    } else if (activeCat !== 'semua') {
+      list = list.filter((p) => p.categorySlug === activeCat);
+    }
+    if (queryParam) {
+      const q = queryParam.toLowerCase();
+      list = list.filter(
+        (p) =>
           p.name.toLowerCase().includes(q) ||
-          p.shortName.toLowerCase().includes(q) ||
-          p.categoryLabel.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q);
-        if (!match) return false;
-      }
+          p.description.toLowerCase().includes(q) ||
+          p.categoryLabel.toLowerCase().includes(q)
+      );
+    }
+    if (priceRange === 'under50') list = list.filter((p) => p.price <= 50000);
+    if (priceRange === '50to120') list = list.filter((p) => p.price > 50000 && p.price <= 120000);
+    if (priceRange === 'above120') list = list.filter((p) => p.price > 120000);
 
-      if (priceRange === 'under50' && p.price > 50000) return false;
-      if (priceRange === '50to120' && (p.price < 50000 || p.price > 120000)) return false;
-      if (priceRange === 'above120' && p.price <= 120000) return false;
-
-      return true;
-    }).sort((a, b) => {
-      if (sortBy === 'termurah') return a.price - b.price;
-      if (sortBy === 'termahal') return b.price - a.price;
-      if (sortBy === 'rating') return b.rating - a.rating;
-      return b.soldCount - a.soldCount;
-    });
+    if (sortBy === 'terlaris') list.sort((a, b) => b.soldCount - a.soldCount);
+    if (sortBy === 'rating') list.sort((a, b) => b.rating - a.rating);
+    if (sortBy === 'termurah') list.sort((a, b) => a.price - b.price);
+    if (sortBy === 'termahal') list.sort((a, b) => b.price - a.price);
+    return list;
   }, [activeCat, queryParam, wishlistOnly, wishlist, priceRange, sortBy, products]);
 
-  const activeCategoryMeta =
-    categories.find((c) => c.slug === activeCat) || categories[0];
+  const activeCategoryMeta = categories.find((c) => c.slug === activeCat) || categories[0];
+  const hasActiveFilter = activeCat !== 'semua' || priceRange !== 'all' || !!queryParam || wishlistOnly;
+
+  const resetAll = () => {
+    setSearchParams({});
+    setPriceRange('all');
+  };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-      {/* Page Banner */}
-      <div className="rounded-3xl bg-gradient-to-r from-navy-800 via-navy-800 to-forest-700 text-white p-6 sm:p-8 mb-6 shadow-soft flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amberbrand-300 uppercase tracking-wider mb-1">
-            <Sparkles className="w-3.5 h-3.5" />
-            {wishlistOnly ? 'Koleksi Favorit Anda' : 'Katalog Resmi Cilegon Enggih'}
-          </div>
-          <h1 className="text-xl sm:text-3xl font-extrabold">
+    /*
+     * TATA LETAK RAMPING (gaya marketplace).
+     * Sebelumnya halaman ini memakai banner gradien 210px + panel filter
+     * penuh + dropdown, sehingga di layar 360px satu layar penuh habis
+     * SEBELUM satu produk pun terlihat utuh. Sekarang:
+     *   - tanpa banner; hanya baris judul ringkas
+     *   - kategori jadi baris chip yang bisa digeser
+     *   - filter & urutan pindah ke bottom sheet
+     *   - grid produk 2 kolom langsung terlihat
+     */
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 sm:py-8 pb-4">
+      {/* Baris judul ringkas — menggantikan banner 210px */}
+      <div className="flex items-center justify-between gap-2 mb-2.5">
+        <div className="min-w-0">
+          <h1 className="text-base sm:text-2xl font-extrabold text-navy-800 leading-tight truncate">
             {wishlistOnly
-              ? `Wishlist Produk Tersimpan (${wishlist.length})`
-              : activeCategoryMeta.label}
+              ? `Wishlist (${wishlist.length})`
+              : activeCat === 'semua'
+                ? 'Semua Koleksi'
+                : activeCategoryMeta.label}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-200 mt-1">
-            {wishlistOnly
-              ? 'Daftar produk yang Anda tandai untuk dibeli sekarang atau nanti.'
-              : activeCategoryMeta.description}
+          <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">
+            {filteredProducts.length} produk
+            {queryParam && <> untuk “{queryParam}”</>}
+            {hasActiveFilter && (
+              <button
+                type="button"
+                onClick={resetAll}
+                className="ml-2 font-bold text-forest-600 underline"
+              >
+                Reset
+              </button>
+            )}
           </p>
         </div>
 
         <Link
           to="/custom-korporat"
-          className="px-4 py-2.5 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 text-navy-950 text-xs sm:text-sm font-extrabold shrink-0 text-center"
+          className="shrink-0 hidden sm:inline-flex px-3 py-1.5 rounded-lg bg-navy-800 text-white text-xs font-bold"
         >
-          Pesan Grosir / Custom Logo →
+          Grosir / Custom
         </Link>
       </div>
 
-      {/* Main Layout: Sidebar Filter + Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Sidebar Filter — di HP dilipat agar produk langsung terlihat */}
-        <aside
-          className={`lg:col-span-3 lg:block ${showFiltersMobile ? 'block' : 'hidden'}`}
+      {/* Baris chip kategori — bisa digeser ke samping, hemat tinggi */}
+      <div className="-mx-3 px-3 flex gap-1.5 overflow-x-auto no-scrollbar pb-0.5 mb-2">
+        {categories.map((cat) => {
+          const selected = !wishlistOnly && activeCat === cat.slug;
+          return (
+            <button
+              key={cat.slug}
+              type="button"
+              onClick={() => setCategory(cat.slug)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-bold border transition-colors ${
+                selected
+                  ? 'bg-forest-600 text-white border-forest-600'
+                  : 'bg-white text-slate-600 border-slate-200'
+              }`}
+            >
+              {cat.slug === 'semua' ? 'Semua' : cat.label}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => (wishlistOnly ? setSearchParams({}) : setSearchParams({ wishlist: '1' }))}
+          className={`shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11.5px] font-bold border transition-colors ${
+            wishlistOnly
+              ? 'bg-rose-500 text-white border-rose-500'
+              : 'bg-white text-slate-600 border-slate-200'
+          }`}
         >
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-soft space-y-5 lg:sticky lg:top-32">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-sm font-extrabold text-navy-800">
-                <SlidersHorizontal className="w-4 h-4 text-forest-600" />
-                <span>Filter Katalog</span>
-              </div>
-              {(activeCat !== 'semua' || priceRange !== 'all' || queryParam || wishlistOnly) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchParams({});
-                    setPriceRange('all');
-                  }}
-                  className="text-xs font-semibold text-forest-600 hover:underline inline-flex items-center gap-1"
-                >
-                  <RotateCcw className="w-3 h-3" /> Reset
-                </button>
-              )}
-            </div>
+          <Heart className={`w-3 h-3 ${wishlistOnly ? 'fill-current' : ''}`} /> Wishlist
+        </button>
+      </div>
 
-            {/* Kategori */}
-            <div>
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-                Sub-Menu Kategori
-              </h3>
-              <div className="space-y-1">
-                {categories.map((cat) => {
-                  const selected = !wishlistOnly && activeCat === cat.slug;
-                  return (
-                    <button
-                      key={cat.slug}
-                      type="button"
-                      onClick={() => setCategory(cat.slug)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold flex items-center justify-between transition-colors ${
-                        selected
-                          ? 'bg-forest-50 text-forest-700 border border-forest-200'
-                          : 'text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{cat.label}</span>
-                      {selected && <Check className="w-4 h-4 text-forest-600" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      {/*
+        Filter rentang harga untuk DESKTOP.
+        Saat panel filter dipindah ke bottom sheet (khusus HP), desktop
+        sempat kehilangan filter harga sama sekali. Baris chip ini
+        mengembalikannya tanpa memakan lebar seperti sidebar lama.
+      */}
+      <div className="hidden lg:flex items-center gap-1.5 mb-2.5">
+        <span className="text-[11px] font-bold text-slate-500 shrink-0">Harga:</span>
+        {(Object.keys(PRICE_LABEL) as PriceRange[]).map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => setPriceRange(id)}
+            className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-colors ${
+              priceRange === id
+                ? 'bg-forest-600 text-white border-forest-600'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-forest-300'
+            }`}
+          >
+            {PRICE_LABEL[id]}
+          </button>
+        ))}
+      </div>
 
-            {/* Filter Anggaran / Harga */}
-            <div className="pt-3 border-t border-slate-100">
-              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
-                Rentang Anggaran
-              </h3>
-              <div className="space-y-1.5 text-xs">
-                {[
-                  { id: 'all', label: 'Semua Harga' },
-                  { id: 'under50', label: 'Ekonomis (≤ Rp 50.000)' },
-                  { id: '50to120', label: 'Menengah (Rp 50rb – Rp 120rb)' },
-                  { id: 'above120', label: 'Premium & Bundling (> Rp 120rb)' }
-                ].map((pr) => (
-                  <label
-                    key={pr.id}
-                    className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-slate-50 cursor-pointer"
-                  >
-                    <input
-                      type="radio"
-                      name="price-filter"
-                      checked={priceRange === pr.id}
-                      onChange={() => setPriceRange(pr.id as any)}
-                      className="accent-forest-600"
-                    />
-                    <span className="font-medium text-slate-700">{pr.label}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
+      {/* Baris alat: filter + urutan cepat */}
+      <div className="flex items-center gap-1.5 mb-2.5">
+        <button
+          type="button"
+          onClick={() => setShowFilters(true)}
+          className="lg:hidden inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-[11.5px] font-bold text-navy-800"
+          aria-expanded={showFilters}
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5 text-forest-600" /> Filter
+          {priceRange !== 'all' && (
+            <span className="w-1.5 h-1.5 rounded-full bg-forest-600" aria-hidden />
+          )}
+        </button>
 
-            {/* Wishlist Shortcut */}
-            <div className="pt-3 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() => {
-                  if (wishlistOnly) {
-                    setSearchParams({});
-                  } else {
-                    setSearchParams({ wishlist: '1' });
-                  }
-                }}
-                className={`w-full px-3 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border transition-colors ${
-                  wishlistOnly
-                    ? 'bg-rose-50 text-rose-600 border-rose-200'
-                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                <Heart className={`w-4 h-4 ${wishlistOnly ? 'fill-current' : ''}`} />
-                <span>Tampilkan Wishlist ({wishlist.length})</span>
-              </button>
-            </div>
-          </div>
-        </aside>
+        <label className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 min-w-0 flex-1">
+          <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="sr-only">Urutkan produk</span>
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortMode)}
+            className="flex-1 min-w-0 bg-transparent text-[11.5px] font-bold text-navy-800 outline-none truncate"
+          >
+            {(Object.keys(SORT_LABEL) as SortMode[]).map((k) => (
+              <option key={k} value={k}>
+                {SORT_LABEL[k]}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
-        {/* Right Product Grid */}
-        <div className="lg:col-span-9 space-y-5">
-          {/* Tombol Filter khusus HP */}
+      {/* Grid produk — 2 kolom di HP (sebelumnya 1 kolom) */}
+      {filteredProducts.length === 0 ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-10 text-center space-y-3">
+          <Search className="w-9 h-9 text-slate-300 mx-auto" />
+          <h3 className="text-sm font-extrabold text-navy-800">Produk Tidak Ditemukan</h3>
+          <p className="text-xs text-slate-500 max-w-xs mx-auto">
+            Coba ubah kategori atau rentang anggaran untuk melihat koleksi lainnya.
+          </p>
           <button
             type="button"
-            onClick={() => setShowFiltersMobile((v) => !v)}
-            className="lg:hidden w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-soft text-sm font-bold text-navy-800"
-            aria-expanded={showFiltersMobile}
+            onClick={resetAll}
+            className="px-4 py-2 rounded-lg bg-forest-600 text-white text-xs font-bold"
           >
-            <span className="flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-forest-600" />
-              {showFiltersMobile ? 'Tutup Filter' : 'Filter & Urutkan Produk'}
-            </span>
-            <span className="text-[11px] font-semibold text-slate-500">
-              {filteredProducts.length} produk
-            </span>
+            Tampilkan Semua
           </button>
-
-          {/* Top Sort Bar */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
-            <div className="text-xs sm:text-sm text-slate-600">
-              Menampilkan <strong className="text-navy-800">{filteredProducts.length}</strong> produk
-              {queryParam && (
-                <span>
-                  {' '}
-                  untuk pencarian <strong>“{queryParam}”</strong>
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2 text-xs w-full sm:w-auto min-w-0">
-              <span className="font-semibold text-slate-500 shrink-0">Urutkan:</span>
-              {/*
-                <select> ikut melebar mengikuti opsi TERPANJANG, bukan yang
-                sedang terpilih. Label "Harga Terendah (Rp 8.000+)" membuat
-                dropdown 303px di dalam kartu 294px → halaman melebar ke 404px
-                di layar 360px. Label opsi dipendekkan + lebar dibatasi.
-              */}
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortMode)}
-                className="flex-1 sm:flex-none min-w-0 max-w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-navy-800 outline-none focus:border-forest-600"
-              >
-                <option value="terlaris">Paling Laris</option>
-                <option value="rating">Ulasan Tertinggi</option>
-                <option value="termurah">Harga Terendah</option>
-                <option value="termahal">Harga Tertinggi</option>
-              </select>
-            </div>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-4">
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
           </div>
+          <p className="text-center text-[11px] text-slate-400 pt-4">
+            Semua {filteredProducts.length} produk sudah ditampilkan
+          </p>
+        </>
+      )}
 
-          {/* Results */}
-          {filteredProducts.length === 0 ? (
-            <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-3">
-              <Search className="w-10 h-10 text-slate-300 mx-auto" />
-              <h3 className="text-base font-extrabold text-navy-800">
-                Produk Tidak Ditemukan
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto">
-                Coba ubah filter kategori atau rentang anggaran untuk melihat seluruh koleksi Cilegon Enggih.
-              </p>
+      {/*
+        Panel filter: di HP muncul sebagai bottom sheet (naik dari bawah),
+        di desktop tetap sebagai panel samping yang menempel.
+        Bottom sheet dipilih karena tidak mendorong konten produk dan
+        mudah dijangkau ibu jari.
+      */}
+      {showFilters && (
+        <div className="lg:hidden fixed inset-0 z-[60] flex items-end">
+          <button
+            type="button"
+            aria-label="Tutup filter"
+            onClick={() => setShowFilters(false)}
+            className="fixed inset-0 bg-navy-950/50 backdrop-blur-xs"
+          />
+          <div
+            className="relative w-full bg-white rounded-t-2xl max-h-[85dvh] overflow-y-auto overscroll-contain"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+          >
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-extrabold text-navy-800">Filter & Urutan</span>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                aria-label="Tutup"
+                className="p-1.5 rounded-lg text-slate-500 active:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="px-4 py-3 space-y-4">
+              <div>
+                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Kategori
+                </h3>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {categories.map((cat) => {
+                    const selected = !wishlistOnly && activeCat === cat.slug;
+                    return (
+                      <button
+                        key={cat.slug}
+                        type="button"
+                        onClick={() => setCategory(cat.slug)}
+                        className={`flex items-center justify-between px-2.5 py-2 rounded-lg text-[11.5px] font-bold border ${
+                          selected
+                            ? 'bg-forest-50 text-forest-700 border-forest-300'
+                            : 'bg-white text-slate-600 border-slate-200'
+                        }`}
+                      >
+                        <span>{cat.label}</span>
+                        {selected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100">
+                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Rentang Anggaran
+                </h3>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(PRICE_LABEL) as PriceRange[]).map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setPriceRange(id)}
+                      className={`px-2.5 py-2 rounded-lg text-[11.5px] font-bold border ${
+                        priceRange === id
+                          ? 'bg-forest-50 text-forest-700 border-forest-300'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      {PRICE_LABEL[id]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100">
+                <h3 className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                  Urutkan
+                </h3>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {(Object.keys(SORT_LABEL) as SortMode[]).map((k) => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setSortBy(k)}
+                      className={`px-2.5 py-2 rounded-lg text-[11.5px] font-bold border ${
+                        sortBy === k
+                          ? 'bg-forest-50 text-forest-700 border-forest-300'
+                          : 'bg-white text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      {SORT_LABEL[k]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-slate-100 px-4 py-3 flex gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  setSearchParams({});
                   setPriceRange('all');
+                  setSearchParams({});
                 }}
-                className="px-5 py-2.5 rounded-xl bg-forest-600 text-white text-xs font-bold"
+                className="flex-1 py-2.5 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 inline-flex items-center justify-center gap-1.5"
               >
-                Tampilkan Semua Produk
+                <RotateCcw className="w-3.5 h-3.5" /> Reset
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowFilters(false)}
+                className="flex-[2] py-2.5 rounded-lg bg-forest-600 text-white text-xs font-extrabold inline-flex items-center justify-center gap-1.5"
+              >
+                Lihat {filteredProducts.length} Produk
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
-              {filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

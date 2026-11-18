@@ -196,7 +196,12 @@ export const ProductDetailPage: React.FC = () => {
             )}
 
             <div className="flex-1 min-w-0">
-              <div className="aspect-square rounded-3xl overflow-hidden bg-white border border-slate-200 shadow-card relative group">
+              {/*
+                Di HP tinggi gambar dibatasi 260px (bukan persegi 326px) agar
+                judul + harga produk masuk layar pertama tanpa menggulir.
+                Di desktop tetap persegi penuh.
+              */}
+              <div className="h-[260px] lg:h-auto lg:aspect-square rounded-xl overflow-hidden bg-white border border-slate-200 relative group">
                 <button
                   type="button"
                   onClick={() => setLightboxIndex(Math.max(0, gallery.indexOf(activeImage || gallery[0])))}
@@ -251,26 +256,6 @@ export const ProductDetailPage: React.FC = () => {
             </div>
           )}
 
-          {/* Store Official Trust Badge Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-navy-800 text-amberbrand-400 font-extrabold text-xs flex items-center justify-center">
-                CE
-              </div>
-              <div>
-                <div className="text-xs font-extrabold text-navy-800 flex items-center gap-1">
-                  Cilegon Enggih Official
-                  <ShieldCheck className="w-3.5 h-3.5 text-forest-600" />
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  Online • Dikirim dari Kota Cilegon
-                </div>
-              </div>
-            </div>
-            <span className="text-xs font-bold text-forest-700 bg-forest-50 px-2.5 py-1 rounded-lg">
-              ★ 4.9 Toko
-            </span>
-          </div>
         </div>
 
         {/* Column 2: Product Information, Variants, Size Chart & Shipping Calculator */}
@@ -310,6 +295,27 @@ export const ProductDetailPage: React.FC = () => {
               <span>•</span>
               <span className="text-slate-500">Stok Tersedia: {product.stock}</span>
             </div>
+          </div>
+
+          {/*
+            Baris toko ringkas — SATU baris (tinggi ±34px), bukan kartu
+            tersendiri setinggi 90px di atas judul produk. Sebelumnya kartu
+            ini tampil lebih dulu daripada nama & harga produk, sehingga
+            pembeli harus menggulir satu layar untuk melihat harga.
+          */}
+          <div className="flex items-center gap-2 text-[11.5px] text-slate-600 pb-0.5">
+            <span className="w-6 h-6 rounded-md bg-navy-800 text-amberbrand-400 font-extrabold text-[9px] flex items-center justify-center shrink-0">
+              CE
+            </span>
+            <span className="font-extrabold text-navy-800 truncate">Cilegon Enggih Official</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-forest-600 shrink-0" />
+            <span className="text-slate-300">·</span>
+            <span className="inline-flex items-center gap-0.5 shrink-0">
+              <Star className="w-3 h-3 fill-amberbrand-400 text-amberbrand-400" /> 4.9
+            </span>
+            <span className="ml-auto text-slate-400 shrink-0 hidden sm:inline">
+              Dikirim dari Kota Cilegon
+            </span>
           </div>
 
           {/* Price Highlight Box */}
