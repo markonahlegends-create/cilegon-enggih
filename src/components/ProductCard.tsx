@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Star, ShoppingCart, Heart, MapPin, ShieldCheck, Layers } from 'lucide-react';
+import { Star, Heart, Layers, ShieldCheck } from 'lucide-react';
 import { Product, formatRupiah } from '../data/products';
 import { useStore } from '../context/StoreContext';
 
@@ -8,143 +8,136 @@ interface ProductCardProps {
   product: Product;
 }
 
+/**
+ * Kartu produk bergaya marketplace: ramping, informasi padat, tanpa hiasan.
+ *
+ * PERUBAHAN DARI VERSI SEBELUMNYA
+ * ------------------------------------------------------------------
+ * Versi lama memakai `rounded-2xl` + `shadow-card`, gambar rasio 4:4.2,
+ * label kategori, baris "Official Store • Kota Cilegon" setinggi 24px,
+ * beberapa badge bertumpuk di atas gambar, dan tombol "+ Keranjang"
+ * berlabel teks. Hasilnya kartu setinggi 341px sehingga di layar 360px
+ * hanya SATU produk terlihat.
+ *
+ * Versi ini: sudut `rounded-lg`, hanya garis rambut (tanpa bayangan),
+ * satu badge diskon, harga tebal sebagai fokus, rating + terjual satu
+ * baris kecil, dan tombol keranjang berbentuk ikon. Tinggi turun ±35%
+ * sehingga grid 2 kolom menampilkan 6 produk per layar.
+ */
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToCart, wishlist, toggleWishlist } = useStore();
   const isWishlisted = wishlist.includes(product.id);
+  const discount =
+    product.discountPercent > 0
+      ? product.discountPercent
+      : product.originalPrice > product.price
+        ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+        : 0;
+
+  const soldLabel =
+    product.soldCount >= 1000
+      ? `${(product.soldCount / 1000).toFixed(1).replace('.0', '')}rb+`
+      : `${product.soldCount}`;
 
   return (
-    <div className="group bg-white rounded-2xl border border-slate-200/80 hover:border-forest-500/50 shadow-card hover:shadow-card-hover transition-all duration-300 flex flex-col overflow-hidden relative">
-      {/* Image Container */}
-      <div className="relative aspect-[4/4.2] bg-slate-100 overflow-hidden">
+    <div className="group bg-white rounded-lg border border-slate-200/80 hover:border-forest-400 transition-colors overflow-hidden flex flex-col">
+      {/* Gambar — rasio persegi agar baris kedua cepat terlihat */}
+      <div className="relative aspect-[4/3] bg-slate-50 overflow-hidden">
         <Link to={`/produk/${product.slug}`} className="block w-full h-full">
           <img
             src={product.image}
             alt={product.name}
             loading="lazy"
-            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
           />
         </Link>
 
-        {/* Top Left Badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-col gap-1.5 pointer-events-none">
-          {product.isBundle ? (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amberbrand-400 text-navy-950 text-[11px] font-extrabold shadow-sm">
-              <Layers className="w-3 h-3" /> PAKET BUNDLING
-            </span>
-          ) : product.isBestSeller ? (
-            <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-navy-800/95 text-white text-[11px] font-bold shadow-sm backdrop-blur-sm">
-              ★ TERLARIS
-            </span>
-          ) : null}
+        {/* Satu badge saja — diskon. Badge lain jadi teks di bawah. */}
+        {discount > 0 && (
+          <span className="absolute top-0 left-0 px-1.5 py-0.5 bg-forest-600 text-white text-[10px] font-extrabold rounded-br-md">
+            {discount}%
+          </span>
+        )}
 
-          {product.isPreOrder && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-forest-600 text-white text-[10.5px] font-extrabold shadow-sm w-fit">
-              ⏳ PRE-ORDER
-            </span>
-          )}
+        {product.isBundle && (
+          <span className="absolute top-0 right-0 px-1.5 py-0.5 bg-amberbrand-400 text-navy-950 text-[10px] font-extrabold rounded-bl-md inline-flex items-center gap-0.5">
+            <Layers className="w-2.5 h-2.5" /> PAKET
+          </span>
+        )}
 
-          {product.discountPercent > 0 && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-forest-600 text-white text-[10.5px] font-bold w-fit">
-              Hemat {product.discountPercent}%
-            </span>
-          )}
-        </div>
-
-        {/* Wishlist Heart */}
+        {/* Tombol wishlist kecil di pojok kanan bawah gambar */}
         <button
           type="button"
           onClick={(e) => {
             e.preventDefault();
             toggleWishlist(product.id);
           }}
-          aria-label="Simpan ke Wishlist"
-          className={`absolute top-2.5 right-2.5 w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-md transition-all shadow-sm ${
+          aria-label={isWishlisted ? 'Hapus dari wishlist' : 'Simpan ke wishlist'}
+          className={`absolute bottom-1.5 right-1.5 w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
             isWishlisted
               ? 'bg-rose-500 text-white'
-              : 'bg-white/90 text-slate-600 hover:text-rose-500'
+              : 'bg-white/85 text-slate-500 active:text-rose-500'
           }`}
         >
-          <Heart className={`w-4 h-4 ${isWishlisted ? 'fill-current' : ''}`} />
+          <Heart className={`w-3.5 h-3.5 ${isWishlisted ? 'fill-current' : ''}`} />
         </button>
-
-        {/* Wholesale subtle pill at bottom of image */}
-        <div className="absolute bottom-2 left-2 right-2 flex justify-between items-center pointer-events-none">
-          <span className="px-2 py-0.5 rounded-md bg-white/90 backdrop-blur-sm text-navy-800 text-[10.5px] font-semibold border border-slate-200/70">
-            Grosir ≥{product.minWholesaleQty}: {formatRupiah(product.wholesalePrice)}
-          </span>
-        </div>
       </div>
 
-      {/* Card Content */}
-      <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-forest-700 mb-1">
-            <span>{product.categoryLabel}</span>
+      {/* Isi kartu — padat, urutan: judul → harga → rating */}
+      <div className="p-1.5 flex-1 flex flex-col">
+        <Link
+          to={`/produk/${product.slug}`}
+          className="text-[12px] leading-snug text-slate-700 line-clamp-2 min-h-[30px] hover:text-navy-800"
+        >
+          {product.name}
+        </Link>
+
+        <div className="mt-1">
+          <div className="text-[14px] font-extrabold text-forest-700 leading-tight">
+            {formatRupiah(product.price)}
           </div>
-
-          <Link
-            to={`/produk/${product.slug}`}
-            className="text-sm font-bold text-slate-800 group-hover:text-navy-800 line-clamp-2 leading-snug mb-2 transition-colors"
-          >
-            {product.name}
-          </Link>
-
-          {/* Price Block */}
-          <div className="mb-1.5">
-            <div className="text-base sm:text-lg font-extrabold text-navy-800 leading-tight">
-              {formatRupiah(product.price)}
-            </div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="text-xs text-slate-400 line-through">
-                {formatRupiah(product.originalPrice)}
-              </span>
-              <span className="text-[11px] font-semibold text-forest-700 bg-forest-50 px-1.5 py-0.5 rounded">
-                -{product.discountPercent}%
-              </span>
-            </div>
-          </div>
-
-          {product.isPreOrder && (
-            <div className="text-[10.5px] font-semibold text-forest-700 bg-forest-50 rounded-lg px-2 py-1 mt-1.5">
-              ⏳ {product.preOrderNote || 'Pre Order 7–15 hari kerja'}
+          {product.originalPrice > product.price && (
+            <div className="text-[10.5px] text-slate-400 line-through leading-tight">
+              {formatRupiah(product.originalPrice)}
             </div>
           )}
-
-          {/* Official Store + Location (Tokopedia trust style) */}
-          <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-forest-600 shrink-0" />
-            <span className="font-semibold text-slate-600 truncate">Official Store</span>
-            <span>•</span>
-            <span className="inline-flex items-center gap-0.5 truncate">
-              <MapPin className="w-3 h-3 text-slate-400" /> Kota Cilegon
-            </span>
-          </div>
         </div>
 
-        {/* Rating + Sold + Quick Add */}
-        <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1 text-xs text-slate-600">
-            <Star className="w-3.5 h-3.5 fill-amberbrand-400 text-amberbrand-400" />
-            <span className="font-bold text-slate-800">{product.rating.toFixed(1)}</span>
-            <span className="text-slate-300">|</span>
-            <span className="text-[11px] text-slate-500">
-              {product.soldCount >= 1000
-                ? `${(product.soldCount / 1000).toFixed(1)}rb+`
-                : `${product.soldCount}`}{' '}
-              terjual
-            </span>
+        {/* Grosir — satu baris kecil, hanya bila relevan */}
+        {product.minWholesaleQty > 1 && (
+          <div className="mt-0.5 text-[10px] font-semibold text-forest-700 truncate">
+            Grosir ≥{product.minWholesaleQty}: {formatRupiah(product.wholesalePrice)}
+          </div>
+        )}
+
+        {product.isPreOrder && (
+          <div className="mt-0.5 text-[10px] font-semibold text-amberbrand-700 truncate">
+            ⏳ Pre-order
+          </div>
+        )}
+
+        {/* Rating + terjual + tombol keranjang dalam satu baris */}
+        <div className="mt-auto pt-1.5 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-0.5 text-[10.5px] text-slate-500 min-w-0">
+            <Star className="w-3 h-3 fill-amberbrand-400 text-amberbrand-400 shrink-0" />
+            <span className="font-bold text-slate-700">{product.rating.toFixed(1)}</span>
+            <ShieldCheck className="w-2.5 h-2.5 text-forest-500 shrink-0" aria-label="Official Store" />
+            <span className="text-slate-300">·</span>
+            <span className="truncate">{soldLabel}</span>
           </div>
 
           <button
             type="button"
             onClick={() => addToCart(product, 1, product.variants?.[0])}
-            title="Tambah ke Keranjang"
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold transition-colors shadow-sm"
+            aria-label={`Tambah ${product.shortName || product.name} ke keranjang`}
+            className="shrink-0 w-7 h-7 rounded-lg bg-forest-600 active:bg-forest-700 text-white flex items-center justify-center"
           >
-            <ShoppingCart className="w-3.5 h-3.5" />
-            <span>+ Keranjang</span>
+            <svg viewBox="0 0 24 24" className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+            </svg>
           </button>
         </div>
+
       </div>
     </div>
   );

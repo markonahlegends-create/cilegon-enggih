@@ -127,8 +127,14 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-12 pb-8">
       {/* 1. HERO BANNER (Tokopedia Official Flagship Carousel Style) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
-        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-forest-700 text-white shadow-card-hover border border-white/10">
+      {/*
+        HERO: di HP dibuat ringkas (sudut 12px, padding ketat) agar produk
+        pertama muncul di layar pertama. Di desktop tetap megah.
+        Sebelumnya hero setinggi ±600px sehingga produk baru terlihat
+        setelah menggulir 3,6 layar.
+      */}
+      <section className="max-w-7xl mx-auto px-3 sm:px-6 pt-2.5 sm:pt-5">
+        <div className="relative rounded-xl sm:rounded-3xl overflow-hidden bg-gradient-to-br from-navy-900 via-navy-800 to-forest-700 text-white sm:shadow-card-hover border border-white/10">
           {/* Subtle decorative radial glow */}
           <div
             className="absolute -top-24 -right-24 w-96 h-96 rounded-full opacity-20 pointer-events-none"
@@ -143,37 +149,39 @@ export const HomePage: React.FC = () => {
             }}
           />
 
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center p-6 sm:p-10 lg:p-12">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-8 items-center p-3.5 sm:p-10 lg:p-12">
             {/* Left Copywriting */}
-            <div className="lg:col-span-7 space-y-5">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-amberbrand-300 text-xs font-bold tracking-wider uppercase">
+            <div className="lg:col-span-7 space-y-2.5 sm:space-y-5">
+              <div className="inline-flex items-center gap-1.5 px-2 py-0.5 sm:px-3.5 sm:py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-amberbrand-300 text-[10px] sm:text-xs font-bold tracking-wide sm:tracking-wider uppercase">
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{currentHero.badge}</span>
               </div>
 
-              <h1 className="text-2xl sm:text-4xl lg:text-[42px] font-extrabold leading-[1.15] tracking-tight">
+              <h1 className="text-[19px] sm:text-4xl lg:text-[42px] font-extrabold leading-tight tracking-tight">
                 {currentHero.title}
               </h1>
 
-              <p className="text-sm sm:text-base text-slate-200/95 max-w-2xl leading-relaxed">
+              {/* Deskripsi & slogan disembunyikan di HP — bukan informasi
+                  yang dicari pembeli saat pertama membuka toko. */}
+              <p className="hidden sm:block text-sm sm:text-base text-slate-200/95 max-w-2xl leading-relaxed">
                 {currentHero.description}
               </p>
 
-              <div className="flex items-center gap-2 text-xs sm:text-sm italic text-amberbrand-200 font-medium">
+              <div className="hidden sm:flex items-center gap-2 text-xs sm:text-sm italic text-amberbrand-200 font-medium">
                 <span>✦ Slogan Resmi: “{currentHero.tagline}”</span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 pt-1">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 pt-0.5 sm:pt-1">
                 <Link
                   to={currentHero.ctaPrimary.to}
-                  className="px-6 py-3.5 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 text-navy-950 font-extrabold text-sm inline-flex items-center gap-2 shadow-lg transition-all"
+                  className="px-3.5 py-2 sm:px-6 sm:py-3.5 rounded-lg sm:rounded-xl bg-amberbrand-400 active:bg-amberbrand-500 text-navy-950 font-extrabold text-xs sm:text-sm inline-flex items-center gap-1.5 sm:gap-2 sm:shadow-lg transition-all"
                 >
                   <span>{currentHero.ctaPrimary.label}</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </Link>
                 <Link
                   to={currentHero.ctaSecondary.to}
-                  className="px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-sm transition-colors"
+                  className="px-3 py-2 sm:px-5 sm:py-3.5 rounded-lg sm:rounded-xl bg-white/10 active:bg-white/20 text-white border border-white/20 font-bold text-xs sm:text-sm transition-colors"
                 >
                   {currentHero.ctaSecondary.label}
                 </Link>
@@ -191,7 +199,7 @@ export const HomePage: React.FC = () => {
                     type="button"
                     onClick={() => setActiveSlide(idx)}
                     aria-label={`Slide ${idx + 1}`}
-                    className="p-1.5 -m-1.5"
+                    className="p-2.5 -m-2.5 flex items-center justify-center min-w-[32px] min-h-[32px]"
                   >
                     <span
                       className={`block h-2 rounded-full transition-all ${
@@ -205,34 +213,67 @@ export const HomePage: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Visual Showcase */}
+            {/*
+              Showcase kanan.
+              Di HP dipakai versi ringkas: SATU gambar kecil + nama & harga
+              dalam satu baris. Versi desktop (dua gambar besar + kartu
+              harga) memakan 250px vertikal sehingga hero membengkak dan
+              produk pertama terdorong jauh ke bawah.
+            */}
             <div className="lg:col-span-5 flex items-center justify-center">
               <div className="relative w-full max-w-md">
-                <div className="grid grid-cols-12 gap-3 items-center">
-                  <div className="col-span-7 rounded-2xl overflow-hidden border-2 border-white/25 shadow-2xl bg-navy-950 aspect-[4/4.8]">
-                    <img
-                      src={currentHero.featuredImage}
-                      alt={currentHero.highlightName}
-                      className="w-full h-full object-cover"
-                    />
+                {/* Versi HP */}
+                <Link
+                  to={currentHero.ctaPrimary.to}
+                  className="lg:hidden flex items-center gap-2.5 rounded-lg bg-white/10 border border-white/20 p-2 active:bg-white/20"
+                >
+                  <img
+                    src={currentHero.featuredImage}
+                    alt={currentHero.highlightName}
+                    className="w-11 h-11 rounded-md object-cover shrink-0"
+                  />
+                  <div className="min-w-0 text-left">
+                    <div className="text-[9px] uppercase tracking-wider text-amberbrand-300 font-bold">
+                      Produk Unggulan
+                    </div>
+                    <div className="text-[11px] font-bold text-white truncate">
+                      {currentHero.highlightName}
+                    </div>
+                    <div className="text-[12px] font-extrabold text-amberbrand-400 leading-tight">
+                      {currentHero.highlightPrice}
+                    </div>
                   </div>
-                  <div className="col-span-5 space-y-3">
-                    <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl bg-navy-950 aspect-square">
+                  <span className="ml-auto text-white/50 text-[10px] shrink-0">Lihat →</span>
+                </Link>
+
+                {/* Versi desktop */}
+                <div className="hidden lg:block">
+                  <div className="grid grid-cols-12 gap-3 items-center">
+                    <div className="col-span-7 rounded-2xl overflow-hidden border-2 border-white/25 shadow-2xl bg-navy-950 aspect-[4/4.8]">
                       <img
-                        src={currentHero.secondaryImage}
-                        alt="Koleksi Cilegon Enggih"
+                        src={currentHero.featuredImage}
+                        alt={currentHero.highlightName}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-3 text-left">
-                      <div className="text-[10px] uppercase tracking-wider text-amberbrand-300 font-bold">
-                        Produk Unggulan
+                    <div className="col-span-5 space-y-3">
+                      <div className="rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl bg-navy-950 aspect-square">
+                        <img
+                          src={currentHero.secondaryImage}
+                          alt="Koleksi Cilegon Enggih"
+                          className="w-full h-full object-cover"
+                        />
                       </div>
-                      <div className="text-xs font-bold text-white line-clamp-1 mt-0.5">
-                        {currentHero.highlightName}
-                      </div>
-                      <div className="text-sm font-extrabold text-amberbrand-400 mt-1">
-                        {currentHero.highlightPrice}
+                      <div className="rounded-2xl bg-white/12 backdrop-blur-md border border-white/20 p-3 text-left">
+                        <div className="text-[10px] uppercase tracking-wider text-amberbrand-300 font-bold">
+                          Produk Unggulan
+                        </div>
+                        <div className="text-xs font-bold text-white line-clamp-1 mt-0.5">
+                          {currentHero.highlightName}
+                        </div>
+                        <div className="text-sm font-extrabold text-amberbrand-400 mt-1">
+                          {currentHero.highlightPrice}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -243,9 +284,37 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* 2. VALUE PROPOSITION / KEUNGGULAN PRODUK (Requirement Section 5.2) */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/*
+        2. KEUNGGULAN PRODUK.
+        Di HP keempat kartu ini dijadikan satu baris horizontal yang bisa
+        digeser (bukan 4 kartu bertumpuk setinggi ±700px). Alasannya:
+        pengunjung HP ingin melihat PRODUK lebih dulu; keunggulan toko
+        cukup sekilas dan tetap terbaca.
+      */}
+      <section className="max-w-7xl mx-auto px-3 sm:px-6 mt-2.5 sm:mt-4">
+        <div className="lg:hidden -mx-3 px-3 flex gap-2 overflow-x-auto no-scrollbar">
+          {[
+            { icon: Award, title: 'Desain Eksklusif', accent: 'bg-navy-50 text-navy-800 border-navy-100' },
+            { icon: ShieldCheck, title: 'Material Premium', accent: 'bg-forest-50 text-forest-700 border-forest-100' },
+            { icon: Building2, title: 'Custom Logo', accent: 'bg-amberbrand-50 text-amberbrand-800 border-amberbrand-100' },
+            { icon: Zap, title: 'Kirim 1–2 Jam', accent: 'bg-forest-50 text-forest-700 border-forest-100' }
+          ].map((vp, idx) => {
+            const Icon = vp.icon;
+            return (
+              <div
+                key={idx}
+                className={`shrink-0 inline-flex items-center gap-1.5 pl-1.5 pr-2.5 py-1.5 rounded-lg border bg-white ${vp.accent}`}
+              >
+                <span className={`w-6 h-6 rounded-md border flex items-center justify-center ${vp.accent}`}>
+                  <Icon className="w-3.5 h-3.5" />
+                </span>
+                <span className="text-[11px] font-bold whitespace-nowrap">{vp.title}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="hidden lg:grid grid-cols-4 gap-4">
           {[
             {
               icon: Award,
@@ -276,7 +345,7 @@ export const HomePage: React.FC = () => {
             return (
               <div
                 key={idx}
-                className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-soft flex items-start gap-3.5 hover:border-forest-400 transition-colors"
+                className="bg-white rounded-xl p-4 border border-slate-200/80 flex items-start gap-3.5 hover:border-forest-400 transition-colors"
               >
                 <div
                   className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${vp.accent}`}
@@ -316,7 +385,42 @@ export const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+        {/*
+          Di HP kategori menjadi SATU baris chip yang bisa digeser.
+          Sebelumnya grid 2 kolom × 5 baris = 963px hanya untuk kategori,
+          mendorong produk pertama ke y=1752. Versi chip ini ±90px saja.
+          Di layar lebih besar tetap kartu bergambar.
+        */}
+        <div className="lg:hidden -mx-3 px-3 flex gap-2 overflow-x-auto no-scrollbar">
+          {categories.map((cat) => (
+            <Link
+              key={cat.slug}
+              to={cat.slug === 'semua' ? '/katalog' : `/katalog?kategori=${cat.slug}`}
+              className="shrink-0 flex flex-col items-center gap-1 w-[62px]"
+            >
+              <img
+                src={
+                  cat.slug === 'apparel-tas'
+                    ? '/products/tote-bag-kanvas.png'
+                    : cat.slug === 'drinkware'
+                      ? '/products/tumbler-sporty.png'
+                      : cat.slug === 'aksesoris-dekorasi'
+                        ? '/products/gantungan-kunci-3d.png'
+                        : cat.slug === 'perlengkapan-cetak'
+                          ? '/products/payung-geometris.png'
+                          : '/products/lampu-tidur-3d.png'
+                }
+                alt={cat.label}
+                className="w-12 h-12 rounded-full object-cover border border-slate-200"
+              />
+              <span className="text-[10px] font-semibold text-slate-600 text-center leading-tight line-clamp-2">
+                {cat.label}
+              </span>
+            </Link>
+          ))}
+        </div>
+
+        <div className="hidden lg:grid grid-cols-5 gap-3.5">
           {[
             {
               slug: 'apparel-tas',
@@ -377,8 +481,34 @@ export const HomePage: React.FC = () => {
           ))}
         </div>
 
-        {/* Claimable Store Vouchers Strip */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+        {/*
+          Voucher: di HP menjadi baris horizontal yang bisa digeser.
+          Sebelumnya 3 kartu penuh bertumpuk (±300px) sebelum produk
+          pertama. Di desktop tetap 3 kolom seperti semula.
+        */}
+        <div className="lg:hidden -mx-3 px-3 flex gap-2 overflow-x-auto no-scrollbar pt-1">
+          {vouchers.map((v) => (
+            <button
+              key={v.code}
+              type="button"
+              onClick={() => {
+                navigator.clipboard?.writeText(v.code);
+                pushToast(`Kode Voucher ${v.code} Disalin!`, v.description, 'success');
+              }}
+              className="shrink-0 inline-flex items-center gap-1.5 pl-2 pr-2.5 py-1.5 rounded-lg border border-forest-200 bg-forest-50 active:bg-forest-100"
+            >
+              <Ticket className="w-3.5 h-3.5 text-forest-600 shrink-0" />
+              <span className="text-[10.5px] font-extrabold text-forest-700 whitespace-nowrap">
+                {v.code}
+              </span>
+              <span className="text-[10px] text-slate-500 whitespace-nowrap">
+                min {formatRupiah(v.minPurchase)}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <div className="hidden lg:grid grid-cols-3 gap-3 pt-2">
           {vouchers.map((v) => (
             <div
               key={v.code}
@@ -444,7 +574,7 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-4">
             {bestSellers.map((prod) => (
               <ProductCard key={prod.id} product={prod} />
             ))}
@@ -475,7 +605,8 @@ export const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-5">
+        {/* 2 kolom di HP agar produk cepat terlihat, bukan 1 kartu raksasa per layar */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-4">
           {singleProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
