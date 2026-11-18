@@ -136,7 +136,13 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+    <>
+      {/*
+        Bar pengumuman & ribbon promo sengaja DILETAKKAN DI LUAR <header>.
+        Sebelumnya keduanya ikut menempel (sticky) dan memakan 72px dari
+        780px layar HP — hampir 10% layar hilang permanen di setiap halaman.
+        Sekarang keduanya tergulir bersama konten, header tinggal 1 baris.
+      */}
       {settings.announcement && (
         <div className="bg-forest-600 text-white text-[11px]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-center gap-1.5 text-center">
@@ -145,8 +151,8 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
-      {/* Top Utility Bar (Tokopedia-inspired Official Store Ribbon) */}
-      <div className="bg-navy-800 text-slate-100 text-xs">
+      {/* Top Utility Bar — di HP disembunyikan karena isinya sudah ada di menu HP */}
+      <div className="hidden sm:block bg-navy-800 text-slate-100 text-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar whitespace-nowrap">
             <span className="inline-flex items-center gap-1.5 font-medium text-amberbrand-300">
@@ -203,16 +209,19 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
       {/* Main Tokopedia-style Search & Action Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3">
-        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 lg:gap-6">
+        <div
+          className={`flex flex-wrap items-center justify-between gap-1.5 sm:gap-3 lg:gap-6`}
+        >
           {/* Logo — di HP dikecilkan agar pencarian & keranjang tetap muat */}
           <Link to="/" className="shrink-0 min-w-0">
             <span className="hidden sm:inline-flex">
               <BrandLogo variant="dark" size="md" />
             </span>
             <span className="sm:hidden inline-flex">
-              <BrandLogo variant="dark" size="sm" showTagline={false} />
+              <BrandLogo variant="dark" size="sm" showTagline={false} compact />
             </span>
           </Link>
 
@@ -223,10 +232,10 @@ export const Navbar: React.FC = () => {
               setMobileSearchOpen((v) => !v);
               setTimeout(() => mobileSearchRef.current?.focus(), 50);
             }}
-            className="sm:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
+            className="sm:hidden p-1.5 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
             aria-label="Cari produk"
           >
-            <Search className="w-5 h-5" />
+            <Search className="w-[18px] h-[18px]" />
           </button>
 
           {/* Category Dropdown Trigger (Desktop) */}
@@ -381,7 +390,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Right Actions: Wishlist, Cart, WhatsApp Quick Chat, Mobile Menu */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 shrink-0">
             <Link
               to="/katalog?wishlist=1"
               title="Produk Favorit / Wishlist"
@@ -399,9 +408,9 @@ export const Navbar: React.FC = () => {
               type="button"
               onClick={() => setIsCartOpen(true)}
               aria-label="Buka Keranjang Belanja"
-              className="relative inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-forest-50 hover:bg-forest-100 text-forest-700 border border-forest-200/80 transition-colors"
+              className="relative inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-2 rounded-xl bg-forest-50 hover:bg-forest-100 text-forest-700 border border-forest-200/80 transition-colors"
             >
-              <ShoppingCart className="w-5 h-5" />
+              <ShoppingCart className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
               <span className="hidden xl:inline text-sm font-semibold">
                 Keranjang
               </span>
@@ -514,6 +523,8 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Mobile Drawer Menu */}
+      </header>
+
       {mobileMenuOpen && (
         <div
           ref={mobileMenuRef}
@@ -612,6 +623,6 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 };

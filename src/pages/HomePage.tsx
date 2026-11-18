@@ -181,18 +181,26 @@ export const HomePage: React.FC = () => {
 
               {/* Slide Indicators */}
               <div className="flex items-center gap-2 pt-2">
+                {/*
+                  Titik navigasi slider: visual tetap kecil (8px), tetapi
+                  area sentuh diperbesar jadi 32x32px agar mudah ditekan jari.
+                */}
                 {HERO_SLIDES.map((s, idx) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setActiveSlide(idx)}
                     aria-label={`Slide ${idx + 1}`}
-                    className={`h-2 rounded-full transition-all ${
-                      activeSlide === idx
-                        ? 'w-8 bg-amberbrand-400'
-                        : 'w-2 bg-white/35 hover:bg-white/60'
-                    }`}
-                  />
+                    className="p-1.5 -m-1.5"
+                  >
+                    <span
+                      className={`block h-2 rounded-full transition-all ${
+                        activeSlide === idx
+                          ? 'w-8 bg-amberbrand-400'
+                          : 'w-2 bg-white/35 hover:bg-white/60'
+                      }`}
+                    />
+                  </button>
                 ))}
               </div>
             </div>
@@ -344,18 +352,24 @@ export const HomePage: React.FC = () => {
             <Link
               key={cat.slug}
               to={`/katalog?kategori=${cat.slug}`}
-              className="group bg-white rounded-2xl p-3 border border-slate-200/80 hover:border-forest-500 shadow-card hover:shadow-card-hover transition-all flex items-center gap-3"
+              className="group bg-white rounded-2xl p-2.5 sm:p-3 border border-slate-200/80 hover:border-forest-500 shadow-card hover:shadow-card-hover transition-all flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3"
             >
+              {/*
+                Di HP kartu jadi vertikal (gambar di atas, teks di bawah).
+                Sebelumnya horizontal: gambar 56px + teks di sisa ~90px
+                membuat "Apparel & Tas", "Drinkware", "Aksesoris & 3D" dan
+                lainnya terpotong jadi "Appare…", "Drinkw…", "Akseso…".
+              */}
               <img
                 src={cat.img}
                 alt={cat.title}
-                className="w-14 h-14 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
+                className="w-full h-24 sm:w-14 sm:h-14 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
               />
-              <div className="min-w-0">
-                <div className="text-xs sm:text-sm font-extrabold text-navy-800 group-hover:text-forest-700 truncate">
+              <div className="min-w-0 w-full">
+                <div className="text-xs sm:text-sm font-extrabold text-navy-800 group-hover:text-forest-700 leading-snug sm:truncate">
                   {cat.title}
                 </div>
-                <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                <div className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-2 sm:line-clamp-1 mt-0.5 leading-snug">
                   {cat.sub}
                 </div>
               </div>
@@ -368,17 +382,18 @@ export const HomePage: React.FC = () => {
           {vouchers.map((v) => (
             <div
               key={v.code}
-              className="bg-gradient-to-r from-forest-50 via-white to-amberbrand-50/50 rounded-2xl border border-forest-200/80 p-3.5 flex items-center justify-between gap-3"
+              className="bg-gradient-to-r from-forest-50 via-white to-amberbrand-50/50 rounded-2xl border border-forest-200/80 p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3"
             >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-forest-600 text-white flex items-center justify-center shrink-0">
-                  <Ticket className="w-5 h-5" />
+              <div className="flex items-start sm:items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-forest-600 text-white flex items-center justify-center shrink-0">
+                  <Ticket className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-extrabold text-navy-800 truncate">
+                  {/* Judul voucher dibiarkan 2 baris di HP, bukan dipotong "…" */}
+                  <div className="text-xs font-extrabold text-navy-800 leading-snug line-clamp-2 sm:truncate">
                     {v.title}
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">
+                  <div className="text-[11px] text-slate-500 leading-snug mt-0.5">
                     Kode: <strong className="text-forest-700">{v.code}</strong> • Min.{' '}
                     {formatRupiah(v.minPurchase)}
                   </div>
@@ -390,7 +405,7 @@ export const HomePage: React.FC = () => {
                   navigator.clipboard?.writeText(v.code);
                   pushToast(`Kode Voucher ${v.code} Disalin!`, v.description, 'success');
                 }}
-                className="px-3 py-1.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold shrink-0 transition-colors"
+                className="w-full sm:w-auto px-3 py-2 sm:py-1.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold shrink-0 transition-colors"
               >
                 Klaim
               </button>
@@ -644,8 +659,11 @@ export const HomePage: React.FC = () => {
                   <div className="text-xs sm:text-sm font-bold text-navy-800 truncate">
                     {t.name}
                   </div>
-                  <div className="text-[11px] text-slate-500 truncate">{t.role}</div>
-                  <div className="text-[10.5px] font-semibold text-forest-700 truncate">
+                  {/* Dibiarkan 2 baris agar jabatan & produk tidak terpotong "…" */}
+                  <div className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                    {t.role}
+                  </div>
+                  <div className="text-[10.5px] font-semibold text-forest-700 leading-snug line-clamp-2 mt-0.5">
                     Membeli: {t.product}
                   </div>
                 </div>

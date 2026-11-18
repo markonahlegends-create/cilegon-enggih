@@ -444,7 +444,7 @@ export const CheckoutModal: React.FC = () => {
                     Alamat Lengkap & Patokan Pengiriman *
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     required
                     value={addressDetail}
                     onChange={(e) => setAddressDetail(e.target.value)}
