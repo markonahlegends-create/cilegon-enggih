@@ -22,6 +22,7 @@ import {
 import { BrandLogo } from './BrandLogo';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
 import { useStore } from '../context/StoreContext';
+import { useBackClose } from '../hooks/useBackClose';
 
 const QUICK_ZONES = [
   { id: 'cilegon-pusat', label: 'Kota Cilegon (Instan 1-2 Jam)' },
@@ -50,6 +51,24 @@ export const Navbar: React.FC = () => {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showZoneMenu, setShowZoneMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  /*
+   * Tombol kembali HP menutup menu dropdown, bukan meninggalkan halaman.
+   * Tanpa ini, menekan "kembali" saat menu terbuka malah pindah halaman
+   * dan menu tetap menutupi layar — persis keluhan pada popup checkout.
+   */
+  useBackClose(mobileMenuOpen, () => setMobileMenuOpen(false));
+
+  /*
+   * Tandai <body> selama menu terbuka. Dipakai tombol WhatsApp melayang
+   * untuk menyembunyikan diri agar tidak menembus panel menu.
+   */
+  useEffect(() => {
+    document.body.dataset.mobileMenuOpen = mobileMenuOpen ? '1' : '0';
+    return () => {
+      delete document.body.dataset.mobileMenuOpen;
+    };
+  }, [mobileMenuOpen]);
   // Pencarian di HP disimpan di balik tombol supaya header tidak sesak.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
@@ -209,7 +228,7 @@ export const Navbar: React.FC = () => {
         </div>
       </div>
 
-      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 shadow-sm">
       {/* Main Tokopedia-style Search & Action Header */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3">
         <div
@@ -525,10 +544,23 @@ export const Navbar: React.FC = () => {
       {/* Mobile Drawer Menu */}
       </header>
 
+      {/*
+        Menu HP kini MELAYANG tepat di bawah header sticky, bukan tersusun
+        dalam aliran dokumen. Sebelumnya menu ini `position: static`, jadi
+        ketika halaman sudah digulir ke bawah, menu terbuka jauh di luar
+        layar (tombol berubah jadi X tetapi tidak ada menu yang terlihat).
+        Ditambah bilah navigasi bawah sebagai batas bawah agar menu tidak
+        tertutup tab.
+      */}
       {mobileMenuOpen && (
         <div
           ref={mobileMenuRef}
-          className="lg:hidden bg-white border-t border-slate-200 shadow-lg max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain"
+          className="lg:hidden fixed left-0 right-0 z-40 bg-white border-t border-slate-200 shadow-xl overflow-y-auto overscroll-contain"
+          style={{
+            top: '64px',
+            maxHeight: 'calc(100dvh - 64px - 52px - env(safe-area-inset-bottom, 0px))',
+            paddingBottom: 'env(safe-area-inset-bottom, 0px)'
+          }}
         >
           <div className="px-4 pt-3 pb-4 space-y-3 pb-safe">
             {/*
@@ -601,6 +633,20 @@ export const Navbar: React.FC = () => {
                 ))}
               </div>
             </details>
+
+            {/*
+              Pintu masuk admin. WAJIB ada di menu HP karena aplikasi
+              dipasang sebagai PWA tanpa address bar — pemilik toko tidak
+              punya cara lain mengetik /admin. Sengaja diletakkan paling
+              bawah dan berlabel kecil agar tidak menarik perhatian
+              pengunjung biasa; halaman /admin tetap terlindungi password.
+            */}
+            <Link
+              to="/admin"
+              className="flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold text-slate-500 active:text-navy-700"
+            >
+              <Lock className="w-3 h-3" /> Masuk Admin
+            </Link>
 
             {/* Kontak langsung — paling penting di HP, jadi selalu terlihat */}
             <a

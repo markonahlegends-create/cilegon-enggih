@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
+import { useBackClose } from '../hooks/useBackClose';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -26,6 +27,18 @@ export const CartDrawer: React.FC = () => {
     cartSubtotal,
     cartWeightGrams
   } = useStore();
+
+  /*
+   * Tombol kembali HP menutup keranjang, bukan meninggalkan halaman.
+   * Bila checkout terbuka, CheckoutModal berada di atas keranjang sehingga
+   * tombol kembali menutup checkout lebih dulu (lihat useBackClose).
+   * Menutup keranjang sekaligus melepas checkout agar tidak tersisa popup
+   * kosong di layar.
+   */
+  useBackClose(isCartOpen, () => {
+    setIsCheckoutOpen(false);
+    setIsCartOpen(false);
+  });
 
   /**
    * Kunci gulir latar belakang selama keranjang terbuka.
@@ -70,7 +83,7 @@ export const CartDrawer: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[60] flex justify-end">
       {/* Backdrop */}
       <div
         onClick={() => setIsCartOpen(false)}
