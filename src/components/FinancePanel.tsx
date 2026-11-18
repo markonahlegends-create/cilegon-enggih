@@ -411,8 +411,9 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
             <div className="text-sm font-extrabold text-navy-800">Laporan Laba Rugi</div>
             <div className="text-[10.5px] text-slate-500">Periode {periodLabel}</div>
           </div>
-          <table className="w-full text-[11.5px]">
-            <tbody>
+          <div className="overflow-x-auto -mx-px">
+            <table className="w-full min-w-[320px] text-[11.5px]">
+              <tbody>
               <tr className="bg-slate-50">
                 <td colSpan={2} className="px-4 py-1.5 font-extrabold text-slate-700 uppercase text-[10px]">
                   Pendapatan
@@ -501,6 +502,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
               </tr>
             </tbody>
           </table>
+            </div>
           <div className="px-4 py-2.5 border-t border-slate-100 text-[10px] text-slate-400 leading-relaxed">
             Catatan: hanya order berstatus <strong>LUNAS</strong> yang dihitung sebagai pendapatan.
             HPP dibekukan saat pesanan dibuat, sehingga perubahan HPP di kemudian hari tidak
@@ -765,8 +767,9 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
             <div className="px-4 py-2.5 border-b border-slate-100 text-xs font-extrabold text-navy-800">
               Ongkos Kirim per Ekspedisi
             </div>
-            <table className="w-full text-[11px]">
-              <thead className="bg-slate-50 text-slate-600">
+<div className="overflow-x-auto">
+              <table className="w-full min-w-[320px] text-[11px]">
+                <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="text-left px-3 py-1.5 font-bold">Kurir</th>
                   <th className="text-right px-2 py-1.5 font-bold">Order</th>
@@ -792,6 +795,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden lg:col-span-2">
@@ -1018,7 +1022,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
       {/* ---------- KAS & BANK ---------- */}
       {tab === 'kas' && cash && (
         <div className="space-y-2">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <StatCard label="Uang Masuk" value={formatRupiah(cash.totalInflow)} tone="good" />
             <StatCard label="Uang Keluar" value={formatRupiah(cash.totalOutflow)} tone="bad" />
             <StatCard
@@ -1028,7 +1032,8 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
             />
           </div>
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <table className="w-full text-[11px]">
+            <div className="overflow-x-auto">
+            <table className="w-full min-w-[340px] text-[11px]">
               <thead className="bg-slate-50 text-slate-600">
                 <tr>
                   <th className="text-left px-3 py-2 font-bold">Rekening / Metode</th>
@@ -1061,6 +1066,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                 )}
               </tbody>
             </table>
+            </div>
           </div>
           <p className="text-[10.5px] text-slate-500 px-1">
             “Masuk” = order berstatus LUNAS. “Keluar” = catatan pengeluaran. Ini ringkasan arus kas

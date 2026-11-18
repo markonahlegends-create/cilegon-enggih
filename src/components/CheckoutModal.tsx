@@ -125,6 +125,26 @@ export const CheckoutModal: React.FC = () => {
   const [showInvoice, setShowInvoice] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  /**
+   * Kunci gulir halaman di belakang modal.
+   * Di HP, tanpa ini latar belakang ikut bergulir saat pembeli menggeser
+   * form checkout — sangat mengganggu dan sering membuat salah tekan.
+   */
+  useEffect(() => {
+    if (!isCheckoutOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Tombol back HP / Escape menutup modal, bukan meninggalkan halaman.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsCheckoutOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [isCheckoutOpen, setIsCheckoutOpen]);
+
   useEffect(() => {
     if (isCheckoutOpen) {
       setStep('form');
@@ -352,15 +372,20 @@ export const CheckoutModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto print:static print:block print:overflow-visible print:p-0">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 overflow-y-auto print:static print:block print:overflow-visible print:p-0">
       <div
         onClick={() => setIsCheckoutOpen(false)}
         className="fixed inset-0 bg-navy-950/60 backdrop-blur-xs print:hidden"
       />
 
-      <div className="relative z-10 w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col print:hidden">
+      {/*
+        HP: tampil sebagai lembar bawah (bottom sheet) yang menempel ke bawah
+        layar, membulat di sudut atas. Ketukan Latar belakang menutup modal.
+        Desktop: tetap kartu tengah seperti sebelumnya.
+      */}
+      <div className="relative z-10 w-full max-w-3xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col print:hidden">
         {/* Header */}
-        <div className="px-6 py-4 bg-navy-800 text-white flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-navy-800 text-white flex items-start justify-between gap-2">
           <div>
             <h3 className="text-base sm:text-lg font-extrabold">
               {step === 'form' && 'Checkout Pesanan — Cilegon Enggih'}
@@ -857,7 +882,7 @@ export const CheckoutModal: React.FC = () => {
 
         {/* Sticky Summary Footer on Step Form */}
         {step === 'form' && (
-          <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 pb-safe">
             <div className="text-xs sm:text-sm space-y-0.5 w-full sm:w-auto">
               <div className="text-slate-500">
                 Produk {formatRupiah(cartSubtotal)} + Ongkir {formatRupiah(selectedCourier.cost)}

@@ -155,9 +155,14 @@ export const InsightsPanel: React.FC = () => {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
+      // iOS Safari mengabaikan click() pada <a> yang belum masuk DOM.
+      a.style.display = 'none';
+      document.body.appendChild(a);
       a.download = `insight-cilegon-enggih-${days}hari.csv`;
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      // Beri jeda: Safari butuh waktu memulai unduhan sebelum URL dicabut.
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch {
       setError('Gagal mengunduh CSV.');
     }
@@ -200,12 +205,12 @@ export const InsightsPanel: React.FC = () => {
   return (
     <div className="space-y-4">
       {/* Kontrol periode */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
         {[7, 30, 90].map((d) => (
           <button
             key={d}
             onClick={() => setDays(d as 7 | 30 | 90)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-extrabold border ${
+            className={`px-3 py-2 sm:py-1.5 rounded-lg text-xs font-extrabold border ${
               days === d
                 ? 'bg-forest-600 text-white border-forest-600'
                 : 'bg-white text-slate-600 border-slate-200'
@@ -216,17 +221,17 @@ export const InsightsPanel: React.FC = () => {
         ))}
         <button
           onClick={() => load(days)}
-          className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 inline-flex items-center gap-1"
+          className="px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 inline-flex items-center gap-1"
         >
           <RefreshCw className="w-3 h-3" /> Segarkan
         </button>
         <button
           onClick={download}
-          className="px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 inline-flex items-center gap-1"
+          className="px-3 py-2 sm:py-1.5 rounded-lg text-xs font-bold border border-slate-200 bg-white text-slate-600 inline-flex items-center gap-1"
         >
           <Download className="w-3 h-3" /> Unduh CSV
         </button>
-        <span className="text-[11px] text-slate-400 ml-auto">
+        <span className="w-full sm:w-auto sm:ml-auto text-[11px] text-slate-400">
           {data.period.from} → {data.period.to}
         </span>
       </div>
@@ -314,7 +319,7 @@ export const InsightsPanel: React.FC = () => {
           <p className="text-xs text-slate-500">Belum ada data produk pada periode ini.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
+            <table className="w-full min-w-[520px] text-[11px]">
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
                   <th className="py-1.5 pr-2 font-bold">Produk</th>
@@ -340,6 +345,9 @@ export const InsightsPanel: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            <p className="sm:hidden text-[10px] text-slate-400 text-center mt-1">
+              Geser tabel untuk melihat semua kolom →
+            </p>
           </div>
         )}
       </Card>
@@ -490,20 +498,20 @@ export const InsightsPanel: React.FC = () => {
                 <div className="inline-block min-w-full">
                   {data.heatmap.grid.map((row: number[], d: number) => (
                     <div key={d} className="flex items-center gap-[2px] mb-[2px]">
-                      <span className="w-12 shrink-0 text-[9px] font-bold text-slate-500">
+                      <span className="w-7 sm:w-12 shrink-0 text-[8px] sm:text-[9px] font-bold text-slate-500">
                         {data.heatmap.weekdays[d].slice(0, 3)}
                       </span>
                       {row.map((v: number, h: number) => (
                         <div
                           key={h}
-                          className={`flex-1 h-3 rounded-[2px] ${heatColor(v, data.heatmap.max)}`}
+                          className={`flex-1 h-3.5 sm:h-3 rounded-[2px] ${heatColor(v, data.heatmap.max)}`}
                           title={`${data.heatmap.weekdays[d]} ${String(h).padStart(2, '0')}:00 — ${v} kunjungan`}
                         />
                       ))}
                     </div>
                   ))}
                   <div className="flex items-center gap-[2px] mt-0.5">
-                    <span className="w-12 shrink-0" />
+                    <span className="w-7 sm:w-12 shrink-0" />
                     {Array.from({ length: 24 }, (_, h) => (
                       <span key={h} className="flex-1 text-center text-[8px] text-slate-400">
                         {h % 6 === 0 ? h : ''}
@@ -512,6 +520,9 @@ export const InsightsPanel: React.FC = () => {
                   </div>
                 </div>
               </div>
+              <p className="sm:hidden text-[10px] text-slate-400 mt-1">
+                Geser peta untuk melihat jam lainnya →
+              </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {data.heatmap.peakSlots.map((p: any) => (
                   <span
@@ -599,7 +610,7 @@ export const InsightsPanel: React.FC = () => {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-[11px]">
+            <table className="w-full min-w-[480px] text-[11px]">
               <thead>
                 <tr className="text-left text-slate-500 border-b border-slate-200">
                   <th className="py-1.5 pr-2 font-bold">Varian</th>
@@ -628,6 +639,9 @@ export const InsightsPanel: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            <p className="sm:hidden text-[10px] text-slate-400 text-center mt-1">
+              Geser tabel untuk melihat semua kolom →
+            </p>
           </div>
         )}
       </Card>

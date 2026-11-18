@@ -26,6 +26,8 @@ export const CatalogPage: React.FC = () => {
   const wishlistOnly = searchParams.get('wishlist') === '1';
 
   const [sortBy, setSortBy] = useState<SortMode>('terlaris');
+  // Di HP filter memakan 1 layar penuh sebelum produk terlihat → dilipat.
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
   const [priceRange, setPriceRange] = useState<'all' | 'under50' | '50to120' | 'above120'>('all');
 
   const setCategory = (slug: CategorySlug) => {
@@ -101,8 +103,10 @@ export const CatalogPage: React.FC = () => {
 
       {/* Main Layout: Sidebar Filter + Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Sidebar Filter */}
-        <aside className="lg:col-span-3 space-y-5">
+        {/* Left Sidebar Filter — di HP dilipat agar produk langsung terlihat */}
+        <aside
+          className={`lg:col-span-3 lg:block ${showFiltersMobile ? 'block' : 'hidden'}`}
+        >
           <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-soft space-y-5 lg:sticky lg:top-32">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2 text-sm font-extrabold text-navy-800">
@@ -205,6 +209,22 @@ export const CatalogPage: React.FC = () => {
 
         {/* Right Product Grid */}
         <div className="lg:col-span-9 space-y-5">
+          {/* Tombol Filter khusus HP */}
+          <button
+            type="button"
+            onClick={() => setShowFiltersMobile((v) => !v)}
+            className="lg:hidden w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-soft text-sm font-bold text-navy-800"
+            aria-expanded={showFiltersMobile}
+          >
+            <span className="flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-forest-600" />
+              {showFiltersMobile ? 'Tutup Filter' : 'Filter & Urutkan Produk'}
+            </span>
+            <span className="text-[11px] font-semibold text-slate-500">
+              {filteredProducts.length} produk
+            </span>
+          </button>
+
           {/* Top Sort Bar */}
           <div className="bg-white rounded-2xl border border-slate-200/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-soft">
             <div className="text-xs sm:text-sm text-slate-600">

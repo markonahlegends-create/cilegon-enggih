@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trackProductView } from '../lib/tracker';
 import {
@@ -49,6 +49,9 @@ export const ProductDetailPage: React.FC = () => {
   const [note, setNote] = useState('');
   const [activeTab, setActiveTab] = useState<'deskripsi' | 'spesifikasi' | 'ulasan'>('deskripsi');
   const [showSizeChartModal, setShowSizeChartModal] = useState(false);
+  // Bilah beli melayang (HP): muncul setelah panel tombol desktop terlewat.
+  const [showMobileBuyBar, setShowMobileBuyBar] = useState(false);
+  const desktopBuyRef = useRef<HTMLDivElement>(null);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -65,6 +68,22 @@ export const ProductDetailPage: React.FC = () => {
       variantLabel: product.variants?.[0]?.label
     });
   }, [product]);
+
+  /**
+   * Bilah beli melayang untuk HP.
+   * Muncul hanya setelah panel tombol beli (versi desktop) terlewat ke atas,
+   * supaya pembeli di HP tidak perlu menggulir jauh ke bawah untuk membeli.
+   */
+  useEffect(() => {
+    const el = desktopBuyRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return undefined;
+    const observer = new IntersectionObserver(
+      ([entry]) => setShowMobileBuyBar(!entry.isIntersecting),
+      { rootMargin: '-72px 0px 0px 0px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [product?.id]);
 
   const gallery = product.galleryImages?.length
     ? product.galleryImages
@@ -111,7 +130,7 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-12">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 lg:pb-8 space-y-12">
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto whitespace-nowrap">
         <Link to="/" className="hover:text-forest-600 font-medium">
@@ -378,7 +397,7 @@ export const ProductDetailPage: React.FC = () => {
 
           {/* Tabs: Deskripsi, Spesifikasi Teknis, Ulasan */}
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="grid grid-cols-3 border-b border-slate-200 text-xs sm:text-sm font-bold">
+            <div className="flex overflow-x-auto no-scrollbar border-b border-slate-200 text-xs sm:text-sm font-bold">
               {[
                 { id: 'deskripsi', label: 'Deskripsi' },
                 { id: 'spesifikasi', label: 'Rincian Spesifikasi' },
@@ -388,7 +407,7 @@ export const ProductDetailPage: React.FC = () => {
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTab(t.id as any)}
-                  className={`py-3 px-2 border-b-2 transition-colors ${
+                  className={`shrink-0 whitespace-nowrap py-3 px-3.5 sm:px-4 border-b-2 transition-colors ${
                     activeTab === t.id
                       ? 'border-forest-600 text-forest-700 bg-forest-50/40'
                       : 'border-transparent text-slate-500 hover:text-slate-800'
@@ -459,7 +478,7 @@ export const ProductDetailPage: React.FC = () => {
         </div>
 
         {/* Column 3: Tokopedia-style Sticky Atur Jumlah & Tombol Checkout Ganda */}
-        <div className="lg:col-span-3 lg:sticky lg:top-32">
+        <div ref={desktopBuyRef} className="lg:col-span-3 lg:sticky lg:top-32">
           <div className="bg-white rounded-3xl border border-slate-200/90 shadow-card-hover p-5 space-y-4">
             <h3 className="text-sm font-extrabold text-navy-800">
               Atur Jumlah & Catatan
@@ -700,7 +719,8 @@ export const ProductDetailPage: React.FC = () => {
             <p className="text-xs text-slate-600">
               Potongan <strong>Regular Fit Unisex</strong> berbahan 100% Cotton Combed 24s yang sejuk dan tidak menyusut setelah dicuci.
             </p>
-            <table className="w-full text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+            <div className="-mx-1 overflow-x-auto">
+            <table className="w-full min-w-[520px] text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
               <thead className="bg-navy-800 text-white">
                 <tr>
                   <th className="py-2.5 px-3">Size</th>
@@ -722,6 +742,10 @@ export const ProductDetailPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
+            <p className="sm:hidden text-[10px] text-slate-400 text-center mt-1">
+              Geser tabel untuk melihat semua ukuran →
+            </p>
+            </div>
           </div>
         </div>
       )}
@@ -774,6 +798,46 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/*
+        Bilah beli melayang — HANYA di HP (lg:hidden).
+        Tujuan: pembeli tidak perlu menggulir sejauh isi deskripsi & ulasan
+        untuk menemukan tombol beli. Padding bawah mengikuti safe-area agar
+        tidak tertutup gesture bar iPhone/Android.
+      */}
+      <div
+        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] px-3 pt-2.5 pb-2.5 pb-safe transition-transform duration-200 ${
+          showMobileBuyBar && !showSizeChartModal && lightboxIndex === null
+            ? 'translate-y-0'
+            : 'translate-y-full'
+        }`}
+      >
+        <div className="flex items-center gap-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] text-slate-500 truncate">
+              {selectedVariant?.label || product.shortName}
+            </p>
+            <p className="text-base font-extrabold text-navy-800 leading-tight truncate">
+              {formatRupiah(subtotal)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => addToCart(product, qty, selectedVariant, note)}
+            aria-label="Tambah ke keranjang"
+            className="shrink-0 p-3 rounded-xl border border-amberbrand-400 bg-amberbrand-50 text-amberbrand-700 active:bg-amberbrand-100"
+          >
+            <ShoppingCart className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleBuyNowDirect}
+            className="shrink-0 px-4 py-3 rounded-xl bg-amberbrand-400 active:bg-amberbrand-500 text-navy-950 font-extrabold text-xs inline-flex items-center gap-1.5"
+          >
+            <CreditCard className="w-4 h-4" /> Beli Sekarang
+          </button>
+        </div>
+      </div>
 
     </div>
   );

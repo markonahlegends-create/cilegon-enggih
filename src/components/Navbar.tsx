@@ -50,10 +50,14 @@ export const Navbar: React.FC = () => {
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [showZoneMenu, setShowZoneMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Pencarian di HP disimpan di balik tombol supaya header tidak sesak.
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const navigate = useNavigate();
   const location = useLocation();
   const searchRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -62,14 +66,46 @@ export const Navbar: React.FC = () => {
   }, [location.pathname, location.search]);
 
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
         setShowSuggestions(false);
       }
+      // Menu HP menutup sendiri saat pengguna menyentuh area di luarnya.
+      if (
+        mobileMenuOpen &&
+        mobileMenuRef.current &&
+        !mobileMenuRef.current.contains(e.target as Node)
+      ) {
+        setMobileMenuOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    document.addEventListener('touchstart', handleClickOutside, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
+
+  /**
+   * Menu HP terbuka = kunci gulir halaman di belakangnya.
+   * Tanpa ini, di HP pengguna bisa menggulir konten di balik menu.
+   */
+  useEffect(() => {
+    if (!mobileMenuOpen) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Tombol "back" HP menutup menu, bukan meninggalkan halaman.
+    const closeOnEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previous;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [mobileMenuOpen]);
 
   const filteredSuggestions = searchQuery.trim()
     ? products.filter(
@@ -168,12 +204,30 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* Main Tokopedia-style Search & Action Header */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-        <div className="flex items-center justify-between gap-3 lg:gap-6">
-          {/* Logo */}
-          <Link to="/" className="shrink-0">
-            <BrandLogo variant="dark" size="md" />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 lg:gap-6">
+          {/* Logo — di HP dikecilkan agar pencarian & keranjang tetap muat */}
+          <Link to="/" className="shrink-0 min-w-0">
+            <span className="hidden sm:inline-flex">
+              <BrandLogo variant="dark" size="md" />
+            </span>
+            <span className="sm:hidden inline-flex">
+              <BrandLogo variant="dark" size="sm" showTagline={false} />
+            </span>
           </Link>
+
+          {/* Tombol pencarian khusus HP (membuka kolom pencarian penuh) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSearchOpen((v) => !v);
+              setTimeout(() => mobileSearchRef.current?.focus(), 50);
+            }}
+            className="sm:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 shrink-0"
+            aria-label="Cari produk"
+          >
+            <Search className="w-5 h-5" />
+          </button>
 
           {/* Category Dropdown Trigger (Desktop) */}
           <div className="relative hidden lg:block">
@@ -227,11 +281,17 @@ export const Navbar: React.FC = () => {
             )}
           </div>
 
-          {/* Search Bar with Live Autocomplete */}
-          <div ref={searchRef} className="flex-1 max-w-2xl relative">
+          {/* Search Bar with Live Autocomplete
+              Di HP: disembunyikan dari baris header, lalu ditampilkan penuh
+              di baris kedua saat tombol cari ditekan. */}
+          <div
+            ref={searchRef}
+            className={`${mobileSearchOpen ? 'flex' : 'hidden sm:flex'} order-last sm:order-none w-full sm:w-auto flex-1 basis-full sm:basis-auto max-w-none sm:max-w-2xl relative`}
+          >
             <form onSubmit={handleSearchSubmit} className="relative">
               <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
+                ref={mobileSearchRef}
                 type="text"
                 value={searchQuery}
                 onFocus={() => setShowSuggestions(true)}
@@ -455,38 +515,101 @@ export const Navbar: React.FC = () => {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-slate-200 px-4 py-4 space-y-3 shadow-lg">
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { to: '/', label: 'Beranda' },
-              { to: '/katalog', label: 'Katalog Produk' },
-              { to: '/katalog?kategori=paket-bundling', label: 'Paket Bundling' },
-              { to: '/custom-korporat', label: 'Custom & B2B' },
-              { to: '/tentang-kami', label: 'Tentang Kami' },
-              { to: '/cara-order-faq', label: 'Cara Order & FAQ' },
-              { to: '/lacak-pesanan', label: 'Lacak Pesanan' },
-              { to: '/katalog?wishlist=1', label: `Wishlist (${wishlist.length})` }
-            ].map((nav) => (
-              <Link
-                key={nav.to}
-                to={nav.to}
-                className="px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-forest-50 text-slate-800 hover:text-forest-700 text-xs font-semibold border border-slate-200/60"
-              >
-                {nav.label}
-              </Link>
-            ))}
+        <div
+          ref={mobileMenuRef}
+          className="lg:hidden bg-white border-t border-slate-200 shadow-lg max-h-[calc(100dvh-64px)] overflow-y-auto overscroll-contain"
+        >
+          <div className="px-4 pt-3 pb-4 space-y-3 pb-safe">
+            {/*
+              Menu HP dikelompokkan (akordeon), bukan 8 tombol sekaligus.
+              Alasannya: di layar 360px, 8 tombol 2 kolom membuat menu
+              setinggi hampir satu layar dan pengguna harus menggulir
+              hanya untuk menemukan "Lacak Pesanan".
+            */}
+            <div className="space-y-1.5">
+              {[
+                { to: '/', label: 'Beranda' },
+                { to: '/katalog', label: 'Katalog Produk' },
+                { to: '/cara-order-faq', label: 'Cara Order & FAQ' },
+                { to: '/lacak-pesanan', label: 'Lacak Pesanan' }
+              ].map((nav) => (
+                <Link
+                  key={nav.to}
+                  to={nav.to}
+                  className="flex items-center justify-between px-3.5 py-3 rounded-xl bg-slate-50 active:bg-forest-50 text-slate-800 text-sm font-semibold border border-slate-200/60"
+                >
+                  {nav.label}
+                  <ChevronDown className="w-4 h-4 -rotate-90 text-slate-400" />
+                </Link>
+              ))}
+            </div>
+
+            {/* Kategori produk */}
+            <details className="group rounded-xl border border-slate-200/60 bg-slate-50">
+              <summary className="flex items-center justify-between px-3.5 py-3 cursor-pointer list-none text-sm font-semibold text-slate-800">
+                <span className="flex items-center gap-2">
+                  <Grid className="w-4 h-4 text-forest-600" /> Kategori Produk
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="px-3.5 pb-3 grid grid-cols-2 gap-1.5">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.slug}
+                    to={cat.slug === 'semua' ? '/katalog' : `/katalog?kategori=${cat.slug}`}
+                    className="px-2.5 py-2 rounded-lg bg-white text-[11px] font-semibold text-slate-700 border border-slate-200/70 active:bg-forest-50"
+                  >
+                    {cat.label}
+                  </Link>
+                ))}
+              </div>
+            </details>
+
+            {/* Lainnya */}
+            <details className="group rounded-xl border border-slate-200/60 bg-slate-50">
+              <summary className="flex items-center justify-between px-3.5 py-3 cursor-pointer list-none text-sm font-semibold text-slate-800">
+                <span className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-forest-600" /> Lainnya
+                </span>
+                <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="px-3.5 pb-3 grid grid-cols-1 gap-1.5">
+                {[
+                  { to: '/katalog?kategori=paket-bundling', label: 'Paket Bundling & Hampers' },
+                  { to: '/custom-korporat', label: 'Custom & Korporat (B2B)' },
+                  { to: '/tentang-kami', label: 'Tentang Kami' },
+                  { to: '/katalog?wishlist=1', label: `Wishlist (${wishlist.length})` }
+                ].map((nav) => (
+                  <Link
+                    key={nav.to}
+                    to={nav.to}
+                    className="px-2.5 py-2 rounded-lg bg-white text-[11px] font-semibold text-slate-700 border border-slate-200/70 active:bg-forest-50"
+                  >
+                    {nav.label}
+                  </Link>
+                ))}
+              </div>
+            </details>
+
+            {/* Kontak langsung — paling penting di HP, jadi selalu terlihat */}
+            <a
+              href={buildWhatsAppUrl(
+                'Halo Admin Cilegon Enggih! Saya ingin konsultasi pemesanan merchandise.'
+              )}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amberbrand-400 active:bg-amberbrand-500 text-navy-950 font-extrabold text-sm"
+            >
+              <PhoneCall className="w-4 h-4" />
+              Pesan / Tanya via WhatsApp
+            </a>
+            <Link
+              to="/lacak-pesanan"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-navy-800 text-white font-bold text-xs"
+            >
+              <PackageSearch className="w-4 h-4" /> Lacak Pesanan
+            </Link>
           </div>
-          <a
-            href={buildWhatsAppUrl(
-              'Halo Admin Cilegon Enggih! Saya ingin konsultasi pemesanan merchandise.'
-            )}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-amberbrand-400 text-navy-950 font-bold text-sm"
-          >
-            <PhoneCall className="w-4 h-4" />
-            Pesan / Tanya via WhatsApp
-          </a>
         </div>
       )}
     </header>
