@@ -7,7 +7,13 @@ export const ToastContainer: React.FC = () => {
   const { toasts, dismissToast } = useStore();
 
   return (
-    <div className="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)] pointer-events-none">
+    /*
+      Di HP notifikasi diletakkan di ATAS, bukan bawah.
+      Sebelumnya di bawah dan menutupi tombol "Checkout" pada keranjang serta
+      kolom isian pada form checkout — pembeli bisa salah tekan atau tidak
+      melihat field yang sedang diisi.
+    */
+    <div className="fixed top-16 sm:top-auto sm:bottom-6 left-3 right-3 sm:right-auto sm:left-6 z-[60] flex flex-col gap-2 max-w-sm sm:w-[calc(100vw-3rem)] pointer-events-none">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -54,9 +60,17 @@ export const FloatingWhatsApp: React.FC = () => {
       target="_blank"
       rel="noreferrer"
       aria-label="Hubungi Admin via WhatsApp"
-      className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 px-4 py-3 rounded-full bg-forest-600 hover:bg-forest-700 text-white shadow-card-hover transition-transform hover:scale-105"
+      /*
+        Di HP tombol ini lebih kecil dan menempel ke tepi kanan bawah.
+        Sebelumnya 56px + jarak 20px sehingga menutupi tombol "Klaim" pada
+        kartu voucher dan tombol "+ Keranjang" pada kartu produk saat
+        halaman digulir. Sekarang ikut safe-area agar tidak tertutup
+        gesture bar.
+      */
+      className="fixed bottom-4 right-4 sm:bottom-5 sm:right-5 z-40 inline-flex items-center gap-2 p-3 sm:px-4 sm:py-3 rounded-full bg-forest-600 hover:bg-forest-700 text-white shadow-card-hover transition-transform hover:scale-105 mb-safe"
+      style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
-      <MessageCircle className="w-5 h-5" />
+      <MessageCircle className="w-5 h-5 shrink-0" />
       <span className="text-xs font-extrabold hidden sm:inline">
         Tanya / Pesan WA
       </span>

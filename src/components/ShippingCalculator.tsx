@@ -137,8 +137,14 @@ export const ShippingCalculator: React.FC<ShippingCalculatorProps> = ({
               }`}
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs font-bold text-slate-800 truncate">
+                {/*
+                  Nama kurir dibiarkan membungkus (bukan truncate) supaya
+                  "GrabExpress SameDay" tidak tampil sebagai "GrabExpress…".
+                  Lencana "Instan" diletakkan di baris berikut agar tidak
+                  berebut ruang dengan nama kurir di layar 360px.
+                */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-800 leading-snug">
                     {srv.courier}
                   </span>
                   {isInstant && (

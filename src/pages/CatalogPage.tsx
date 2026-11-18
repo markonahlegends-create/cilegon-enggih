@@ -237,16 +237,22 @@ export const CatalogPage: React.FC = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs">
-              <span className="font-semibold text-slate-500">Urutkan:</span>
+            <div className="flex items-center gap-2 text-xs w-full sm:w-auto min-w-0">
+              <span className="font-semibold text-slate-500 shrink-0">Urutkan:</span>
+              {/*
+                <select> ikut melebar mengikuti opsi TERPANJANG, bukan yang
+                sedang terpilih. Label "Harga Terendah (Rp 8.000+)" membuat
+                dropdown 303px di dalam kartu 294px → halaman melebar ke 404px
+                di layar 360px. Label opsi dipendekkan + lebar dibatasi.
+              */}
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortMode)}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-navy-800 outline-none focus:border-forest-600"
+                className="flex-1 sm:flex-none min-w-0 max-w-full px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-navy-800 outline-none focus:border-forest-600"
               >
                 <option value="terlaris">Paling Laris</option>
                 <option value="rating">Ulasan Tertinggi</option>
-                <option value="termurah">Harga Terendah ({formatRupiah(8000)}+)</option>
+                <option value="termurah">Harga Terendah</option>
                 <option value="termahal">Harga Tertinggi</option>
               </select>
             </div>

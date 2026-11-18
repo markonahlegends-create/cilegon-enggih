@@ -132,7 +132,12 @@ export const ProductDetailPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-24 lg:pb-8 space-y-12">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto whitespace-nowrap">
+      {/*
+        Breadcrumb: di HP nama produk panjang hanya menyisakan 164px sehingga
+        terpotong. Sisa teks dibiarkan menggulir horizontal, bukan dipotong —
+        pembeli tetap bisa membaca nama produk lengkap.
+      */}
+      <nav className="flex items-center gap-1.5 text-xs text-slate-500 overflow-x-auto no-scrollbar whitespace-nowrap w-full max-w-full min-w-0">
         <Link to="/" className="hover:text-forest-600 font-medium">
           Beranda
         </Link>
@@ -144,7 +149,9 @@ export const ProductDetailPage: React.FC = () => {
           {product.categoryLabel}
         </Link>
         <ChevronRight className="w-3.5 h-3.5 shrink-0" />
-        <span className="text-navy-800 font-bold truncate">{product.name}</span>
+        {/* Nama produk panjang dibiarkan terpotong di breadcrumb (wajar),
+            tapi breadcrumb kini bisa digeser agar tetap terbaca penuh. */}
+        <span className="text-navy-800 font-bold">{product.name}</span>
       </nav>
 
       {/* Tokopedia 3-Column Layout: Left Gallery (4) + Middle Details (5) + Right Sticky Checkout Box (3) */}
@@ -485,8 +492,9 @@ export const ProductDetailPage: React.FC = () => {
             </h3>
 
             {selectedVariant && (
-              <div className="text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100">
-                Varian dipilih: <strong className="text-navy-800">{selectedVariant.label}</strong>
+              <div className="text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 leading-snug">
+                Varian dipilih:{' '}
+                <strong className="text-navy-800 break-words">{selectedVariant.label}</strong>
               </div>
             )}
 
@@ -645,13 +653,18 @@ export const ProductDetailPage: React.FC = () => {
                 key={b.id}
                 className="bg-white rounded-2xl p-4 border border-slate-200/80 flex flex-col sm:flex-row items-center gap-4 justify-between shadow-soft"
               >
-                <div className="flex items-center gap-3.5">
+                <div className="flex items-center gap-3 min-w-0 w-full sm:w-auto">
                   <img
                     src={b.image}
                     alt={b.shortName}
-                    className="w-20 h-20 rounded-xl object-cover border border-slate-100 shrink-0"
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-slate-100 shrink-0"
                   />
-                  <div>
+                  {/*
+                    `min-w-0` WAJIB pada anak flex yang berisi teks panjang.
+                    Tanpa ini, teks tidak mau menyusut dan mendorong kartu
+                    melewati lebar layar (overflow 3px di layar 280px).
+                  */}
+                  <div className="min-w-0">
                     <Link
                       to={`/produk/${b.slug}`}
                       className="text-sm font-extrabold text-navy-800 hover:text-forest-700"
@@ -689,7 +702,7 @@ export const ProductDetailPage: React.FC = () => {
         <h2 className="text-lg sm:text-xl font-extrabold text-navy-800">
           Pilihan Merchandise Cilegon Enggih Lainnya
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 min-[400px]:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {relatedProducts.map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
@@ -806,7 +819,7 @@ export const ProductDetailPage: React.FC = () => {
         tidak tertutup gesture bar iPhone/Android.
       */}
       <div
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] px-3 pt-2.5 pb-2.5 pb-safe transition-transform duration-200 ${
+        className={`lg:hidden fixed bottom-0 left-0 right-0 w-full max-w-full box-border z-30 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_16px_rgba(15,23,42,0.08)] px-3 pt-2.5 pb-2.5 pb-safe transition-transform duration-200 ${
           showMobileBuyBar && !showSizeChartModal && lightboxIndex === null
             ? 'translate-y-0'
             : 'translate-y-full'

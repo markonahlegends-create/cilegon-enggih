@@ -4,20 +4,37 @@ interface BrandLogoProps {
   variant?: 'light' | 'dark';
   size?: 'sm' | 'md' | 'lg';
   showTagline?: boolean;
+  /** Versi rapat untuk header HP: ikon & huruf lebih kecil. */
+  compact?: boolean;
 }
 
 export const BrandLogo: React.FC<BrandLogoProps> = ({
   variant = 'dark',
   size = 'md',
-  showTagline = true
+  showTagline = true,
+  compact = false
 }) => {
-  const iconDimensions =
-    size === 'sm' ? 'w-9 h-9' : size === 'lg' ? 'w-13 h-13' : 'w-11 h-11';
-  const titleSize =
-    size === 'sm' ? 'text-lg' : size === 'lg' ? 'text-2xl' : 'text-xl';
+  const iconDimensions = compact
+    ? 'w-7 h-7'
+    : size === 'sm'
+      ? 'w-9 h-9'
+      : size === 'lg'
+        ? 'w-13 h-13'
+        : 'w-11 h-11';
+  const titleSize = compact
+    ? 'text-[14px]'
+    : size === 'sm'
+      ? 'text-lg'
+      : size === 'lg'
+        ? 'text-2xl'
+        : 'text-xl';
 
   return (
-    <div className="inline-flex items-center gap-2.5 select-none group">
+    <div
+      className={`inline-flex items-center select-none group ${
+        compact ? 'gap-1.5' : 'gap-2.5'
+      }`}
+    >
       {/* Geometric Line-Art Landmark Simpang Tiga Cilegon Icon */}
       <div
         className={`${iconDimensions} rounded-xl bg-gradient-to-br from-navy-800 via-navy-800 to-forest-600 p-1.5 shadow-sm flex items-center justify-center border border-white/15 transition-transform duration-200 group-hover:scale-105`}
