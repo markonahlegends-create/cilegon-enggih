@@ -26,7 +26,7 @@ import { useBackClose } from '../hooks/useBackClose';
 import { trackSearch } from '../lib/tracker';
 
 const QUICK_ZONES = [
-  { id: 'cilegon-pusat', label: 'Kota Cilegon (Instan 1-2 Jam)' },
+  { id: 'cilegon-pusat', label: 'Kota Cilegon & Sekitarnya' },
   { id: 'cilegon-industri', label: 'Ciwandan / Merak / Anyer' },
   { id: 'serang', label: 'Kota Serang & Sekitarnya' },
   { id: 'tangerang', label: 'Tangerang Raya' },
@@ -202,7 +202,7 @@ export const Navbar: React.FC = () => {
             <span className="hidden md:inline text-white/30">|</span>
             <span className="hidden md:inline-flex items-center gap-1 text-slate-200">
               <Truck className="w-3.5 h-3.5 text-forest-300" />
-              GoSend / GrabExpress Instan Area Kota Cilegon
+              Dikirim via JNE, J&amp;T &amp; SiCepat — Seluruh Indonesia
             </span>
           </div>
 

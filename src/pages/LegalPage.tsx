@@ -81,7 +81,7 @@ export const LegalPage: React.FC = () => {
               <h3 className="font-extrabold text-navy-800">2. Penggunaan & Keamanan Data</h3>
               <p>
                 Data pelanggan digunakan semata-mata untuk pemrosesan pesanan, penerbitan
-                nomor resi ekspedisi (GoSend, GrabExpress, JNE, J&T, SiCepat), serta layanan
+                nomor resi ekspedisi (JNE, J&T, SiCepat), serta layanan
                 purna jual. Kami tidak pernah menjual atau membagikan data pelanggan kepada
                 pihak ketiga di luar mitra logistik dan layanan pembayaran resmi (bank/QRIS).
               </p>
@@ -129,7 +129,7 @@ export const LegalPage: React.FC = () => {
               <p>
                 Pesanan produk ready stock sebelum pukul 16.00 WIB dikirim pada hari kerja
                 yang sama dari {settings.addressShort}. Nomor resi kurir diinput setelah
-                paket diserahkan ke ekspedisi (JNE / J&T / SiCepat / GoSend / GrabExpress)
+                paket diserahkan ke ekspedisi (JNE / J&T / SiCepat)
                 dan dapat dilacak pada halaman Lacak Pesanan.
               </p>
             </div>

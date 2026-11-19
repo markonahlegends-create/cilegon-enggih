@@ -256,6 +256,84 @@
       "destination": "/og/produk--paket-nataru-mug-stiker.html"
     },
     {
+      "source": "/produk/tumbler-bpa-500ml",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--tumbler-bpa-500ml.html"
+    },
+    {
+      "source": "/produk/tumbler-keramik-500ml",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--tumbler-keramik-500ml.html"
+    },
+    {
+      "source": "/produk/tumbler-sus316-780ml",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--tumbler-sus316-780ml.html"
+    },
+    {
+      "source": "/produk/tumbler-1200ml-family",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--tumbler-1200ml-family.html"
+    },
+    {
+      "source": "/produk/ornamen-natal-menara-cilegon",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--ornamen-natal-menara-cilegon.html"
+    },
+    {
+      "source": "/produk/paket-nataru-tumbler-tote",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--paket-nataru-tumbler-tote.html"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

@@ -482,30 +482,46 @@ export const SHIPPING_ORIGIN = {
   label: 'Kel. Karang Asem, Kec. Cibeber, Kota Cilegon 42425'
 };
 
+/**
+ * Model pengiriman.
+ *
+ * SEMUA produk dikirim lewat dropship dari gudang pemasok (lihat
+ * server/dropship.js), BUKAN dari Karang Asem. Karena itu:
+ *
+ * - Layanan instan/same-day (GoSend Instant, GrabExpress SameDay) DIMATIKAN.
+ *   Kurir instan harus dijemput dari lokasi barang berada; pemasok tidak akan
+ *   memesan kurir instan ke alamat pembeli kita.
+ * - Estimasi waktu ditambah waktu proses pemasok (1-2 hari) supaya janji ke
+ *   pembeli tidak terlalu optimistis.
+ * - `origin` dipertahankan sebagai alamat penagihan/identitas toko, tetapi
+ *   TIDAK lagi dipakai sebagai titik jemput kurir.
+ */
+export const SHIPPING_MODEL = 'dropship';
+
 export const SHIPPING_ZONES = [
   {
     id: 'cilegon-pusat',
     label: 'Kota Cilegon (Jombang, Purwakarta, Cibeber, Citangkil, Ramanuju)',
     zone: 'local-cilegon',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 8000,
-    etaReg: '1 Hari'
+    etaReg: '2 - 3 Hari'
   },
   {
     id: 'cilegon-industri',
     label: 'Kota Cilegon Barat & Pelabuhan (Ciwandan, Anyer, Pulomerak, Grogol)',
     zone: 'local-cilegon-west',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 9000,
-    etaReg: '1 Hari'
+    etaReg: '2 - 3 Hari'
   },
   {
     id: 'serang',
     label: 'Kota Serang & Kab. Serang (Kramatwatu, Bojonegara, Ciruas)',
     zone: 'banten-near',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 10000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'tangerang',
@@ -513,7 +529,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabodetabek',
     allowInstant: false,
     baseReg: 12000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'jakarta',
@@ -521,7 +537,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabodetabek',
     allowInstant: false,
     baseReg: 13000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'bandung-jabar',
@@ -529,7 +545,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabar',
     allowInstant: false,
     baseReg: 16000,
-    etaReg: '2 - 3 Hari'
+    etaReg: '3 - 5 Hari'
   },
   {
     id: 'jateng-diy',
@@ -537,7 +553,7 @@ export const SHIPPING_ZONES = [
     zone: 'jateng',
     allowInstant: false,
     baseReg: 22000,
-    etaReg: '2 - 4 Hari'
+    etaReg: '3 - 6 Hari'
   },
   {
     id: 'jatim-bali',
@@ -545,7 +561,7 @@ export const SHIPPING_ZONES = [
     zone: 'jatim',
     allowInstant: false,
     baseReg: 27000,
-    etaReg: '3 - 5 Hari'
+    etaReg: '3 - 6 Hari'
   },
   {
     id: 'sumatera',
@@ -553,7 +569,7 @@ export const SHIPPING_ZONES = [
     zone: 'sumatera',
     allowInstant: false,
     baseReg: 24000,
-    etaReg: '2 - 5 Hari'
+    etaReg: '3 - 7 Hari'
   },
   {
     id: 'kalimantan-sulawesi',
@@ -561,7 +577,7 @@ export const SHIPPING_ZONES = [
     zone: 'luar-jawa',
     allowInstant: false,
     baseReg: 42000,
-    etaReg: '4 - 7 Hari'
+    etaReg: '4 - 9 Hari'
   }
 ];
 
@@ -570,30 +586,10 @@ const calcShipping = ({ destinationId = 'cilegon-pusat', weightGrams = 500 }) =>
   const weightKg = Math.max(1, Math.ceil(Number(weightGrams) / 1000));
   const services = [];
 
-  if (zone.allowInstant) {
-    const instantBase =
-      zone.id === 'cilegon-pusat' ? 14000 : zone.id === 'cilegon-industri' ? 20000 : 32000;
-    const sameDayBase =
-      zone.id === 'cilegon-pusat' ? 11000 : zone.id === 'cilegon-industri' ? 15000 : 22000;
-    services.push(
-      {
-        id: 'gosend-instant',
-        courier: 'GoSend Instant',
-        badge: 'Lokal Cepat',
-        type: 'Instan',
-        eta: '1 - 2 Jam Tiba',
-        cost: instantBase + Math.max(0, weightKg - 3) * 4000
-      },
-      {
-        id: 'grab-sameday',
-        courier: 'GrabExpress SameDay',
-        badge: 'Hari Ini Sampai',
-        type: 'Same Day',
-        eta: '4 - 6 Jam Tiba',
-        cost: sameDayBase + Math.max(0, weightKg - 3) * 3000
-      }
-    );
-  }
+  /*
+   * Tidak ada layanan instan/same-day. Barang dikirim dari gudang pemasok,
+   * jadi kurir instan tidak bisa dijemput di sini. Lihat SHIPPING_MODEL.
+   */
 
   services.push(
     {
@@ -617,13 +613,15 @@ const calcShipping = ({ destinationId = 'cilegon-pusat', weightGrams = 500 }) =>
       courier: 'SiCepat BEST / HALU',
       badge: 'Rekomendasi',
       type: 'Express',
-      eta: zone.allowInstant ? '1 Hari' : '1 - 2 Hari',
+      eta: zone.etaReg,
       cost: Math.round(zone.baseReg * 1.35) * weightKg
     }
   );
 
   return {
     origin: SHIPPING_ORIGIN,
+    shippingModel: SHIPPING_MODEL,
+    note: 'Produk dikirim dari gudang mitra pemasok. Waktu di atas sudah termasuk proses siap kirim 1-2 hari.',
     destinationId: zone.id,
     destination: zone.label,
     weightGrams: Number(weightGrams),

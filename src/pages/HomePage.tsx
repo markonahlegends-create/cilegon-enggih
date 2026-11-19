@@ -91,7 +91,7 @@ const TESTIMONIALS = [
     rating: 5,
     product: 'Kalender A3, Tote Bag & Ganci 3D',
     quote:
-      'Pesan pagi pakai GoSend Instant langsung tiba di kantor sebelum makan siang! Kualitas karet gantungan kunci 3D dan tote bag kanvasnya benar-benar tebal rapi.'
+      'Pesan Senin, Kamisnya sudah sampai kantor di Jakarta. Kualitas karet gantungan kunci 3D dan tote bag kanvasnya benar-benar tebal rapi.'
   }
 ];
 
@@ -336,8 +336,8 @@ export const HomePage: React.FC = () => {
             },
             {
               icon: Zap,
-              title: 'Pengiriman Cepat dari Kota Cilegon',
-              desc: 'Tersedia GoSend/GrabExpress Instan 1–2 jam area Cilegon & ekspedisi nasional.',
+              title: 'Dikirim Seluruh Indonesia',
+              desc: 'JNE, J&T & SiCepat ke seluruh nusantara. Waktu kirim sudah termasuk proses siapkan pesanan.',
               accent: 'bg-forest-50 text-forest-700 border-forest-100'
             }
           ].map((vp, idx) => {

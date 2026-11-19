@@ -119,17 +119,35 @@ Vendor yang menaikkan harga Rp 23.000 bisa memangkas margin Anda lebih dari sepa
 
 ---
 
-## 5. Yang WAJIB dicabut dari situs
+## 5. Klaim pengiriman — SUDAH DIPERBAIKI
 
-Halaman depan dan `SHIPPING_ZONES` saat ini menjanjikan **"Kota Cilegon (Instan 1–2 Jam)"**
-dan mengaktifkan `allowInstant` untuk semua zona. Selama dropship ini **tidak mungkin
-dipenuhi**: barang berangkat dari gudang vendor, bukan dari Cilegon.
+Sebelumnya situs menjanjikan **"Kota Cilegon (Instan 1–2 Jam)"**, menyalakan
+`allowInstant` di semua zona, dan menawarkan GoSend Instant / GrabExpress SameDay
+di kalkulator ongkir serta pilihan kurir admin. Semua itu **mustahil** dipenuhi
+dengan dropship: kurir instan harus dijemput dari lokasi barang berada, dan vendor
+tidak akan memesankannya ke alamat pembeli Anda.
 
-- GoSend/GrabExpress Instant hanya bisa dipesan dari lokasi penjemputan yang sebenarnya.
-- Vendor tidak akan memesan kurir instan ke alamat pembeli Anda.
-- Menjanjikannya = keluhan pasti di pesanan pertama.
+Yang diubah:
 
-**Ganti dengan:** estimasi reguler jujur + kota asal pengiriman yang sebenarnya.
+| Sebelum | Sesudah |
+|---|---|
+| `allowInstant: true` (3 zona) | `allowInstant: false` (semua 10 zona) |
+| GoSend Instant + GrabExpress SameDay di kalkulator | dihapus; sisa JNE / J&T / SiCepat |
+| Navbar: "GoSend / GrabExpress Instan Area Kota Cilegon" | "Dikirim via JNE, J&T & SiCepat — Seluruh Indonesia" |
+| Zona: "Kota Cilegon (Instan 1-2 Jam)" | "Kota Cilegon & Sekitarnya" |
+| Estimasi lokal "1 Hari" | "2 – 3 Hari" (termasuk proses siap kirim) |
+| Footer: "Instan & Nasional" | "Kirim Seluruh Indonesia" |
+| Banner: "Gratis ongkir … min. Rp 300.000" | "Subsidi ongkir Rp 10.000 … min. Rp 50.000" |
+| Checkout default: GoSend Instant | JNE Reguler |
+| FAQ: janji tiba 1–2 jam | estimasi jujur + penjelasan kenapa instan tidak ada |
+| Invoice/email: "dikirim dari Karang Asem" | "dikirim dari gudang mitra pemasok" |
+
+Banner promo juga diperbaiki karena isinya **tidak cocok** dengan voucher
+`ONGKIRCILEGON` yang sebenarnya (potongan Rp 10.000, min. Rp 50.000 — bukan
+gratis ongkir min. Rp 300.000).
+
+Alamat `Karang Asem` **tetap dipakai** sebagai identitas usaha & alamat penagihan
+di invoice — yang dihapus hanya klaim bahwa paket berangkat dari sana.
 
 ---
 

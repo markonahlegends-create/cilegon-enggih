@@ -135,11 +135,11 @@ export const DEFAULT_SETTINGS = {
   invoice: {
     prefix: 'CE',
     footerNote:
-      'Terima kasih telah berbelanja merchandise resmi Cilegon Enggih. Barang dikirim dari Kel. Karang Asem, Kec. Cibeber, Kota Cilegon.',
+      'Terima kasih telah berbelanja merchandise resmi Cilegon Enggih. Pesanan Anda disiapkan dan dikirim dari gudang mitra pemasok kami, lengkap dengan nomor resi yang dapat dilacak.',
     signerName: 'Cilegon Enggih Official Store'
   },
   announcement:
-    'Gratis ongkir area Cilegon untuk pembelian di atas Rp 300.000 — gunakan kode ONGKIRCILEGON.',
+    'Subsidi ongkir Rp 10.000 untuk belanja min. Rp 50.000 — gunakan kode ONGKIRCILEGON.',
   /** Notifikasi Telegram ke admin (gratis). Isi botToken & chatId dari Dashboard Admin. */
   telegram: {
     enabled: false,
@@ -213,8 +213,8 @@ export const SEED_ORDERS = [
       },
       {
         time: '15 Nov 2026, 10:05 WIB',
-        status: 'Pesanan dikemas & lolos Quality Control',
-        location: 'Workshop Cilegon Enggih — Karang Asem, Cibeber'
+        status: 'Pesanan disiapkan & dikemas oleh mitra pemasok',
+        location: 'Gudang mitra pemasok'
       },
       {
         time: '15 Nov 2026, 10:40 WIB',
@@ -276,7 +276,7 @@ export const SEED_ORDERS = [
       {
         time: '16 Nov 2026, 08:45 WIB',
         status: 'Paket hardbox selesai dikemas bubble wrap berlapis',
-        location: 'Workshop Cilegon Enggih — Karang Asem, Cibeber'
+        location: 'Gudang mitra pemasok'
       },
       {
         time: '16 Nov 2026, 10:15 WIB',

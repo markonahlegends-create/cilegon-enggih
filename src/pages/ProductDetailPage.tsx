@@ -351,7 +351,7 @@ export const ProductDetailPage: React.FC = () => {
               <Star className="w-3 h-3 fill-amberbrand-400 text-amberbrand-400" /> 4.9
             </span>
             <span className="ml-auto text-slate-400 shrink-0 hidden sm:inline">
-              Dikirim dari Kota Cilegon
+              Dikirim dari gudang mitra
             </span>
           </div>
 

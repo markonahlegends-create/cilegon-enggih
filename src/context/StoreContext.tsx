@@ -133,7 +133,7 @@ const FALLBACK_SETTINGS: StoreSettings = {
   invoice: {
     prefix: 'CE',
     footerNote:
-      'Terima kasih telah berbelanja merchandise resmi Cilegon Enggih. Barang dikirim dari Kel. Karang Asem, Kec. Cibeber, Kota Cilegon.',
+      'Terima kasih telah berbelanja merchandise resmi Cilegon Enggih. Pesanan Anda disiapkan dan dikirim dari gudang mitra pemasok kami, lengkap dengan nomor resi yang dapat dilacak.',
     signerName: 'Cilegon Enggih Official Store'
   },
   announcement: '',

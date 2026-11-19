@@ -101,8 +101,6 @@ const ORDER_STATUS_OPTIONS = [
 const PAYMENT_STATUS_OPTIONS = ['MENUNGGU_VERIFIKASI', 'LUNAS', 'DIBATALKAN'];
 
 const COURIER_OPTIONS = [
-  'GoSend Instant',
-  'GrabExpress SameDay',
   'JNE Reguler (CTC/REG)',
   'J&T Express EZ',
   'SiCepat BEST / HALU',

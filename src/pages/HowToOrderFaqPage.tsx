@@ -29,21 +29,21 @@ const ORDER_STEPS = [
   {
     step: '03',
     icon: Truck,
-    title: 'Pengiriman Instan / Ekspedisi',
-    desc: 'Pesanan area Kota Cilegon bisa dikirim 1–2 jam via GoSend/GrabExpress. Luar kota dikirim hari yang sama via JNE/J&T/SiCepat.'
+    title: 'Dikemas & Dikirim Ekspedisi',
+    desc: 'Pesanan disiapkan 1–2 hari kerja lalu dikirim via JNE/J&T/SiCepat dari gudang mitra pemasok, lengkap dengan nomor resi.'
   },
   {
     step: '04',
     icon: PackageCheck,
     title: 'Resi Kurir Asli & Garansi Aman',
-    desc: 'Nomor resi diinput admin setelah paket diserahkan ke JNE/J&T/SiCepat/GoSend, lalu bisa dilacak di menu Lacak Pesanan beserta tautan resmi kurir.'
+    desc: 'Nomor resi diinput admin setelah paket diserahkan ke JNE/J&T/SiCepat, lalu bisa dilacak di menu Lacak Pesanan beserta tautan resmi kurir.'
   }
 ];
 
 const FAQS = [
   {
-    q: 'Apakah bisa dikirim langsung hari ini untuk area Kota Cilegon & Serang?',
-    a: 'Sangat bisa! Untuk pemesanan sebelum pukul 17.00 WIB dengan kurir GoSend Instant atau GrabExpress dari workshop Kel. Karang Asem, Kec. Cibeber, Kota Cilegon, pesanan rata-rata tiba dalam 1–2 jam di area Cilegon, Ciwandan, Merak, Anyer, dan Kramatwatu.'
+    q: 'Berapa lama pesanan sampai ke alamat saya?',
+    a: 'Pesanan disiapkan 1–2 hari kerja, lalu dikirim via JNE, J&T, atau SiCepat. Untuk Kota Cilegon & Serang umumnya tiba 2–3 hari kerja setelah pembayaran dikonfirmasi; luar Jawa 3–7 hari kerja. Layanan kurir instan (GoSend/GrabExpress) tidak tersedia karena paket dikirim langsung dari gudang mitra pemasok kami, bukan dari Cilegon.'
   },
   {
     q: 'Bagaimana jika Mug Keramik atau Lampu Tidur 3D pecah saat pengiriman luar kota?',
@@ -113,7 +113,7 @@ export const HowToOrderFaqPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-8 items-start">
         <div className="lg:col-span-6 space-y-4">
           <h2 className="text-lg sm:text-xl font-extrabold text-navy-800">
-            Cek Estimasi Ongkir dari Kota Cilegon
+            Cek Estimasi Ongkir ke Kotamu
           </h2>
           <ShippingCalculator weightGrams={500} />
 
