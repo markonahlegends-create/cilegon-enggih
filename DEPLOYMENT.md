@@ -57,7 +57,9 @@ Checklist lokal:
 - Storefront: http://localhost:5173
 - API health: http://localhost:3001/api/health
 - Dashboard admin: http://localhost:5173/admin
-- Password admin default: **`enggih2026`** (ubah via `ADMIN_PASSWORD`)
+- Password admin: **tidak ada password bawaan**. Di komputer sendiri, server mencetak
+  password acak untuk sesi itu di konsol. Di hosting WAJIB set `ADMIN_PASSWORD`;
+  kalau tidak diset, login `/admin` ditolak (HTTP 503).
 
 ---
 
@@ -183,8 +185,8 @@ Lihat `.env.example`. Ringkasnya:
 | Variabel | Fungsi | Default |
 | --- | --- | --- |
 | `PORT` / `BIND_HOST` | Port & host server lokal | `3001` / `0.0.0.0` |
-| `ADMIN_PASSWORD` | Password login `/admin` | `enggih2026` ⚠️ ganti |
-| `ADMIN_TOKEN_SECRET` | Secret tanda tangan token admin | turunan password |
+| `ADMIN_PASSWORD` | Password login `/admin` | ⚠️ **WAJIB diset** — tanpa ini login ditolak |
+| `ADMIN_TOKEN_SECRET` | Secret tanda tangan token admin | diturunkan dari password; disarankan isi acak 64 hex |
 | `SUPABASE_URL` | URL project Supabase | – |
 | `SUPABASE_SERVICE_ROLE_KEY` | Key server Supabase | – |
 | `CE_DATA_DIR` | Folder JSON fallback | `server/data` |

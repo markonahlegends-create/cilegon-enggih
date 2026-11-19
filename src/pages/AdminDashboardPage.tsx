@@ -681,9 +681,12 @@ export const AdminDashboardPage: React.FC = () => {
           )}
 
           <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl p-3">
-            Password default development: <strong>enggih2026</strong>. Untuk produksi, set
-            environment variable <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di
-            hosting (Vercel/Cloudflare/VPS) — lihat <strong>DEPLOYMENT.md</strong>.
+            Password admin hanya berasal dari environment variable{' '}
+            <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di hosting
+            (Vercel/Cloudflare/VPS). Tidak ada password bawaan di dalam kode — kalau variabel
+            itu belum diset, login dinonaktifkan. Saat menjalankan server di komputer sendiri,
+            password acak untuk sesi tersebut tercetak di konsol. Lihat{' '}
+            <strong>DEPLOYMENT.md</strong>.
           </p>
         </div>
       </div>

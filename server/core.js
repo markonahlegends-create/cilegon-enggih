@@ -90,9 +90,35 @@ import {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'enggih2026';
-const ADMIN_TOKEN_SECRET =
-  process.env.ADMIN_TOKEN_SECRET || `cilegon-enggih::${ADMIN_PASSWORD}::fadil-labs`;
+/**
+ * Password admin.
+ *
+ * Dulu ada fallback hardcoded 'enggih2026'. Itu berbahaya: kalau hosting lupa
+ * menyetel ADMIN_PASSWORD, dashboard tetap bisa dibuka siapa pun yang tahu
+ * nilai default dari repo. Sekarang:
+ *
+ *  - Di produksi (NODE_ENV=production atau VERCEL=1): WAJIB set ADMIN_PASSWORD.
+ *    Kalau tidak diset, login admin ditolak seluruhnya.
+ *  - Di development: pakai password acak per proses, dicetak ke konsol supaya
+ *    tetap bisa dipakai, tapi tidak bisa ditebak dari source code.
+ */
+const IS_PRODUCTION =
+  process.env.NODE_ENV === 'production' ||
+  process.env.VERCEL === '1' ||
+  process.env.CF_PAGES === '1';
+
+const DEV_ADMIN_PASSWORD = crypto.randomBytes(9).toString('base64url');
+
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : DEV_ADMIN_PASSWORD);
+
+/** True kalau password berasal dari mode dev (bukan dari env produksi). */
+const IS_DEV_PASSWORD = !process.env.ADMIN_PASSWORD && !IS_PRODUCTION;
+
+/** True kalau admin bisa login (password tersedia dari env atau mode dev). */
+const ADMIN_LOGIN_ENABLED = Boolean(ADMIN_PASSWORD);
+
+const ADMIN_TOKEN_SECRET = sessionSecret(ADMIN_PASSWORD);
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12; // 12 jam
 
 const ok = (body, status = 200, headers = null) => ({ status, body, headers: headers || undefined });
@@ -816,9 +842,13 @@ route('GET', '/api/diagnose', async () => {
   add(
     'password',
     'ADMIN_PASSWORD dari environment',
-    process.env.ADMIN_PASSWORD ? 'ok' : 'warn',
-    process.env.ADMIN_PASSWORD ? 'terpasang' : 'memakai default development',
-    'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy.'
+    process.env.ADMIN_PASSWORD ? 'ok' : IS_PRODUCTION ? 'fail' : 'warn',
+    process.env.ADMIN_PASSWORD
+      ? 'terpasang'
+      : IS_PRODUCTION
+        ? 'BELUM DISET — login admin dinonaktifkan'
+        : 'belum diset — memakai password acak sesi dev',
+    'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy. Tanpa ini login admin ditolak.'
   );
   add(
     'token-secret',
@@ -1524,8 +1554,16 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
     );
   }
 
-  const passwordOk = String(password) === ADMIN_PASSWORD;
+  const passwordOk = ADMIN_LOGIN_ENABLED && String(password) === ADMIN_PASSWORD;
   const usernameOk = String(username).toLowerCase() === 'admin';
+
+  if (!ADMIN_LOGIN_ENABLED) {
+    return bad(
+      'Login admin dinonaktifkan: ADMIN_PASSWORD belum diset di server ini. ' +
+        'Set environment variable ADMIN_PASSWORD lalu redeploy.',
+      503
+    );
+  }
 
   if (!passwordOk || !usernameOk) {
     await recordAudit(store, {
@@ -3235,6 +3273,8 @@ export {
   ORDER_STATUSES,
   PAYMENT_STATUSES,
   ADMIN_PASSWORD,
+  ADMIN_LOGIN_ENABLED,
+  IS_DEV_PASSWORD,
   SEED_PRODUCTS,
   SEED_CATEGORIES,
   SEED_SIZE_CHART
