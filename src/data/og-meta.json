@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-19T02:10:04.922Z",
+  "generatedAt": "2026-11-19T02:21:13.802Z",
   "domain": "cilegon-enggih.vercel.app",
   "baseUrl": "https://cilegon-enggih.vercel.app",
   "defaultImage": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
@@ -261,6 +261,39 @@
       "priceRange": "Rp 155.000 – Rp 190.000",
       "image": "https://cilegon-enggih.vercel.app/og/paket-nataru-tumbler-tote.jpg",
       "url": "https://cilegon-enggih.vercel.app/produk/paket-nataru-tumbler-tote"
+    },
+    "/produk/paket-bukber-hemat": {
+      "slug": "paket-bukber-hemat",
+      "id": "bundle-6",
+      "name": "Paket Bukber Hemat Cilegon Enggih",
+      "title": "Paket Bukber Hemat | Cilegon Enggih",
+      "description": "Bingkisan kecil yang pas dibagikan saat buka bersama — untuk rekan kerja, tetangga, atau keluarga yang datang ke rumah. Rp 85.000 – Rp 105.000.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Rp 85.000 – Rp 105.000",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-bukber-hemat.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-bukber-hemat"
+    },
+    "/produk/paket-bukber-keluarga": {
+      "slug": "paket-bukber-keluarga",
+      "id": "bundle-7",
+      "name": "Paket Bukber Keluarga Cilegon Enggih",
+      "title": "Paket Bukber Keluarga | Cilegon Enggih",
+      "description": "Paket untuk keluarga atau kerabat yang datang bersilaturahmi saat Lebaran. Rp 168.000 – Rp 195.000.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Rp 168.000 – Rp 195.000",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-bukber-keluarga.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-bukber-keluarga"
+    },
+    "/produk/paket-bukber-korporat": {
+      "slug": "paket-bukber-korporat",
+      "id": "bundle-8",
+      "name": "Paket Bukber Korporat Premium Cilegon Enggih",
+      "title": "Paket Bukber Korporat | Cilegon Enggih",
+      "description": "Bingkisan Ramadan untuk klien, mitra bisnis, dan jajaran manajemen. Rp 215.000 – Rp 250.000.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Rp 215.000 – Rp 250.000",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-bukber-korporat.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-bukber-korporat"
     }
   }
 }

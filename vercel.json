@@ -334,6 +334,45 @@
       "destination": "/og/produk--paket-nataru-tumbler-tote.html"
     },
     {
+      "source": "/produk/paket-bukber-hemat",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--paket-bukber-hemat.html"
+    },
+    {
+      "source": "/produk/paket-bukber-keluarga",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--paket-bukber-keluarga.html"
+    },
+    {
+      "source": "/produk/paket-bukber-korporat",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--paket-bukber-korporat.html"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }

@@ -1325,6 +1325,188 @@ export const PRODUCTS: Product[] = [
         comment: 'Kirim ke klien di Jakarta sebagai hadiah akhir tahun. Katanya boxnya mewah dan dua barangnya senada. Worth it untuk harga segini.'
       }
     ]
+  },
+
+  // ------------------------------------------------------------------
+  // PAKET BUKBER — Ramadan / Idul Fitri
+  // Semua harga paket di bawah jumlah komponennya (lihat komentar tiap item).
+  // ------------------------------------------------------------------
+  {
+    id: 'bundle-6',
+    slug: 'paket-bukber-hemat',
+    name: 'Paket Bukber Hemat Cilegon Enggih',
+    shortName: 'Paket Bukber Hemat',
+    englishSubtitle: 'Ramadan Iftar Gathering Gift — Value Set',
+    categorySlug: 'paket-bundling',
+    categoryLabel: 'Paket Bundling / Hampers',
+    image: '/products/paket-bukber-hemat.jpg',
+    galleryImages: ['/products/paket-bukber-hemat.jpg'],
+    /*
+     * Komponen: Tumbler BPA 500 ml (48.000) + Ornamen Menara (45.000)
+     * + 1 Stiker (8.000) = Rp 101.000.
+     * Dijual Rp 92.000 → Rp 9.000 lebih murah dari beli terpisah.
+     */
+    price: 92000,
+    priceRangeText: 'Rp 85.000 – Rp 105.000',
+    originalPrice: 110000,
+    discountPercent: 16,
+    rating: 4.9,
+    reviewCount: 23,
+    soldCount: 38,
+    weightGrams: 420,
+    stock: 90,
+    isBundle: true,
+    badges: ['Edisi Ramadan', 'Hemat Rp 9.000'],
+    bundleItems: [
+      '1x Tumbler BPA Free 500 ml (UV Print Menara Simpang Tiga)',
+      '1x Ornamen Menara Simpang Tiga (akrilik dua lapis)',
+      '1x Stiker Vinyl Die-Cut Landmark Cilegon',
+      'Pouch Ziplock + Kartu Ucapan Ramadan'
+    ],
+    description:
+      'Bingkisan kecil yang pas dibagikan saat buka bersama — untuk rekan kerja, tetangga, atau keluarga yang datang ke rumah. Isinya benda yang benar-benar dipakai: tumbler ringan untuk berbuka, ornamen menara yang bisa dipajang sepanjang tahun, dan stiker sebagai pelengkap. Ukurannya sengaja tidak besar supaya mudah dibawa pulang dan tidak memberatkan penerima.',
+    specs: [
+      { label: 'Isi Paket', value: 'Tumbler BPA 500 ml + Ornamen Menara + 1 Stiker + Kartu Ucapan' },
+      { label: 'Kemasan', value: 'Pouch ziplock navy dengan label Ramadan dan pita emas' },
+      { label: 'Hemat', value: 'Beli terpisah Rp 101.000 — paket ini Rp 92.000' },
+      { label: 'Cocok Untuk', value: 'Bingkisan buka bersama, hadiah tetangga, souvenir pengajian' },
+      { label: 'Rekomendasi Harga Retail', value: 'Rp 85.000 – Rp 105.000 / set' }
+    ],
+    variants: [
+      { id: 'bkh-std', label: 'Pouch Navy + Kartu Ucapan', price: 92000, originalPrice: 110000, stock: 60 },
+      { id: 'bkh-corp', label: 'Pouch + Kartu Logo Instansi (min. 20 set)', price: 98000, originalPrice: 118000, stock: 30 }
+    ],
+    minWholesaleQty: 20,
+    wholesalePrice: 82000,
+    reviews: [
+      {
+        id: 'r24',
+        user: 'Nurul Aini',
+        role: 'Pembeli Terverifikasi - Cilegon',
+        rating: 5,
+        date: '2 hari lalu',
+        variant: 'Pouch Navy + Kartu Ucapan',
+        comment: 'Pesan 25 set untuk dibagikan saat bukber kantor. Ukurannya pas, tidak ribet dibawa pulang, dan tumbler-nya langsung dipakai orang-orang.'
+      }
+    ]
+  },
+  {
+    id: 'bundle-7',
+    slug: 'paket-bukber-keluarga',
+    name: 'Paket Bukber Keluarga Cilegon Enggih',
+    shortName: 'Paket Bukber Keluarga',
+    englishSubtitle: 'Ramadan Family Iftar Gift Set',
+    categorySlug: 'paket-bundling',
+    categoryLabel: 'Paket Bundling / Hampers',
+    image: '/products/paket-bukber-keluarga.jpg',
+    galleryImages: ['/products/paket-bukber-keluarga.jpg'],
+    /*
+     * Komponen: Tumbler SUS316/Sporty (145.000) + Mug Keramik (38.000)
+     * + 3 Stiker (24.000) = Rp 207.000.
+     * Dijual Rp 178.000 → Rp 29.000 lebih murah dari beli terpisah.
+     */
+    price: 178000,
+    priceRangeText: 'Rp 168.000 – Rp 195.000',
+    originalPrice: 225000,
+    discountPercent: 21,
+    rating: 5.0,
+    reviewCount: 17,
+    soldCount: 29,
+    weightGrams: 980,
+    stock: 55,
+    isBundle: true,
+    badges: ['Edisi Ramadan', 'Hemat Rp 29.000'],
+    bundleItems: [
+      '1x Tumbler Stainless Sport 780 ml (SUS316, sedotan)',
+      '1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)',
+      '3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)',
+      'Hardbox Navy + Tissue Krem + Pita Emas + Kartu Ucapan'
+    ],
+    description:
+      'Paket untuk keluarga atau kerabat yang datang bersilaturahmi saat Lebaran. Kombinasinya sengaja dipilih dari barang yang dipakai setiap hari: tumbler besar untuk kerja, mug keramik untuk minum di rumah, dan stiker untuk anak-anak. Tersusun di hardbox navy dengan pita emas, jadi bisa langsung diserahkan tanpa membungkus ulang.',
+    specs: [
+      { label: 'Isi Paket', value: 'Tumbler 780 ml + Mug Keramik 11 oz + 3 Stiker + Kartu Ucapan' },
+      { label: 'Kemasan', value: 'Hardbox navy, alas tissue krem, pita emas, dan kartu ucapan' },
+      { label: 'Hemat', value: 'Beli terpisah Rp 207.000 — paket ini Rp 178.000' },
+      { label: 'Cocok Untuk', value: 'Parcel Lebaran keluarga, hadiah silaturahmi, bingkisan kerabat' },
+      { label: 'Rekomendasi Harga Retail', value: 'Rp 168.000 – Rp 195.000 / set' }
+    ],
+    variants: [
+      { id: 'bkk-std', label: 'Hardbox Navy + Pita Emas', price: 178000, originalPrice: 225000, stock: 35 },
+      { id: 'bkk-corp', label: 'Hardbox + Kartu Logo Instansi (min. 10 set)', price: 188000, originalPrice: 238000, stock: 20 }
+    ],
+    minWholesaleQty: 10,
+    wholesalePrice: 160000,
+    reviews: [
+      {
+        id: 'r25',
+        user: 'Ahmad Fauzi',
+        role: 'Pembeli Terverifikasi - Serang',
+        rating: 5,
+        date: '5 hari lalu',
+        variant: 'Hardbox Navy + Pita Emas',
+        comment: 'Buat hantaran ke mertua waktu Lebaran. Boxnya rapi dan isinya bukan barang murahan — tumbler 780 ml-nya besar, kata beliau enak dipakai bawa air ke kebun.'
+      }
+    ]
+  },
+  {
+    id: 'bundle-8',
+    slug: 'paket-bukber-korporat',
+    name: 'Paket Bukber Korporat Premium Cilegon Enggih',
+    shortName: 'Paket Bukber Korporat',
+    englishSubtitle: 'Corporate Ramadan Gifting — Premium Set',
+    categorySlug: 'paket-bundling',
+    categoryLabel: 'Paket Bundling / Hampers',
+    image: '/products/paket-bukber-korporat.jpg',
+    galleryImages: ['/products/paket-bukber-korporat.jpg'],
+    /*
+     * Komponen: Tumbler Keramik 500 ml (199.000) + Mug Keramik (38.000)
+     * + 3 Stiker (24.000) = Rp 261.000.
+     * Dijual Rp 228.000 → Rp 33.000 lebih murah dari beli terpisah.
+     */
+    price: 228000,
+    priceRangeText: 'Rp 215.000 – Rp 250.000',
+    originalPrice: 285000,
+    discountPercent: 20,
+    rating: 5.0,
+    reviewCount: 11,
+    soldCount: 18,
+    weightGrams: 1240,
+    stock: 35,
+    isBundle: true,
+    badges: ['Edisi Ramadan', 'Segmen Korporat'],
+    bundleItems: [
+      '1x Tumbler Keramik Premium 500 ml (coating keramik dalam, grafir laser)',
+      '1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)',
+      '3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)',
+      'Hardbox Magnetik Navy Gold Foil + Kartu Ucapan Logo Instansi'
+    ],
+    description:
+      'Bingkisan Ramadan untuk klien, mitra bisnis, dan jajaran manajemen. Tumbler keramik dengan lapisan dalam keramik menjaga rasa kopi tetap murni — detail kecil yang justru diperhatikan penerima di level ini. Hardbox magnetik beraksen gold foil dan kartu ucapan berlogo instansi membuat paket ini pantas diserahkan langsung ke tangan direksi.',
+    specs: [
+      { label: 'Isi Paket', value: 'Tumbler Keramik 500 ml + Mug Keramik 11 oz + 3 Stiker + Kartu Logo' },
+      { label: 'Kemasan', value: 'Hardbox magnetik navy dengan aksen gold foil, alas busa, dan kartu berlogo instansi' },
+      { label: 'Hemat', value: 'Beli terpisah Rp 261.000 — paket ini Rp 228.000' },
+      { label: 'Kustomisasi', value: 'Grafir logo perusahaan pada tumbler untuk pemesanan ≥ 20 set' },
+      { label: 'Rekomendasi Harga Retail', value: 'Rp 215.000 – Rp 250.000 / set' }
+    ],
+    variants: [
+      { id: 'bkp-std', label: 'Hardbox Magnetik + Kartu Instansi', price: 228000, originalPrice: 285000, stock: 20 },
+      { id: 'bkp-logo', label: 'Hardbox + Grafir Logo pada Tumbler (min. 20 set)', price: 244000, originalPrice: 305000, stock: 15 }
+    ],
+    minWholesaleQty: 20,
+    wholesalePrice: 205000,
+    reviews: [
+      {
+        id: 'r26',
+        user: 'Rina Kartika',
+        role: 'HRD - Perusahaan Cilegon',
+        rating: 5,
+        date: '1 minggu lalu',
+        variant: 'Hardbox + Grafir Logo pada Tumbler (min. 20 set)',
+        comment: 'Pesan 40 set untuk klien saat acara bukber perusahaan. Grafir logonya rapi dan hardbox-nya kokoh waktu dikirim antar kota. Manajemen puas.'
+      }
+    ]
   }
 
 ];
