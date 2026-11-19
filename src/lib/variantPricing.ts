@@ -114,10 +114,24 @@ export const resolveSelection = (
   const originalPrice =
     originalCandidate && originalCandidate > price ? originalCandidate : undefined;
 
-  // Gambar: kombinasi menang, lalu nilai terpilih (mis. warna), lalu produk.
+  /*
+   * Gambar: kombinasi menang, lalu nilai terpilih, lalu produk.
+   *
+   * URUTAN PENTING — grup berjenis `swatch` (warna) didahulukan.
+   * Kalau admin mengisi foto untuk grup Model DAN grup Warna, memilih Navy
+   * harus mengganti gambar menjadi foto Navy. Versi sebelumnya selalu memakai
+   * grup pertama yang punya foto, sehingga ganti warna tampak tidak bereaksi.
+   *
+   * Bila hanya satu grup yang punya foto (kasus paling umum: hanya Model),
+   * aturan ini tidak mengubah apa pun — fotonya tetap dipakai.
+   */
   let image: string | undefined = combination?.image;
   if (!image) {
-    for (const g of groups) {
+    const ordered = [
+      ...groups.filter((g) => g.display === 'swatch'),
+      ...groups.filter((g) => g.display !== 'swatch')
+    ];
+    for (const g of ordered) {
       const value = g.values.find((v) => v.id === selected[g.id]);
       if (value?.image) {
         image = value.image;

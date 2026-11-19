@@ -24,6 +24,64 @@ Buka `/admin` → tab **Produk** → klik **Edit** pada produk, atau **Produk Ba
 - **Pencarian & filter katalog**: pre-order, best seller, bundling, stok menipis (≤20), nonaktif.
 - **Duplikat produk** (tombol ikon salin) untuk membuat produk serupa dengan cepat.
 
+### Bagian 4c — Pilihan Multi-Dimensi (Model × Ukuran × Warna)
+
+Dipakai bila satu produk punya **beberapa pilihan sekaligus**. Untuk produk yang cuma
+punya satu daftar ukuran, cukup pakai **bagian ③ Varian** — jangan isi 4c.
+
+**Tiga hal yang sering ditanyakan:**
+
+| Pertanyaan | Jawaban |
+|---|---|
+| Apakah menambah dimensi menambah harga? | **Tidak.** Harga hanya berubah bila kolom **Selisih** diisi. Biarkan `0` untuk pilihan yang harganya sama (mis. semua warna). |
+| Apakah saya harus mengisi bagian ③ Varian juga? | **Tidak.** Kalau memakai 4c, kosongkan ③ supaya tidak dobel dan membingungkan. |
+| Bagaimana membuat foto berbeda per model / per warna? | Klik **Tambah foto** di baris nilai tersebut. Fotonya muncul di halaman produk begitu pembeli memilih nilai itu. **Gratis, tidak memengaruhi harga.** |
+
+**Cara mengisi cepat:**
+
+1. **Tambah dimensi** → beri nama, mis. `Model`.
+2. Tambah nilainya (`Reguler`, `Oversize`). Isi **Selisih** hanya bila harganya beda
+   (mis. Oversize `+15000`).
+3. Ulangi untuk dimensi `Warna` (tampilan **Swatch**) dan `Ukuran`.
+4. Klik **Tambah foto** pada nilai yang fotonya berbeda — mis. Oversize, Navy.
+5. Periksa panel **Pratinjau harga** di bawah: semua kombinasi dan harga akhirnya terlihat
+   sebelum disimpan.
+
+**Urutan prioritas foto** (kalau beberapa dimensi punya foto):
+
+1. Foto khusus kombinasi (paling spesifik)
+2. Foto pada dimensi **Swatch** (warna) — supaya ganti warna benar-benar mengganti gambar
+3. Foto pada dimensi lain (model, ukuran)
+4. Foto utama produk
+
+Jadi: isi foto di **Model** saja → ganti ukuran/warna tidak mengubah gambar. Isi foto di
+**Warna** juga → memilih Navy menampilkan foto Navy.
+
+**Stok:** hanya diisi per **ukuran** (bagian ③ atau kombinasi). Warna dianggap selalu
+tersedia — tidak perlu mengisi stok per warna.
+
+---
+
+### Bagian 4b — Video Produk
+
+Video **tidak melewati server**: browser meminta tautan unggah ke server, lalu mengunggah
+langsung ke Supabase Storage. Ini karena Vercel menolak request di atas 4.5 MB.
+
+Batas yang berlaku:
+
+| Aturan | Nilai |
+|---|---|
+| Ukuran maksimal | **5 MB** per video |
+| Format | **MP4** atau **WebM** |
+| Jumlah | maksimal **3** video per produk |
+| Bucket | `product-video`, harus **Public** |
+
+**Rekaman iPhone (.mov) ditolak.** Ubah dulu ke MP4 — cara termudah: kirim videonya ke
+WhatsApp/Telegram lalu simpan kembali, iPhone otomatis menyimpannya sebagai MP4. Atau kecilkan
+resolusi ke 720p dan pendekkan durasi (anjuran 20–30 detik).
+
+---
+
 ### Aturan stok otomatis
 - Kalau produk punya varian → **stok total = jumlah stok semua varian**.
 - Centang **Manual** di field stok bila ingin mengisi stok sendiri (mis. ada barang rusak).
