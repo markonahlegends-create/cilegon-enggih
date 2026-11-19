@@ -46,6 +46,7 @@ import {
   revokeSession,
   revokeAllSessions
 } from './session.js';
+import { sendDailyDigest } from './digest.js';
 import {
   runBackup,
   listBackups,
@@ -3178,6 +3179,68 @@ route('GET', '/api/cron/backup', async ({ headers }) => {
     console.error('[cron] backup gagal:', err.message);
     return bad(`Backup otomatis gagal: ${err.message}`, 500);
   }
+});
+
+/**
+ * Endpoint cron untuk digest harian ke Telegram.
+ *
+ * Dipanggil Vercel Cron tiap pagi. Sama seperti backup: memakai CRON_SECRET,
+ * bukan sesi admin, karena cron tidak punya cookie.
+ * Bisa juga dipicu manual dari dashboard (POST /api/admin/digest).
+ */
+route('GET', '/api/cron/digest', async ({ headers }) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return bad(
+      'CRON_SECRET belum diisi di environment. Tambahkan lalu redeploy agar digest harian aktif.',
+      503
+    );
+  }
+  const provided = bearer(headers);
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(secret));
+  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!valid) return bad('Tidak diizinkan.', 401);
+
+  const settings = await readSettings();
+  const result = await sendDailyDigest({
+    store,
+    settings,
+    readOrders,
+    readProducts
+  });
+
+  await recordAudit(store, {
+    action: 'digest.harian',
+    actor: 'cron',
+    ip: clientIp(headers),
+    status: result.sent ? 'ok' : 'failed',
+    detail: { reason: result.reason || null }
+  });
+
+  if (!result.sent) {
+    return bad(`Digest tidak terkirim: ${result.reason}`, 502);
+  }
+  return ok({ ok: true, sent: true });
+});
+
+/** POST /api/admin/digest — kirim digest sekarang (untuk uji coba & preview). */
+route('POST', '/api/admin/digest', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const settings = await readSettings();
+  const result = await sendDailyDigest({ store, settings, readOrders, readProducts });
+
+  await recordAudit(store, {
+    action: 'digest.manual',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: result.sent ? 'ok' : 'failed',
+    detail: { reason: result.reason || null }
+  });
+
+  if (!result.sent) return bad(`Digest tidak terkirim: ${result.reason}`, 502);
+  return ok({ ok: true, sent: true });
 });
 
 /* ---------------- Audit log ---------------- */

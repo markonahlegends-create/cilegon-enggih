@@ -324,6 +324,10 @@
     {
       "path": "/api/cron/backup",
       "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/digest",
+      "schedule": "0 0 * * *"
     }
   ]
 }

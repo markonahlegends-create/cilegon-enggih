@@ -31,7 +31,8 @@ import {
   Users,
   Sparkles,
   Calculator,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
@@ -51,6 +52,7 @@ import {
   adminCreateProduct,
   adminDuplicateProduct,
   adminTestTelegram,
+  adminSendDigest,
   adminSettingsFull,
   adminVerifyOtp,
   adminSetTwoFactor,
@@ -428,6 +430,24 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const [testingTelegram, setTestingTelegram] = useState(false);
+
+  const [sendingDigest, setSendingDigest] = useState(false);
+
+  const sendDigestNow = async () => {
+    setSendingDigest(true);
+    try {
+      await adminSendDigest();
+      pushToast('Digest Terkirim', 'Ringkasan harian sudah masuk ke Telegram.', 'success');
+    } catch (err) {
+      pushToast(
+        'Digest Gagal Dikirim',
+        err instanceof ApiError ? err.message : 'Periksa bot token & chat id.',
+        'error'
+      );
+    } finally {
+      setSendingDigest(false);
+    }
+  };
 
   const testTelegram = async () => {
     setTestingTelegram(true);
@@ -1241,6 +1261,8 @@ export const AdminDashboardPage: React.FC = () => {
           onSave={saveSettings}
           onReset={resetSettings}
           onTestTelegram={testTelegram}
+          onSendDigest={sendDigestNow}
+          sendingDigest={sendingDigest}
           testingTelegram={testingTelegram}
           busy={busyId === 'settings' || busyId === 'reset-settings'}
           pushToast={pushToast}
@@ -1601,6 +1623,8 @@ const SettingsPanel: React.FC<{
   onSave: () => void;
   onReset: () => void;
   onTestTelegram: () => void;
+  onSendDigest: () => void;
+  sendingDigest: boolean;
   testingTelegram: boolean;
   busy: boolean;
   pushToast: (title: string, message: string, kind?: 'success' | 'error' | 'info') => void;
@@ -1610,6 +1634,8 @@ const SettingsPanel: React.FC<{
   onSave,
   onReset,
   onTestTelegram,
+  onSendDigest,
+  sendingDigest,
   testingTelegram,
   busy,
   pushToast
@@ -2008,6 +2034,20 @@ const SettingsPanel: React.FC<{
               <MessageCircle className="w-3.5 h-3.5" />
             )}
             {testingTelegram ? 'Mengirim…' : 'Tes Koneksi'}
+          </button>
+          <button
+            type="button"
+            onClick={onSendDigest}
+            disabled={sendingDigest}
+            className="px-3 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 disabled:opacity-60 text-white text-[11px] font-extrabold inline-flex items-center gap-1.5"
+            title="Kirim ringkasan harian (penjualan, trafik, kata kunci) ke Telegram sekarang"
+          >
+            {sendingDigest ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <BarChart3 className="w-3.5 h-3.5" />
+            )}
+            {sendingDigest ? 'Menyusun…' : 'Kirim Digest Sekarang'}
           </button>
           <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
             <input

@@ -90,15 +90,33 @@ Checklist lokal:
 3. Redeploy. Jadwal cron sudah ter-commit di `vercel.json`:
 
 ```json
-"crons": [{ "path": "/api/cron/backup", "schedule": "0 11 * * *" }]
+"crons": [
+  { "path": "/api/cron/backup", "schedule": "0 11 * * *" },
+  { "path": "/api/cron/digest", "schedule": "0 0 * * *" }
+]
 ```
 
-`0 11 * * *` = 11:00 UTC = **18:00 WIB** setiap hari.
+- `0 11 * * *` = 11:00 UTC = **18:00 WIB** — backup harian.
+- `0 0 * * *` = 00:00 UTC = **07:00 WIB** — digest harian ke Telegram.
+
+**Digest harian** mengirim satu pesan berisi: jumlah pesanan & omzet lunas, pengunjung
+unik, produk paling laku & paling dilihat, kata kunci yang paling dicari, jumlah
+produk yang dibagikan pembeli, dan produk yang stoknya tinggal ≤7 hari. Semuanya
+agregat — tanpa nama, nomor HP, atau email pembeli. Untuk mencoba tanpa menunggu
+jadwal: dashboard → **Pengaturan** → **Kirim Digest Sekarang**, atau
+`POST /api/admin/digest` dengan sesi admin.
 
 4. Uji manual: dashboard → **Keamanan** → **Backup Sekarang**. Berkas harus muncul di daftar dengan nama `backup-YYYYMMDD-HHMMSS.json.gz`.
 5. Memulihkan: klik **Pulihkan** pada berkas yang diinginkan (mode *merge* — menimpa dokumen dengan ID yang sama, tidak menghapus yang lain).
 
-> ⚠️ **Penting:** Vercel paket Hobby membatasi cron **1x per hari**. Itu cukup untuk toko kecil. Kalau butuh lebih sering, panggil `/api/cron/backup` dari layanan cron gratis (UptimeRobot / cron-job.org) dengan header `Authorization: Bearer <CRON_SECRET>`.
+> ⚠️ **Penting:** Vercel paket Hobby membatasi cron **1x per hari per proyek**.
+> Kalau dua cron di atas ditolak saat deploy (pesan "Hobby accounts are limited to
+> daily cron jobs"), kurangi jadi satu cron di `vercel.json` dan picu yang lain dari
+> layanan cron gratis (UptimeRobot / cron-job.org) dengan header
+> `Authorization: Bearer <CRON_SECRET>`.
+>
+> Kalau penjadwalan dikelola Vercel, header itu dikirim otomatis — `CRON_SECRET`
+> tetap wajib diisi di environment.
 
 > ⚠️ **Jangan** pernah memakai `service_role` key di kode frontend. Key ini hanya berada di environment variable server (Vercel Functions / VPS). RLS aktif tanpa policy publik sehingga anon key tidak bisa membaca data.
 
@@ -209,6 +227,7 @@ Lihat `.env.example`. Ringkasnya:
 | Audit perubahan pembayaran | Ganti gambar QRIS, NMID, atau **nomor rekening** → tercatat + notifikasi Telegram | otomatis |
 | **Sesi admin (Tahap 3)** | Cookie `HttpOnly` + `SameSite=Strict` + `Secure` (di HTTPS); token tidak lagi di localStorage | tidak perlu setting |
 | Pencabutan sesi | Logout / "Keluarkan semua perangkat" mencabut token di server, bukan hanya menghapus cookie | tombol di tab Keamanan |
+| **Digest harian Telegram** | Vercel Cron 07:00 WIB → `GET /api/cron/digest` (autentikasi `CRON_SECRET`), kirim ringkasan penjualan + trafik + kata kunci + stok menipis | `CRON_SECRET`, Telegram bot token & chat id |
 | **Backup harian (Tahap 3)** | Vercel Cron 18:00 WIB → `GET /api/cron/backup` (autentikasi `CRON_SECRET`), gzip, simpan di bucket `backups`, retensi 30 | `CRON_SECRET`, `BACKUP_RETENTION` |
 | Kredensial di backup | `botToken`/`chatId` **tidak pernah** ikut dicadangkan | by design |
 | Audit log | 90 hari, tanpa kredensial | `pruneAudit(store, 90)` |

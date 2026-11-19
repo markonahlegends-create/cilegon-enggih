@@ -403,6 +403,9 @@ export const adminUploadImage = (payload: {
 export const adminSettingsFull = () =>
   apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
 
+export const adminSendDigest = () =>
+  apiRequest<{ ok: boolean; sent: boolean }>('/api/admin/digest', { method: 'POST' });
+
 export const adminTestTelegram = (payload: { telegram: Record<string, unknown> }) =>
   apiRequest<{ sent: boolean; message: string }>('/api/admin/telegram/test', {
     method: 'POST',

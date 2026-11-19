@@ -23,6 +23,7 @@ import { BrandLogo } from './BrandLogo';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { useBackClose } from '../hooks/useBackClose';
+import { trackSearch } from '../lib/tracker';
 
 const QUICK_ZONES = [
   { id: 'cilegon-pusat', label: 'Kota Cilegon (Instan 1-2 Jam)' },
@@ -147,8 +148,12 @@ export const Navbar: React.FC = () => {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowSuggestions(false);
-    if (searchQuery.trim()) {
-      navigate(`/katalog?q=${encodeURIComponent(searchQuery.trim())}`);
+    const keyword = searchQuery.trim();
+    if (keyword) {
+      // Analitik: kata kunci yang dicari pembeli, untuk melihat apa yang
+      // dicari tapi belum tersedia di katalog. Tanpa data pribadi.
+      trackSearch(keyword);
+      navigate(`/katalog?q=${encodeURIComponent(keyword)}`);
     } else {
       navigate('/katalog');
     }
