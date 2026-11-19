@@ -684,7 +684,20 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             <div className="p-4 sm:p-5 text-xs sm:text-sm text-slate-700 leading-relaxed">
               {activeTab === 'deskripsi' && (
                 <div className="space-y-3">
-                  <p>{product.description}</p>
+                  {/*
+                   * `white-space: pre-line` menampilkan enter yang diketik admin
+                   * di textarea sebagai baris baru. Tanpa ini, semua enter
+                   * diruntuhkan menjadi satu paragraf menumpuk.
+                   *
+                   * `break-words` mencegah kata/URL panjang menembus kolom.
+                   * Spasi berlebih dirapikan (baris kosong ganda jadi satu).
+                   */}
+                  <p className="whitespace-pre-line break-words">
+                    {String(product.description || '')
+                      .replace(/\r\n?/g, '\n')
+                      .replace(/\n{3,}/g, '\n\n')
+                      .trim()}
+                  </p>
                   {product.bundleItems && (
                     <div className="pt-2 space-y-1.5">
                       <div className="font-bold text-navy-800">Rincian Isi Paket:</div>
