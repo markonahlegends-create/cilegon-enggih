@@ -27,6 +27,7 @@ import {
 } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { ShippingCalculator } from '../components/ShippingCalculator';
+import ProductVideoPlayer from '../components/ProductVideoPlayer';
 import { ProductCard } from '../components/ProductCard';
 import { useBackClose } from '../hooks/useBackClose';
 
@@ -484,6 +485,17 @@ export const ProductDetailPage: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          )}
+
+          {/*
+            Video produk. Diletakkan tepat di atas tab — setelah pembeli melihat
+            foto, sebelum membaca deskripsi. Komponen mengembalikan null bila
+            produk tidak punya video, jadi tidak ada ruang kosong.
+          */}
+          {product.videos && product.videos.length > 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-3">
+              <ProductVideoPlayer videos={product.videos} />
             </div>
           )}
 

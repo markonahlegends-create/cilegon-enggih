@@ -41,6 +41,25 @@ export interface ProductReview {
   comment: string;
 }
 
+/**
+ * Video produk.
+ *
+ * Dua sumber sengaja dibedakan:
+ *  - 'file'  : diunggah ke Supabase Storage (bucket product-video, maks 5 MB).
+ *              Wajib punya poster agar tidak ada kotak hitam sebelum diputar.
+ *  - 'embed' : tautan YouTube/Instagram. Tidak memakai kuota Supabase.
+ */
+export interface ProductVideo {
+  id: string;
+  url: string;
+  source: 'file' | 'embed';
+  /** Gambar poster. Wajib untuk source='file'. */
+  poster?: string;
+  title?: string;
+  /** Detik mulai pemutaran (untuk video panjang). */
+  startAt?: number;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -69,6 +88,8 @@ export interface Product {
   preOrderNote?: string;
   /** Stok dikelola manual walau ada varian. */
   stockManual?: boolean;
+  /** Video produk. Ditampilkan di halaman detail bila ada. */
+  videos?: ProductVideo[];
   badges: string[];
   description: string;
   specs: ProductSpec[];

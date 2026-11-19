@@ -23,7 +23,7 @@ import {
   EXPENSE_CATEGORY_LABEL,
   num
 } from './finance.js';
-import { saveImage, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES } from './storage.js';
+import { saveImage, saveVideo, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES, MAX_VIDEO_BYTES } from './storage.js';
 import { checkStock, applyStockMovement, stockAlreadyApplied } from './stock.js';
 import {
   normalizeEvent,
@@ -2265,6 +2265,73 @@ const cleanVariants = (raw) => {
     .filter(Boolean);
 };
 
+/**
+ * Bersihkan daftar video produk.
+ *
+ * Aturan:
+ *  - maks 3 video per produk (batas kuota + halaman tidak jadi berat)
+ *  - source 'embed' hanya untuk domain yang dikenal; selain itu ditolak,
+ *    supaya tidak ada iframe sembarang yang bisa menyisipkan skrip.
+ *  - source 'file' hanya menerima URL http(s) hasil unggahan kita.
+ */
+const ALLOWED_EMBED_HOSTS = [
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'youtu.be',
+  'instagram.com',
+  'www.instagram.com',
+  'tiktok.com',
+  'www.tiktok.com',
+  'vt.tiktok.com'
+];
+
+const cleanVideos = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((v, idx) => {
+      const url = String((v && v.url) || '').trim();
+      if (!url) return null;
+
+      /*
+       * URL relatif (/uploads/...) berasal dari penyimpanan lokal saat dev.
+       * `new URL()` melempar untuk path relatif, jadi ditangani lebih dulu —
+       * tanpa ini video hasil unggahan lokal hilang saat produk disimpan.
+       */
+      const isRelative = url.startsWith('/') && !url.startsWith('//');
+      let host = '';
+      if (!isRelative) {
+        let parsed;
+        try {
+          parsed = new URL(url);
+        } catch {
+          return null;
+        }
+        if (!/^https?:$/.test(parsed.protocol)) return null;
+        host = parsed.hostname.toLowerCase();
+      }
+
+      const requested = v && v.source === 'embed' ? 'embed' : 'file';
+      // Path relatif tidak mungkin 'embed' — itu aset kita sendiri.
+      if (isRelative && requested === 'embed') return null;
+
+      // embed hanya untuk penyedia yang dikenal; kalau tidak, simpan sebagai file
+      // (hanya berguna bila memang URL aset kita sendiri).
+      const source = requested === 'embed' && ALLOWED_EMBED_HOSTS.includes(host) ? 'embed' : 'file';
+
+      return {
+        id: String((v && v.id) || '').trim() || `vid-${idx}-${Date.now().toString(36)}`,
+        url,
+        source,
+        poster: String((v && v.poster) || '').trim(),
+        title: String((v && v.title) || '').trim().slice(0, 120),
+        startAt: Math.max(0, Math.round(Number(v && v.startAt) || 0))
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 3);
+};
+
 const cleanSpecs = (raw) => {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -2365,6 +2432,7 @@ const normalizeProduct = async (payload, existing) => {
 
   const galleryImages = cleanStringList(src.galleryImages ?? base.galleryImages).slice(0, 9);
   const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.jpg').trim();
+  const videos = cleanVideos(src.videos ?? base.videos);
 
   if (errors.length) return { errors, product: null };
 
@@ -2394,6 +2462,7 @@ const normalizeProduct = async (payload, existing) => {
       categoryLabel,
       image,
       galleryImages: galleryImages.length ? galleryImages : image ? [image] : [],
+      videos,
       price: finalPrice,
       priceRangeText: variants.length
         ? `Rp ${Math.min(...variants.map((v) => v.price)).toLocaleString('id-ID')} – Rp ${Math.max(
@@ -2674,6 +2743,16 @@ const UPLOAD_KINDS = {
     bucket: () => process.env.SUPABASE_PROOF_BUCKET || 'payment-proofs',
     maxBytes: MAX_PROOF_BYTES,
     prefix: 'bukti'
+  },
+  /*
+   * Video produk. Bucket sengaja dipisah dari foto karena isinya jauh lebih
+   * besar — memudahkan audit kuota dan menghapus video lama tanpa menyentuh
+   * foto produk.
+   */
+  video: {
+    bucket: () => process.env.SUPABASE_VIDEO_BUCKET || 'product-video',
+    maxBytes: MAX_VIDEO_BYTES,
+    prefix: 'video'
   }
 };
 
@@ -2699,12 +2778,21 @@ route('POST', '/api/admin/upload', async ({ headers, body }) => {
 
   const bucket = conf.bucket();
   try {
-    const saved = await saveImage({
-      dataUrl: body?.dataUrl,
-      filename: body?.filename || `${conf.prefix}`,
-      bucket,
-      maxBytes: conf.maxBytes
-    });
+    // Video punya jalur simpan sendiri: magic bytes MP4/WebM, batas 5 MB,
+    // tanpa kompresi browser.
+    const saved =
+      kind === 'video'
+        ? await saveVideo({
+            dataUrl: body?.dataUrl,
+            filename: body?.filename || conf.prefix,
+            bucket
+          })
+        : await saveImage({
+            dataUrl: body?.dataUrl,
+            filename: body?.filename || `${conf.prefix}`,
+            bucket,
+            maxBytes: conf.maxBytes
+          });
 
     // Jejak audit: siapa mengganti gambar apa & kapan.
     await recordAudit(store, {

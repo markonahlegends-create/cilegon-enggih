@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { formatRupiah } from '../data/products';
-import { adminUploadImage, ApiError } from '../lib/api';
+import { adminUploadImage, adminUploadVideo, ApiError } from '../lib/api';
 
 /* ------------------------------------------------------------------ */
 /* Helper kecil                                                        */
@@ -125,6 +125,9 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   /** Indeks varian yang sedang diunggah fotonya (null = tidak ada). */
   const [variantUploadIdx, setVariantUploadIdx] = useState<number | null>(null);
   const variantInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  /** Indeks video yang sedang diunggah file-nya. */
+  const [videoUploadIdx, setVideoUploadIdx] = useState<number>(0);
 
   const isNew: boolean = Boolean(value.__isNew);
   const dirty = Boolean(value.__dirty);
@@ -246,6 +249,57 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       i === idx ? { ...item, image: '', images: [] } : item
     );
     setMany({ variants: next });
+  };
+
+  /* ------------------------------ video ----------------------------- */
+  const videos: any[] = Array.isArray(value.videos) ? value.videos : [];
+
+  const patchVideos = (next: any[]) => setMany({ videos: next.slice(0, 3) });
+
+  const addVideoLink = () => {
+    if (videos.length >= 3) return;
+    patchVideos([
+      ...videos,
+      { id: `vid-${Date.now().toString(36)}`, url: '', source: 'embed', poster: '', title: '', startAt: 0 }
+    ]);
+  };
+
+  const updateVideo = (idx: number, key: string, val: any) =>
+    patchVideos(videos.map((v, i) => (i === idx ? { ...v, [key]: val } : v)));
+
+  const removeVideo = (idx: number) => patchVideos(videos.filter((_, i) => i !== idx));
+
+  /** Unggah file video (maks 5 MB) — tanpa kompresi, jadi batasnya ketat. */
+  const uploadVideoFile = async (files: FileList | null, idx: number) => {
+    const file = files && files[0];
+    if (!file) return;
+    setUploadError('');
+    setUploading(true);
+    setVariantUploadIdx(null);
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(
+          `${file.name} berukuran ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maksimal 5 MB — pendekkan durasi atau kecilkan resolusi ke 720p.`
+        );
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Gagal membaca file video.'));
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(file);
+      });
+      const res = await adminUploadVideo({
+        dataUrl,
+        filename: file.name.replace(/\.[^.]+$/, '')
+      });
+      updateVideo(idx, 'url', res.url);
+      updateVideo(idx, 'source', 'file');
+    } catch (err) {
+      setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload video gagal.');
+    } finally {
+      setUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
   };
 
   /* --------------------------- spesifikasi --------------------------- */
@@ -1028,6 +1082,129 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </SectionCard>
 
           {/* 5. Spesifikasi & isi paket */}
+          {/* 4b. Video produk */}
+          <SectionCard
+            step="4b"
+            title="Video Produk"
+            hint={`${videos.length}/3 video · maks 5 MB per file`}
+          >
+            <div className="space-y-2">
+              {videos.length === 0 && (
+                <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+                  Belum ada video. Video singkat (20–30 detik) membuat calon pembeli jauh lebih
+                  yakin — cukup rekam produk berputar dengan ponsel.
+                </p>
+              )}
+
+              {videos.map((v, idx) => (
+                <div key={v.id || idx} className="rounded-xl border border-slate-200 p-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={v.source || 'embed'}
+                      onChange={(e) => updateVideo(idx, 'source', e.target.value)}
+                      className="input-admin !text-[11px] !py-1.5 w-28"
+                    >
+                      <option value="embed">Tautan</option>
+                      <option value="file">File</option>
+                    </select>
+                    <input
+                      value={v.url || ''}
+                      onChange={(e) => updateVideo(idx, 'url', e.target.value)}
+                      placeholder={
+                        v.source === 'embed'
+                          ? 'https://youtube.com/watch?v=...'
+                          : 'Unggah file di bawah'
+                      }
+                      className="input-admin !text-[11px] !py-1.5 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeVideo(idx)}
+                      title="Hapus video"
+                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {v.source === 'file' && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoUploadIdx(idx);
+                          videoInputRef.current?.click();
+                        }}
+                        disabled={uploading}
+                        className="px-2 py-1 rounded-lg bg-forest-600 hover:bg-forest-700 disabled:opacity-50 text-white text-[10px] font-bold inline-flex items-center gap-1"
+                      >
+                        {uploading && videoUploadIdx === idx ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Upload className="w-3 h-3" />
+                        )}
+                        {v.url ? 'Ganti file' : 'Unggah MP4/WebM'}
+                      </button>
+                      <input
+                        value={v.poster || ''}
+                        onChange={(e) => updateVideo(idx, 'poster', e.target.value)}
+                        placeholder="URL poster (wajib agar tidak kotak hitam)"
+                        className="input-admin !text-[10.5px] !py-1 flex-1"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={v.title || ''}
+                      onChange={(e) => updateVideo(idx, 'title', e.target.value)}
+                      placeholder="Judul video (opsional)"
+                      className="input-admin !text-[10.5px] !py-1 flex-1"
+                    />
+                    {v.source === 'embed' && (
+                      <input
+                        type="number"
+                        min={0}
+                        value={v.startAt ?? 0}
+                        onChange={(e) => updateVideo(idx, 'startAt', Number(e.target.value))}
+                        placeholder="Mulai (detik)"
+                        title="Detik mulai pemutaran"
+                        className="input-admin !text-[10.5px] !py-1 w-24"
+                      />
+                    )}
+                  </div>
+
+                  {v.url && (
+                    <div className="text-[9.5px] text-slate-400 break-all">
+                      {v.source === 'file' && !v.poster && (
+                        <span className="text-amber-600 font-bold">Poster belum diisi. </span>
+                      )}
+                      {v.url}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {videos.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addVideoLink}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10.5px] font-bold text-slate-700 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Tambah slot video
+                </button>
+              )}
+
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={(e) => uploadVideoFile(e.target.files, videoUploadIdx)}
+              />
+            </div>
+          </SectionCard>
+
           <SectionCard step="5" title="Spesifikasi & Isi Paket">
             <div className="space-y-1.5">
               {specs.map((sp, idx) => (
