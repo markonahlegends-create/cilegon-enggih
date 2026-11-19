@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trackProductView, trackShare } from '../lib/tracker';
 import {
@@ -100,9 +100,36 @@ export const ProductDetailPage: React.FC = () => {
     return () => observer.disconnect();
   }, [product?.id]);
 
-  const gallery = product.galleryImages?.length
+  const productGallery = product.galleryImages?.length
     ? product.galleryImages
     : [product.image];
+
+  /**
+   * Galeri mengikuti varian yang dipilih.
+   *
+   * Aturan:
+   * - Varian punya foto → foto varian tampil lebih dulu, lalu SISA galeri produk
+   *   (supaya pembeli tetap bisa melihat detail lain).
+   * - Varian belum punya foto → pakai galeri produk apa adanya. Tidak pernah
+   *   menghasilkan galeri kosong / gambar rusak.
+   * - Duplikat dibuang: kalau foto varian sama dengan foto galeri, tidak tampil dua kali.
+   */
+  const gallery = useMemo(() => {
+    const variantShots = [
+      selectedVariant?.image,
+      ...(selectedVariant?.images || [])
+    ].filter(Boolean) as string[];
+
+    if (variantShots.length === 0) return productGallery;
+
+    const unique = Array.from(new Set([...variantShots, ...productGallery]));
+    return unique;
+  }, [selectedVariant?.id, selectedVariant?.image, selectedVariant?.images, productGallery.join('|')]);
+
+  /* Saat varian berganti, gambar utama kembali ke foto pertama varian. */
+  useEffect(() => {
+    if (selectedVariant?.image) setActiveImage(selectedVariant.image);
+  }, [selectedVariant?.id, selectedVariant?.image]);
 
   // Navigasi lightbox (keyboard) — hanya aktif saat lightbox terbuka.
   useEffect(() => {

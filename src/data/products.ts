@@ -12,6 +12,18 @@ export interface ProductVariant {
   price: number;
   originalPrice?: number;
   stock: number;
+  /**
+   * Foto utama khusus varian ini.
+   *
+   * KENAPA ADA: sebelumnya memilih varian hanya mengubah harga & stok,
+   * sementara gambar tetap sama. Pembeli yang memilih "Navy" masih melihat
+   * foto "Cream" — membingungkan dan sering berujung komplain.
+   *
+   * Kosong = pakai galeri produk (perilaku lama, tidak pernah rusak).
+   */
+  image?: string;
+  /** Foto tambahan varian (maks 4). Ditampilkan setelah foto utama varian. */
+  images?: string[];
 }
 
 export interface ProductSpec {

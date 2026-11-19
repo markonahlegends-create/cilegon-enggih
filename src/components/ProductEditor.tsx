@@ -5,7 +5,9 @@ import {
   ChevronUp,
   Copy,
   Image as ImageIcon,
+  ImagePlus,
   Layers,
+  RefreshCw,
   Loader2,
   Plus,
   Save,
@@ -120,6 +122,9 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const [showErrors, setShowErrors] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  /** Indeks varian yang sedang diunggah fotonya (null = tidak ada). */
+  const [variantUploadIdx, setVariantUploadIdx] = useState<number | null>(null);
+  const variantInputRef = useRef<HTMLInputElement | null>(null);
 
   const isNew: boolean = Boolean(value.__isNew);
   const dirty = Boolean(value.__dirty);
@@ -183,6 +188,64 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       stock: 0
     }));
     setMany({ variants: created, hasSizeChart: true });
+  };
+
+  /**
+   * Unggah foto khusus satu varian.
+   *
+   * Dipisah dari uploadFiles karena hasilnya masuk ke variants[idx].image /
+   * .images, bukan ke galeri produk. Batas 3 foto per varian supaya ringan.
+   */
+  const uploadVariantFiles = async (files: FileList | null, idx: number) => {
+    if (!files || files.length === 0) return;
+    setUploadError('');
+    setUploading(true);
+    setVariantUploadIdx(idx);
+    try {
+      const current = Array.isArray(variants[idx]?.images) ? variants[idx].images : [];
+      const uploaded: string[] = [];
+      for (const file of Array.from(files).slice(0, 3)) {
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 8 * 1024 * 1024) {
+          throw new Error(`${file.name} lebih dari 8 MB. Kompres dulu.`);
+        }
+        const dataUrl = await compressImage(file);
+        const res = await adminUploadImage({ dataUrl, filename: file.name.replace(/\.[^.]+$/, '') });
+        uploaded.push(res.url);
+      }
+      if (uploaded.length === 0) return;
+
+      const [first, ...rest] = uploaded;
+      const merged = Array.from(new Set([...current, ...rest])).slice(0, 4);
+      const next = variants.map((v, i) =>
+        i === idx ? { ...v, image: v.image || first, images: merged } : v
+      );
+      setMany({ variants: next });
+    } catch (err) {
+      setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload gagal.');
+    } finally {
+      setUploading(false);
+      setVariantUploadIdx(null);
+      if (variantInputRef.current) variantInputRef.current.value = '';
+    }
+  };
+
+  const removeVariantImage = (idx: number, url: string) => {
+    const v = variants[idx] || {};
+    const images = (Array.isArray(v.images) ? v.images : []).filter((x: string) => x !== url);
+    // Kalau foto utama dihapus, promosikan foto tambahan pertama.
+    const image = v.image === url ? images[0] || '' : v.image;
+    const next = variants.map((item, i) =>
+      i === idx ? { ...item, image, images: images.filter((x: string) => x !== image) } : item
+    );
+    setMany({ variants: next });
+  };
+
+  const clearVariantImages = (idx: number) => {
+    const next = variants.map((item, i) =>
+      i === idx ? { ...item, image: '', images: [] } : item
+    );
+    setMany({ variants: next });
   };
 
   /* --------------------------- spesifikasi --------------------------- */
@@ -620,6 +683,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       <th className="text-left px-1 py-1 font-bold w-24">Harga Coret</th>
                       <th className="text-left px-1 py-1 font-bold w-20">Stok</th>
                       <th className="text-left px-1 py-1 font-bold w-24">HPP</th>
+                      <th className="text-left px-1 py-1 font-bold w-32">Foto Varian</th>
                       <th className="text-right px-1 py-1 font-bold w-24">Aksi</th>
                     </tr>
                   </thead>
@@ -671,6 +735,66 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                             title="Harga pokok per varian (0 = ikut HPP produk)"
                             className="input-admin !text-[11px] !py-1.5"
                           />
+                        </td>
+                        <td className="px-1 py-1.5">
+                          {(() => {
+                            const shots: string[] = [
+                              v.image,
+                              ...(Array.isArray(v.images) ? v.images : [])
+                            ].filter(Boolean);
+                            return (
+                              <div className="flex items-center gap-1">
+                                {shots.slice(0, 2).map((url: string) => (
+                                  <div key={url} className="relative shrink-0">
+                                    <img
+                                      src={url}
+                                      alt=""
+                                      className="w-8 h-8 rounded-md object-cover border border-slate-200"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeVariantImage(idx, url)}
+                                      title="Hapus foto"
+                                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] leading-none flex items-center justify-center"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                                {shots.length > 2 && (
+                                  <span className="text-[9px] text-slate-400 font-bold">
+                                    +{shots.length - 2}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVariantUploadIdx(idx);
+                                    variantInputRef.current?.click();
+                                  }}
+                                  disabled={uploading || shots.length >= 5}
+                                  title="Unggah foto khusus varian ini"
+                                  className="w-8 h-8 rounded-md border border-dashed border-slate-300 text-slate-400 hover:border-forest-500 hover:text-forest-600 disabled:opacity-40 flex items-center justify-center"
+                                >
+                                  {uploading && variantUploadIdx === idx ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <ImagePlus className="w-3 h-3" />
+                                  )}
+                                </button>
+                                {shots.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => clearVariantImages(idx)}
+                                    title="Kosongkan — pakai galeri produk"
+                                    className="text-[9px] text-slate-400 hover:text-red-600 font-bold underline"
+                                  >
+                                    reset
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-1 py-1.5">
                           <div className="flex items-center justify-end gap-0.5">
@@ -889,6 +1013,17 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               multiple
               className="hidden"
               onChange={(e) => uploadFiles(e.target.files, false)}
+            />
+            {/* Foto khusus varian — target diambil dari variantUploadIdx. */}
+            <input
+              ref={variantInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (variantUploadIdx !== null) uploadVariantFiles(e.target.files, variantUploadIdx);
+              }}
             />
           </SectionCard>
 

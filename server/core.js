@@ -2252,7 +2252,14 @@ const cleanVariants = (raw) => {
         costPrice: Math.max(0, Number(v.costPrice) || 0),
         extraCost: Math.max(0, Number(v.extraCost) || 0),
         vendorId: v.vendorId || null,
-        vendorName: String(v.vendorName || '').trim()
+        vendorName: String(v.vendorName || '').trim(),
+        /*
+         * Foto khusus varian. Tanpa ini, unggahan admin akan hilang setiap
+         * produk disimpan ulang — karena fungsi ini hanya menyalin field yang
+         * disebutkan secara eksplisit.
+         */
+        image: cleanStringList([v.image])[0] || '',
+        images: cleanStringList(v.images).slice(0, 4)
       };
     })
     .filter(Boolean);
