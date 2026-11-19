@@ -45,3 +45,6 @@ server/data/
 
 # Data uji live preview
 .preview-data/
+
+# Unggahan lokal (mode dev) — file bukti transfer & video produk
+/public/uploads/
