@@ -27,6 +27,13 @@ import {
   ProductVariant,
   Product
 } from '../data/products';
+import {
+  defaultSelection,
+  isSelectionComplete,
+  isValueAvailable,
+  resolveSelection,
+  type SelectedOptions
+} from '../lib/variantPricing';
 import { useStore } from '../context/StoreContext';
 import { ShippingCalculator } from '../components/ShippingCalculator';
 import ProductVideoPlayer from '../components/ProductVideoPlayer';
@@ -48,6 +55,14 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
     products
   } = useStore();
 
+  /*
+   * Produk multi-dimensi (Model x Ukuran x Warna) memakai `options`, produk
+   * biasa tetap memakai `selectedVariant`. Keduanya hidup berdampingan supaya
+   * 20 produk lama tidak perlu diubah.
+   */
+  const optionGroups = product.optionGroups || [];
+  const isMultiOption = optionGroups.length > 0;
+  const [options, setOptions] = useState<SelectedOptions>(() => defaultSelection(product));
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(
     product?.variants?.[0]
   );
@@ -77,6 +92,7 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
 
   useEffect(() => {
     setSelectedVariant(product.variants?.[0]);
+    setOptions(defaultSelection(product));
     setActiveImage(product.image);
     setQty(1);
     setNote('');
@@ -120,22 +136,47 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
    *   menghasilkan galeri kosong / gambar rusak.
    * - Duplikat dibuang: kalau foto varian sama dengan foto galeri, tidak tampil dua kali.
    */
+  /*
+   * Harga & stok hasil pilihan. resolveSelection() adalah modul yang SAMA
+   * dengan yang dipakai server, jadi angka di layar tidak mungkin berbeda
+   * dari angka yang ditagih.
+   */
+  const selection = isMultiOption ? resolveSelection(product, options) : null;
+  const optionsReady = !isMultiOption || isSelectionComplete(optionGroups, options);
+
   const gallery = useMemo(() => {
-    const variantShots = [
-      selectedVariant?.image,
-      ...(selectedVariant?.images || [])
-    ].filter(Boolean) as string[];
+    /*
+     * Untuk produk multi-dimensi, gambar mengikuti nilai yang dipilih
+     * (mis. warna Navy -> foto Navy). Kombinasi menang atas nilai, nilai
+     * menang atas galeri produk.
+     */
+    const variantShots = (
+      isMultiOption
+        ? [selection?.image]
+        : [selectedVariant?.image, ...(selectedVariant?.images || [])]
+    ).filter(Boolean) as string[];
 
     if (variantShots.length === 0) return productGallery;
 
     const unique = Array.from(new Set([...variantShots, ...productGallery]));
     return unique;
-  }, [selectedVariant?.id, selectedVariant?.image, selectedVariant?.images, productGallery.join('|')]);
+  }, [
+    isMultiOption,
+    selection?.image,
+    selectedVariant?.id,
+    selectedVariant?.image,
+    selectedVariant?.images,
+    productGallery.join('|')
+  ]);
 
   /* Saat varian berganti, gambar utama kembali ke foto pertama varian. */
   useEffect(() => {
+    if (isMultiOption && selection?.image) {
+      setActiveImage(selection.image);
+      return;
+    }
     if (selectedVariant?.image) setActiveImage(selectedVariant.image);
-  }, [selectedVariant?.id, selectedVariant?.image]);
+  }, [isMultiOption, selection?.image, selectedVariant?.id, selectedVariant?.image]);
 
   // Navigasi lightbox (keyboard) — hanya aktif saat lightbox terbuka.
   useEffect(() => {
@@ -150,7 +191,7 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [lightboxIndex, gallery.length]);
 
-  const baseUnitPrice = selectedVariant?.price ?? product.price;
+  const baseUnitPrice = selection ? selection.price : selectedVariant?.price ?? product.price;
   const isWholesaleActive = qty >= product.minWholesaleQty;
   const effectiveUnitPrice = isWholesaleActive
     ? Math.min(baseUnitPrice, product.wholesalePrice)
@@ -203,14 +244,36 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
   const handleOrderWhatsApp = () => {
     const msg = `Halo Admin Cilegon Enggih! Saya tertarik memesan:\n\n• Produk: *${
       product.name
-    }*\n• Varian: ${selectedVariant ? selectedVariant.label : 'Standar'}\n• Jumlah: *${qty} pcs*\n• Harga Estimasi: *${formatRupiah(
+    }*\n• Varian: ${
+      selection?.label || (selectedVariant ? selectedVariant.label : 'Standar')
+    }\n• Jumlah: *${qty} pcs*\n• Harga Estimasi: *${formatRupiah(
       subtotal
     )}*${note ? `\n• Catatan: ${note}` : ''}\n\nMohon info ketersediaan stok & pengiriman. Terima kasih!`;
     window.open(buildWhatsAppUrl(msg), '_blank', 'noopener,noreferrer');
   };
 
-  const handleBuyNowDirect = () => {
+  /**
+   * Tambah ke keranjang, satu pintu untuk produk biasa maupun multi-dimensi.
+   *
+   * Kalau pilihan belum lengkap, pesanan TIDAK boleh jalan — server akan
+   * menolaknya nanti, tapi menolak lebih awal dengan pesan jelas jauh lebih
+   * baik daripada pembeli baru tahu saat checkout.
+   */
+  const submitToCart = () => {
+    if (isMultiOption && !optionsReady) {
+      pushToast('Pilihan belum lengkap', 'Lengkapi Model, Ukuran, dan Warna dulu.', 'info');
+      return false;
+    }
+    if (isMultiOption) {
+      addToCart(product, qty, undefined, note, options, selection?.label);
+      return true;
+    }
     addToCart(product, qty, selectedVariant, note);
+    return true;
+  };
+
+  const handleBuyNowDirect = () => {
+    if (!submitToCart()) return;
     setIsCheckoutOpen(true);
   };
 
@@ -394,12 +457,23 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
               <span className="text-2xl sm:text-3xl font-extrabold text-navy-800">
                 {formatRupiah(effectiveUnitPrice)}
               </span>
-              <span className="text-sm text-slate-400 line-through">
-                {formatRupiah(selectedVariant?.originalPrice || product.originalPrice)}
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-forest-600 text-white text-xs font-bold">
-                Hemat {product.discountPercent}%
-              </span>
+              {(() => {
+                const coret = selection
+                  ? selection.originalPrice
+                  : selectedVariant?.originalPrice || product.originalPrice;
+                if (!coret || coret <= effectiveUnitPrice) return null;
+                const persen = Math.round((1 - effectiveUnitPrice / coret) * 100);
+                return (
+                  <>
+                    <span className="text-sm text-slate-400 line-through">
+                      {formatRupiah(coret)}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-forest-600 text-white text-xs font-bold">
+                      Hemat {persen}%
+                    </span>
+                  </>
+                );
+              })()}
             </div>
             <div className="text-xs text-slate-500">
               Kisaran Harga Rekomendasi Retail: <strong>{product.priceRangeText}</strong>
@@ -413,8 +487,90 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             </div>
           </div>
 
+          {/*
+            PILIHAN MULTI-DIMENSI (Model x Ukuran x Warna).
+            Satu baris per dimensi — bukan 168 tombol berisi nama gabungan.
+            Nilai yang tidak tersedia (mis. warna yang tidak dibuat untuk model
+            tertentu) dinonaktifkan, bukan disembunyikan, supaya pembeli tahu
+            pilihannya memang tidak ada dan tidak mengira halaman bermasalah.
+          */}
+          {isMultiOption && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs sm:text-sm font-extrabold text-navy-800">
+                  {selection?.label || 'Pilih varian'}
+                </span>
+                {product.hasSizeChart && (
+                  <button
+                    type="button"
+                    onClick={() => setShowSizeChartModal(true)}
+                    className="inline-flex items-center gap-1 text-xs font-bold text-forest-700 hover:text-forest-800 bg-forest-50 px-2.5 py-1 rounded-lg border border-forest-200"
+                  >
+                    <Ruler className="w-3.5 h-3.5" /> Panduan Size Chart
+                  </button>
+                )}
+              </div>
+
+              {optionGroups.map((group) => (
+                <div key={group.id} className="space-y-1.5">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wide text-slate-500">
+                      {group.name}
+                    </span>
+                    {group.required !== false && !options[group.id] && (
+                      <span className="text-[10px] text-red-600 font-bold">wajib dipilih</span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {group.values.map((value) => {
+                      const active = options[group.id] === value.id;
+                      const usable = isValueAvailable(product, group.id, value, options);
+                      const isColor = group.display === 'swatch' && value.colorHex;
+
+                      return (
+                        <button
+                          key={value.id}
+                          type="button"
+                          disabled={!usable}
+                          title={usable ? value.label : `${value.label} — tidak tersedia`}
+                          onClick={() =>
+                            setOptions((prev) => ({ ...prev, [group.id]: value.id }))
+                          }
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all inline-flex items-center gap-1.5 ${
+                            !usable
+                              ? 'bg-slate-50 border-slate-200 text-slate-300 line-through cursor-not-allowed'
+                              : active
+                                ? 'bg-forest-50 border-forest-600 text-forest-800 ring-1 ring-forest-600/30'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-forest-400'
+                          }`}
+                        >
+                          {isColor && (
+                            <span
+                              className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
+                              style={{ backgroundColor: value.colorHex }}
+                            />
+                          )}
+                          {value.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {selection?.originalPrice && selection.originalPrice > selection.price && (
+                <div className="text-[11px] text-slate-500">
+                  Harga normal{' '}
+                  <span className="line-through">{formatRupiah(selection.originalPrice)}</span> —
+                  hemat {formatRupiah(selection.originalPrice - selection.price)}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Variant Selector + Size Chart Button */}
-          {product.variants && product.variants.length > 0 && (
+          {!isMultiOption && product.variants && product.variants.length > 0 && (
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs sm:text-sm font-extrabold text-navy-800">
@@ -594,7 +750,9 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             {selectedVariant && (
               <div className="text-xs text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-100 leading-snug">
                 Varian dipilih:{' '}
-                <strong className="text-navy-800 break-words">{selectedVariant.label}</strong>
+                <strong className="text-navy-800 break-words">
+                  {selection?.label || selectedVariant?.label}
+                </strong>
               </div>
             )}
 
@@ -624,7 +782,10 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                 </button>
               </div>
               <span className="text-xs text-slate-500">
-                Stok: <strong className="text-slate-800">{selectedVariant?.stock ?? product.stock}</strong>
+                Stok:{' '}
+                <strong className="text-slate-800">
+                  {selection?.stock ?? selectedVariant?.stock ?? product.stock}
+                </strong>
               </span>
             </div>
 
@@ -669,7 +830,7 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
               {/* 1. Tambah ke Keranjang */}
               <button
                 type="button"
-                onClick={() => addToCart(product, qty, selectedVariant, note)}
+                onClick={() => submitToCart()}
                 className="w-full py-3 px-4 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 text-navy-950 font-extrabold text-sm flex items-center justify-center gap-2 shadow-sm transition-all"
               >
                 <ShoppingCart className="w-4 h-4" />
@@ -934,7 +1095,7 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
           </div>
           <button
             type="button"
-            onClick={() => addToCart(product, qty, selectedVariant, note)}
+            onClick={() => submitToCart()}
             aria-label="Tambah ke keranjang"
             className="shrink-0 p-3 rounded-xl border border-amberbrand-400 bg-amberbrand-50 text-amberbrand-700 active:bg-amberbrand-100"
           >

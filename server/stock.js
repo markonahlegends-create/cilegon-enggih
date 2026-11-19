@@ -42,12 +42,43 @@ export const checkStock = (items, catalog) => {
     if (isPreOrderItem) continue;
 
     const wanted = clampQty(item.qty);
-    const stock =
-      variants.length > 0
-        ? Number(variant?.stock) || 0
-        : product.stockManual === true
-          ? Number(product.stock) || 0
-          : variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+
+    /*
+     * PRODUK MULTI-DIMENSI (Model x Ukuran x Warna) tidak punya `variantId`,
+     * jadi kalau memakai aturan varian di bawah hasilnya selalu 0 — semua
+     * pesanan akan ditolak "stok tidak mencukupi" padahal barangnya ada.
+     *
+     * Urutan sumber stok:
+     *  1. stok kombinasi (bila admin mengisinya untuk kombinasi itu)
+     *  2. stok produk (bila diisi manual)
+     *  3. total stok varian lama
+     */
+    const groups = Array.isArray(product.optionGroups) ? product.optionGroups : [];
+    let stock;
+    if (groups.length) {
+      const combos = Array.isArray(product.combinations) ? product.combinations : [];
+      const combo = combos.find(
+        (c) =>
+          Array.isArray(c.optionValueIds) &&
+          c.optionValueIds.join('|') === String(item.optionKey || '')
+      );
+      if (combo && typeof combo.stock === 'number') {
+        stock = Number(combo.stock) || 0;
+      } else if (product.stockManual === true) {
+        stock = Number(product.stock) || 0;
+      } else if (variants.length > 0) {
+        stock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      } else {
+        stock = Number(product.stock) || 0;
+      }
+    } else {
+      stock =
+        variants.length > 0
+          ? Number(variant?.stock) || 0
+          : product.stockManual === true
+            ? Number(product.stock) || 0
+            : variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+    }
 
     if (wanted > stock) {
       problems.push({

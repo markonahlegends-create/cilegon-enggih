@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
+import { resolveSelection } from '../lib/variantPricing';
 import { useBackClose } from '../hooks/useBackClose';
 
 export const CartDrawer: React.FC = () => {
@@ -63,13 +64,20 @@ export const CartDrawer: React.FC = () => {
 
   const handleCheckoutViaWA = () => {
     const lines = cart.map((item, i) => {
-      const unitPrice = item.variant?.price ?? item.product.price;
+      // Produk multi-dimensi: harga dari pilihan, bukan `variant`.
+      const unitPrice = item.options
+        ? resolveSelection(item.product, item.options).price
+        : item.variant?.price ?? item.product.price;
       const effectivePrice =
         item.qty >= item.product.minWholesaleQty
           ? Math.min(unitPrice, item.product.wholesalePrice)
           : unitPrice;
       return `${i + 1}. ${item.product.name}${
-        item.variant ? ` [${item.variant.label}]` : ''
+        item.optionsLabel
+          ? ` [${item.optionsLabel}]`
+          : item.variant
+            ? ` [${item.variant.label}]`
+            : ''
       } x ${item.qty} pcs = ${formatRupiah(effectivePrice * item.qty)}`;
     });
 
@@ -158,7 +166,9 @@ export const CartDrawer: React.FC = () => {
             </div>
           ) : (
             cart.map((item) => {
-              const unitPrice = item.variant?.price ?? item.product.price;
+              const unitPrice = item.options
+                ? resolveSelection(item.product, item.options).price
+                : item.variant?.price ?? item.product.price;
               const isWholesale = item.qty >= item.product.minWholesaleQty;
               const effectivePrice = isWholesale
                 ? Math.min(unitPrice, item.product.wholesalePrice)
@@ -183,7 +193,12 @@ export const CartDrawer: React.FC = () => {
                       {item.product.name}
                     </Link>
 
-                    {item.variant && (
+                    {item.optionsLabel && (
+                      <div className="text-[10px] text-slate-500">
+                        Varian: <strong className="text-slate-700">{item.optionsLabel}</strong>
+                      </div>
+                    )}
+                    {!item.optionsLabel && item.variant && (
                       <div className="text-[11px] text-slate-500 mt-0.5">
                         Varian: <strong className="text-slate-700">{item.variant.label}</strong>
                       </div>

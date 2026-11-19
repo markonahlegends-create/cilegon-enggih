@@ -1151,7 +1151,73 @@ route('POST', '/api/orders', async ({ body, headers }) => {
       variants.find((v) => v.id === raw.variantId) ||
       (variants.length === 1 ? variants[0] : null);
 
-    const unitPrice = Number(variant?.price ?? product.price) || 0;
+    /*
+     * PRODUK MULTI-DIMENSI (Model x Ukuran x Warna).
+     *
+     * Harga TIDAK diambil dari kiriman browser. Nilai `price` yang dikirim
+     * pembeli hanya dipakai untuk MEMBANDINGKAN (kalau beda, dicatat sebagai
+     * peringatan), lalu server menghitung sendiri:
+     *   harga = kombinasi.price ?? (harga produk + jumlah priceDelta)
+     * Ini menutup celah pembeli mengubah selisih harga di browser.
+     */
+    const groups = Array.isArray(product.optionGroups) ? product.optionGroups : [];
+    const chosen = raw.options && typeof raw.options === 'object' ? raw.options : {};
+    const chosenIds = groups.map((g) => String(chosen[g.id] || ''));
+    const selectionComplete = groups.every(
+      (g, i) => g.required === false || Boolean(chosenIds[i])
+    );
+
+    let optionPrice = null;
+    let optionLabel = '';
+    let comboImage = '';
+    if (groups.length) {
+      if (!selectionComplete) {
+        priceIssues.push(
+          `${product.shortName || product.name}: pilihan belum lengkap (${groups
+            .map((g) => g.name)
+            .join(', ')}).`
+        );
+        return null;
+      }
+
+      let delta = 0;
+      const labels = [];
+      for (let i = 0; i < groups.length; i += 1) {
+        const value = groups[i].values.find((v) => v.id === chosenIds[i]);
+        if (!value) {
+          priceIssues.push(
+            `${product.shortName || product.name}: pilihan "${groups[i].name}" tidak dikenal.`
+          );
+          return null;
+        }
+        delta += Number(value.priceDelta) || 0;
+        labels.push(value.label);
+        if (!comboImage && value.image) comboImage = value.image;
+      }
+
+      const combos = Array.isArray(product.combinations) ? product.combinations : [];
+      const combo = combos.find(
+        (c) =>
+          Array.isArray(c.optionValueIds) &&
+          c.optionValueIds.length === chosenIds.length &&
+          c.optionValueIds.every((id, i) => id === chosenIds[i])
+      );
+
+      if (combo && combo.available === false) {
+        priceIssues.push(
+          `${product.shortName || product.name} (${labels.join(' / ')}): kombinasi ini sedang tidak tersedia.`
+        );
+        return null;
+      }
+
+      optionPrice = Math.max(0, Number(combo?.price ?? (Number(product.price) || 0) + delta));
+      optionLabel = labels.join(' · ');
+      if (combo?.image) comboImage = combo.image;
+    }
+
+    const unitPrice = groups.length
+      ? Number(optionPrice) || 0
+      : Number(variant?.price ?? product.price) || 0;
     const wholesaleApplies =
       Number(product.minWholesaleQty) > 0 && qty >= Number(product.minWholesaleQty);
     const effectivePrice = wholesaleApplies
@@ -1167,12 +1233,37 @@ route('POST', '/api/orders', async ({ body, headers }) => {
       );
     }
 
+    /*
+     * Item pesanan menyimpan pilihan sebagai struktur, bukan satu string
+     * panjang. Dengan begitu invoice, laporan, dan WhatsApp bisa menampilkan
+     * "Model: Oversize / Ukuran: XL / Warna: Navy" apa adanya, dan gudang
+     * tidak perlu memecah teks.
+     */
+    const optionEntries = groups.length
+      ? groups.map((g, i) => ({
+          groupId: g.id,
+          groupName: g.name,
+          valueId: chosenIds[i],
+          valueLabel:
+            g.values.find((v) => v.id === chosenIds[i])?.label || ''
+        }))
+      : [];
+
     return {
       productId: product.id,
       variantId: variant?.id || raw.variantId || null,
-      variantLabel: variant?.label || raw.variantLabel || '',
+      variantLabel: groups.length ? optionLabel : variant?.label || raw.variantLabel || '',
+      options: optionEntries,
+      optionKey: groups.length ? chosenIds.join('|') : '',
+      image: comboImage || product.image || '',
       name: `${product.shortName || product.name}${
-        variant?.label ? ` (${variant.label})` : ''
+        groups.length
+          ? optionLabel
+            ? ` (${optionLabel})`
+            : ''
+          : variant?.label
+            ? ` (${variant.label})`
+            : ''
       }`,
       qty,
       price: effectivePrice,
@@ -1188,8 +1279,18 @@ route('POST', '/api/orders', async ({ body, headers }) => {
 
   // Tolak pesanan yang memuat produk tidak dikenal (katalog berubah/dihapus).
   if (pricedItems.some((it) => !it)) {
+    /*
+     * Item bisa null karena dua sebab berbeda: produknya memang tidak ada,
+     * ATAU pilihannya tidak valid (belum lengkap, nilai tidak dikenal,
+     * kombinasi tidak tersedia). Menampilkan "produk tidak ditemukan" untuk
+     * kasus kedua menyesatkan — pembeli akan mencari produk yang sebenarnya
+     * ada. Karena itu `priceIssues` jadi kalimat utama bila terisi.
+     */
+    const sebab = priceIssues.length
+      ? priceIssues.join(' ')
+      : 'Produk pada pesanan tidak ditemukan di katalog kami.';
     return bad(
-      `Produk pada pesanan tidak ditemukan di katalog kami. Silakan muat ulang halaman lalu pilih produk kembali. (${priceIssues.join(' ')})`,
+      `${sebab} Silakan muat ulang halaman lalu pilih kembali.`,
       400,
       { problems: priceIssues }
     );
@@ -2293,6 +2394,130 @@ const ALLOWED_EMBED_HOSTS = [
   'vt.tiktok.com'
 ];
 
+/**
+ * Bersihkan grup pilihan multi-dimensi (Model / Ukuran / Warna).
+ *
+ * Aturan yang ditegakkan:
+ *  - maks 3 grup (60+ kombinasi membuat halaman tidak terpakai di HP)
+ *  - maks 30 nilai per grup
+ *  - ID nilai harus unik dalam satu grup; duplikat dibuang karena akan
+ *    membuat harga ambigu saat diklik pembeli
+ *  - `priceDelta` dibatasi ±50% harga produk, supaya salah ketik
+ *    (150000 alih-alih 15000) langsung terlihat, bukan menghasilkan harga gila
+ *  - `colorHex` hanya menerima format #RGB / #RRGGBB
+ */
+const MAX_OPTION_GROUPS = 3;
+const MAX_OPTION_VALUES = 30;
+
+const cleanOptionGroups = (raw, basePrice = 0) => {
+  if (!Array.isArray(raw)) return [];
+  const maxDelta = Math.max(1000, Math.round(basePrice * 0.5));
+
+  return raw
+    .map((g, gi) => {
+      const name = String((g && g.name) || '').trim().slice(0, 40);
+      if (!name) return null;
+
+      const seen = new Set();
+      const values = (Array.isArray(g.values) ? g.values : [])
+        .map((v, vi) => {
+          const label = String((v && v.label) || '').trim().slice(0, 40);
+          if (!label) return null;
+          const id =
+            String((v && v.id) || '').trim().slice(0, 60) ||
+            `v${gi}-${vi}-${Date.now().toString(36)}`;
+          if (seen.has(id)) return null;
+          seen.add(id);
+
+          const deltaRaw = Number(v && v.priceDelta) || 0;
+          const priceDelta = Math.max(-maxDelta, Math.min(maxDelta, Math.round(deltaRaw)));
+
+          const hex = String((v && v.colorHex) || '').trim();
+          const colorHex = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex) ? hex : '';
+
+          return {
+            id,
+            label,
+            priceDelta,
+            colorHex,
+            image: cleanStringList([v && v.image])[0] || '',
+            available: (v && v.available) !== false
+          };
+        })
+        .filter(Boolean)
+        .slice(0, MAX_OPTION_VALUES);
+
+      if (!values.length) return null;
+
+      const displayRaw = String((g && g.display) || 'button');
+      const display = ['button', 'swatch', 'select'].includes(displayRaw) ? displayRaw : 'button';
+
+      return {
+        id: String((g && g.id) || '').trim().slice(0, 40) || `grup-${gi + 1}`,
+        name,
+        display,
+        required: (g && g.required) !== false,
+        values
+      };
+    })
+    .filter(Boolean)
+    .slice(0, MAX_OPTION_GROUPS);
+};
+
+/**
+ * Bersihkan kombinasi yang menyimpang.
+ *
+ * `optionValueIds` harus sepanjang jumlah grup dan semuanya merujuk nilai yang
+ * benar-benar ada — kalau tidak, kombinasi tidak akan pernah cocok dan lebih
+ * baik dibuang daripada menjadi data mati yang membingungkan admin.
+ */
+const cleanCombinations = (raw, groups) => {
+  if (!Array.isArray(raw) || !groups.length) return [];
+  const groupCount = groups.length;
+  const validIds = groups.map((g) => new Set(g.values.map((v) => v.id)));
+
+  const seen = new Set();
+  return raw
+    .map((c) => {
+      const ids = Array.isArray(c && c.optionValueIds)
+        ? c.optionValueIds.map((x) => String(x || ''))
+        : [];
+      if (ids.length !== groupCount) return null;
+      if (!ids.every((id, i) => validIds[i].has(id))) return null;
+
+      const key = ids.join('|');
+      if (seen.has(key)) return null;
+      seen.add(key);
+
+      const entry = { optionValueIds: ids };
+
+      if (c.price != null && Number.isFinite(Number(c.price))) {
+        entry.price = Math.max(0, Math.round(Number(c.price)));
+      }
+      if (c.originalPrice != null && Number.isFinite(Number(c.originalPrice))) {
+        entry.originalPrice = Math.max(0, Math.round(Number(c.originalPrice)));
+      }
+      if (c.stock != null && Number.isFinite(Number(c.stock))) {
+        entry.stock = Math.max(0, Math.round(Number(c.stock)));
+      }
+      if (c.sku) entry.sku = String(c.sku).trim().slice(0, 40);
+      const img = cleanStringList([c && c.image])[0];
+      if (img) entry.image = img;
+      if (c.available === false) entry.available = false;
+
+      // Kombinasi tanpa satu pun nilai penyimpang tidak berguna.
+      const hasOverride =
+        entry.price != null ||
+        entry.stock != null ||
+        entry.image ||
+        entry.available === false ||
+        entry.originalPrice != null;
+      return hasOverride ? entry : null;
+    })
+    .filter(Boolean)
+    .slice(0, 200);
+};
+
 const cleanVideos = (raw) => {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -2440,6 +2665,19 @@ const normalizeProduct = async (payload, existing) => {
   const galleryImages = cleanStringList(src.galleryImages ?? base.galleryImages).slice(0, 9);
   const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.jpg').trim();
   const videos = cleanVideos(src.videos ?? base.videos);
+  /*
+   * Pilihan multi-dimensi (Model x Ukuran x Warna). Hanya dipakai bila benar-
+   * benar diisi; produk yang belum mengisinya tetap memakai `variants[]` lama.
+   * Kombinasi dibersihkan SETELAH grup, karena referensinya harus valid.
+   */
+  const optionGroups = cleanOptionGroups(
+    src.optionGroups ?? base.optionGroups,
+    Number(src.price ?? base.price) || 0
+  );
+  const combinations = cleanCombinations(
+    src.combinations ?? base.combinations,
+    optionGroups
+  );
 
   if (errors.length) return { errors, product: null };
 
@@ -2470,6 +2708,8 @@ const normalizeProduct = async (payload, existing) => {
       image,
       galleryImages: galleryImages.length ? galleryImages : image ? [image] : [],
       videos,
+      optionGroups,
+      combinations,
       price: finalPrice,
       priceRangeText: variants.length
         ? `Rp ${Math.min(...variants.map((v) => v.price)).toLocaleString('id-ID')} – Rp ${Math.max(

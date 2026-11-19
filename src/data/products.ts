@@ -26,6 +26,63 @@ export interface ProductVariant {
   images?: string[];
 }
 
+/** Satu nilai pilihan, mis. "XL" atau "Navy". */
+export interface ProductOptionValue {
+  id: string;
+  label: string;
+  /**
+   * Selisih harga terhadap harga dasar produk. Boleh negatif.
+   * Diisi manual oleh pemilik toko lewat admin — tidak pernah dihitung
+   * otomatis dari data lain.
+   */
+  priceDelta?: number;
+  /** Kode warna untuk swatch (mis. '#1B365D'). Kosong = tombol teks biasa. */
+  colorHex?: string;
+  /** Foto khusus nilai ini (mis. foto warna Navy). */
+  image?: string;
+  /** false = disembunyikan (stok habis total / dihentikan). Default true. */
+  available?: boolean;
+}
+
+/**
+ * Satu dimensi pilihan, mis. "Ukuran".
+ *
+ * KENAPA ADA, PADAHAL SUDAH ADA `variants[]`:
+ * `variants[]` adalah daftar datar — satu baris = satu harga. Itu cukup untuk
+ * satu dimensi (payung: cuma warna), tapi kaos punya Model x Ukuran x Warna.
+ * Dengan daftar datar, 3 dimensi berarti admin menulis 7 x 24 = 168 baris
+ * berisi nama gabungan seperti "Oversize / XL / Navy" — mustahil dirawat.
+ *
+ * `optionGroups` memisahkan dimensi dari kombinasi: cukup 3 grup berisi nilai
+ * dan selisih harganya, sisanya dihitung.
+ */
+export interface ProductOptionGroup {
+  id: string;
+  name: string;
+  /** 'button' = tombol teks, 'swatch' = kotak warna, 'select' = dropdown. */
+  display?: 'button' | 'swatch' | 'select';
+  /** true = pembeli wajib memilih (default). */
+  required?: boolean;
+  values: ProductOptionValue[];
+}
+
+/**
+ * Kombinasi spesifik yang menyimpang dari hasil penjumlahan selisih.
+ * Tidak wajib lengkap — hanya diisi bila memang perlu.
+ */
+export interface ProductCombination {
+  /** ID nilai per grup, urut sesuai `optionGroups`. */
+  optionValueIds: string[];
+  /** Harga akhir. Kosong = harga produk + jumlah priceDelta. */
+  price?: number;
+  originalPrice?: number;
+  /** Stok kombinasi ini. Kosong = pakai stok produk. */
+  stock?: number;
+  sku?: string;
+  image?: string;
+  available?: boolean;
+}
+
 export interface ProductSpec {
   label: string;
   value: string;
@@ -90,6 +147,13 @@ export interface Product {
   stockManual?: boolean;
   /** Video produk. Ditampilkan di halaman detail bila ada. */
   videos?: ProductVideo[];
+  /**
+   * Pilihan multi-dimensi (Model / Ukuran / Warna).
+   * Kosong = produk tidak memakai dimensi; pakai `variants[]` seperti biasa.
+   */
+  optionGroups?: ProductOptionGroup[];
+  /** Kombinasi yang menyimpang dari rumus selisih. */
+  combinations?: ProductCombination[];
   badges: string[];
   description: string;
   specs: ProductSpec[];
