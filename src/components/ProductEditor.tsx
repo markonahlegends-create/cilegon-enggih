@@ -126,6 +126,11 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const [variantUploadIdx, setVariantUploadIdx] = useState<number | null>(null);
   const variantInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
+  /** Indeks nilai (grup,nilai) yang gambarnya sedang diunggah. */
+  const optionImageInputRef = useRef<HTMLInputElement | null>(null);
+  const [optionImageTarget, setOptionImageTarget] = useState<{ gi: number; vi: number } | null>(
+    null
+  );
   /** Indeks video yang sedang diunggah file-nya. */
   const [videoUploadIdx, setVideoUploadIdx] = useState<number>(0);
 
@@ -299,6 +304,45 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const removeValue = (gi: number, vi: number) =>
     updateGroup(gi, { values: optionGroups[gi].values.filter((_: any, i: number) => i !== vi) });
 
+  /**
+   * Unggah gambar untuk SATU nilai pilihan (mis. warna Navy, atau model
+   * Oversize). Gambar ini yang muncul di halaman produk saat pembeli memilih
+   * nilai tersebut.
+   *
+   * Tanpa tombol ini, `ProductOptionValue.image` hanya bisa diisi lewat API —
+   * jadi praktis tidak terpakai, dan pembeli selalu melihat foto yang sama
+   * untuk semua warna/model.
+   */
+  const uploadOptionImage = async (files: FileList | null) => {
+    const target = optionImageTarget;
+    const file = files && files[0];
+    if (!target || !file) return;
+    setUploadError('');
+    setUploading(true);
+    try {
+      if (!file.type.startsWith('image/')) {
+        throw new Error(`${file.name} bukan berkas gambar.`);
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        throw new Error(`${file.name} lebih dari 8 MB. Kompres dulu.`);
+      }
+      const dataUrl = await compressImage(file);
+      const res = await adminUploadImage({
+        dataUrl,
+        filename: file.name.replace(/\.[^.]+$/, '')
+      });
+      updateValue(target.gi, target.vi, { image: res.url });
+    } catch (err) {
+      setUploadError(
+        err instanceof ApiError || err instanceof Error ? err.message : 'Upload gambar gagal.'
+      );
+    } finally {
+      setUploading(false);
+      setOptionImageTarget(null);
+      if (optionImageInputRef.current) optionImageInputRef.current.value = '';
+    }
+  };
+
   /** Harga akhir hasil rumus untuk satu kombinasi (dipakai di pratinjau). */
   const comboPrice = (ids: string[]) => {
     const base = Number(value.price) || 0;
@@ -354,6 +398,23 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       }
 
       /*
+       * TEMBAK LANGSUNG SEBELUM JARINGAN.
+       *
+       * Bucket `product-video` hanya menerima `video/mp4` dan `video/webm`.
+       * File dari iPhone bernama .mov (video/quicktime) akan DITOLAK storage
+       * di tahap PUT — dulu pesannya menyalahkan bucket sehingga Anda
+       * kebingungan. Lebih baik ditolak di sini dengan solusi yang jelas.
+       */
+      const mime = (file.type || '').toLowerCase();
+      if (!['video/mp4', 'video/webm'].includes(mime)) {
+        throw new Error(
+          `${file.name} bertipe ${mime || 'tidak dikenal'}. Yang didukung hanya MP4 dan WebM. ` +
+            'Kalau ini rekaman iPhone (.mov), ubah dulu ke MP4 — atau kirim ke WhatsApp lalu simpan ' +
+            'kembali, iPhone otomatis menyimpannya sebagai MP4.'
+        );
+      }
+
+      /*
        * Ekstensi ikut dikirim: server memakainya untuk menentukan nama file
        * (mp4/webm). Tanpa ekstensi, video WebM bisa tersimpan sebagai .mp4 dan
        * tidak bisa diputar browser.
@@ -376,9 +437,28 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         } catch {
           detail = '';
         }
+        /*
+         * Pesan spesifik per kode: sebelumnya semua kegagalan menyebut
+         * "pastikan bucket Public", padahal bucket tidak pernah menjadi
+         * masalahnya. Sekarang pembaca langsung tahu apa yang harus dilakukan.
+         */
+        let sebab = '';
+        try {
+          sebab = JSON.parse(detail)?.message || detail;
+        } catch {
+          sebab = detail;
+        }
+        const saran =
+          putRes.status === 413
+            ? 'File melebihi batas 5 MB — pendekkan durasi atau kecilkan ke 720p.'
+            : putRes.status === 415
+              ? 'Tipe file tidak didukung. Gunakan MP4 atau WebM.'
+              : putRes.status === 403 || putRes.status === 401
+                ? 'Tiket unggah kedaluwarsa. Coba unggah ulang.'
+                : `Bucket "${ticket.bucket}" harus ada dan Public.`;
         throw new Error(
-          `Unggah video ke penyimpanan gagal (${putRes.status}). ` +
-            `Pastikan bucket "${ticket.bucket}" bersifat Public. ${detail}`
+          `Unggah video ke penyimpanan gagal (${putRes.status}). ${saran}` +
+            (sebab ? ` Detail: ${sebab}` : '')
         );
       }
 
@@ -1179,11 +1259,34 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
             hint={`${optionGroups.length}/3 dimensi`}
           >
             <div className="space-y-2">
-              <p className="text-[10.5px] text-slate-500 bg-slate-50 rounded-lg px-2.5 py-1.5 leading-snug">
-                Isi hanya bila produk punya beberapa pilihan sekaligus (mis. Model × Ukuran ×
-                Warna). <strong>Selisih harga diisi manual</strong> — isi 0 bila tidak menambah
-                biaya. Kosongkan seluruh bagian ini bila produk cukup memakai varian biasa.
-              </p>
+              <input
+                type="file"
+                accept="image/*"
+                ref={optionImageInputRef}
+                className="hidden"
+                onChange={(e) => uploadOptionImage(e.target.files)}
+              />
+              {/*
+                Penjelasan ini menjawab pertanyaan yang paling sering muncul:
+                "apakah menambah dimensi berarti menambah harga?"
+                Jawabannya tidak — biaya hanya berubah bila kolom Selisih diisi.
+              */}
+              <div className="text-[10.5px] text-slate-600 bg-forest-50/60 border border-forest-100 rounded-lg px-2.5 py-2 leading-snug space-y-1">
+                <p>
+                  <strong>Dimensi tidak menambah harga.</strong> Biaya hanya berubah bila kolom{' '}
+                  <strong>Selisih</strong> diisi. Biarkan 0 untuk pilihan yang harganya sama
+                  (mis. semua warna).
+                </p>
+                <p>
+                  <strong>Foto per pilihan:</strong> klik <em>Tambah foto</em> di baris nilai
+                  untuk mengunggah gambar khusus nilai itu — mis. foto model Oversize beda dengan
+                  Reguler, atau Navy beda dengan Hitam. Gratis, tidak memengaruhi harga.
+                </p>
+                <p>
+                  Kosongkan seluruh bagian ini bila produk cukup memakai <em>varian biasa</em>{' '}
+                  (satu dimensi saja).
+                </p>
+              </div>
 
               {optionGroups.map((group, gi) => (
                 <div key={group.id} className="rounded-xl border border-slate-200 p-2 space-y-1.5">
@@ -1227,11 +1330,12 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                     <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase">
                       <span className="flex-1">Nilai</span>
                       <span className="w-20 text-right">Selisih (Rp)</span>
-                      <span className="w-14 text-center">Warna</span>
+                      <span className="w-14 text-center">Swatch</span>
                       <span className="w-6" />
                     </div>
                     {group.values.map((v: any, vi: number) => (
-                      <div key={v.id} className="flex items-center gap-1">
+                      <div key={v.id} className="rounded-lg bg-slate-50/70 p-1 space-y-1">
+                      <div className="flex items-center gap-1">
                         <input
                           value={v.label}
                           onChange={(e) => updateValue(gi, vi, { label: e.target.value })}
@@ -1263,6 +1367,44 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                         >
                           <Trash2 className="w-2.5 h-2.5" />
                         </button>
+                      </div>
+
+                      {/* Foto khusus nilai ini — tampil di halaman produk saat dipilih. */}
+                      <div className="flex items-center gap-1.5 pl-0.5">
+                        {v.image ? (
+                          <img
+                            src={v.image}
+                            alt={`Foto ${v.label || 'nilai'}`}
+                            className="w-8 h-8 rounded-md object-cover border border-slate-200 shrink-0"
+                          />
+                        ) : (
+                          <span className="w-8 h-8 rounded-md border border-dashed border-slate-300 text-slate-400 flex items-center justify-center shrink-0">
+                            <ImageIcon className="w-3 h-3" />
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOptionImageTarget({ gi, vi });
+                            optionImageInputRef.current?.click();
+                          }}
+                          className="text-[9.5px] font-bold text-forest-700 hover:text-forest-800"
+                        >
+                          {v.image ? 'Ganti foto' : 'Tambah foto'}
+                        </button>
+                        {v.image && (
+                          <button
+                            type="button"
+                            onClick={() => updateValue(gi, vi, { image: '' })}
+                            className="text-[9.5px] font-bold text-slate-400 hover:text-red-600"
+                          >
+                            hapus
+                          </button>
+                        )}
+                        <span className="text-[9px] text-slate-400 ml-auto">
+                          opsional · tanpa biaya
+                        </span>
+                      </div>
                       </div>
                     ))}
                     <button

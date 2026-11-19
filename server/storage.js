@@ -342,11 +342,20 @@ export const createVideoUploadTicket = async ({ filename }) => {
   const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
   const path = `${safeBase}-${unique}.${ext}`;
 
-  // x-upsert ditentukan SAAT MEMBUAT tiket (bukan saat PUT). Tanpa ini,
-  // mengunggah ulang nama file yang sama akan ditolak.
+  /*
+   * KENAPA `Content-Type: application/json` DIHAPUS:
+   * Supabase Storage berjalan di atas Fastify. Kalau header JSON dikirim TANPA
+   * body, Fastify menjawab 400 `FST_ERR_CTP_EMPTY_JSON_BODY`
+   * ("Body cannot be empty when content-type is set to 'application/json'").
+   * Itulah penyebab pesan "Gagal menyiapkan unggahan video (400)" —
+   * bucket-nya sebenarnya ada dan sudah Public, masalahnya di header ini.
+   * Permintaan pembuatan tiket tidak butuh body sama sekali.
+   *
+   * x-upsert ditentukan SAAT MEMBUAT tiket (bukan saat PUT). Tanpa ini,
+   * mengunggah ulang nama file yang sama akan ditolak.
+   */
   const authHeaders = {
     apikey: sbKey,
-    'Content-Type': 'application/json',
     'x-upsert': 'true'
   };
   if (!sbKey.startsWith('sb_')) authHeaders.Authorization = `Bearer ${sbKey}`;
@@ -364,8 +373,22 @@ export const createVideoUploadTicket = async ({ filename }) => {
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     console.error('[upload] tiket video gagal:', res.status, detail.slice(0, 200));
+    /*
+     * Tampilkan pesan asli dari Supabase. Sebelumnya semua kegagalan
+     * diterjemahkan menjadi "pastikan bucket ada dan Public" — padahal
+     * penyebab sebenarnya bisa lain (header salah, kunci kedaluwarsa), dan
+     * pesan yang menebak membuat penelusuran jadi berputar-putar.
+     */
+    let sebab = '';
+    try {
+      sebab = JSON.parse(detail)?.message || '';
+    } catch {
+      sebab = String(detail || '').slice(0, 160);
+    }
     throw new Error(
-      `Gagal menyiapkan unggahan video (${res.status}). Pastikan bucket "${bucket}" ada dan bersifat Public.`
+      `Gagal menyiapkan unggahan video (${res.status})` +
+        (sebab ? `: ${sebab}` : '') +
+        `. Bucket "${bucket}" harus ada dan Public.`
     );
   }
 
