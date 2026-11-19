@@ -251,6 +251,67 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     setMany({ variants: next });
   };
 
+  /* --------------------- pilihan multi-dimensi ---------------------- */
+  const optionGroups: any[] = Array.isArray(value.optionGroups) ? value.optionGroups : [];
+  const combinations: any[] = Array.isArray(value.combinations) ? value.combinations : [];
+
+  const patchGroups = (next: any[]) => setMany({ optionGroups: next.slice(0, 3) });
+
+  const addGroup = () => {
+    if (optionGroups.length >= 3) return;
+    const id = `grup-${Date.now().toString(36)}`;
+    patchGroups([
+      ...optionGroups,
+      {
+        id,
+        name: '',
+        display: 'button',
+        required: true,
+        values: [{ id: `${id}-1`, label: '', priceDelta: 0 }]
+      }
+    ]);
+  };
+
+  const updateGroup = (gi: number, patch: any) =>
+    patchGroups(optionGroups.map((g, i) => (i === gi ? { ...g, ...patch } : g)));
+
+  const removeGroup = (gi: number) =>
+    patchGroups(optionGroups.filter((_, i) => i !== gi));
+
+  const addValue = (gi: number) => {
+    const g = optionGroups[gi];
+    if (!g || g.values.length >= 30) return;
+    updateGroup(gi, {
+      values: [
+        ...g.values,
+        { id: `${g.id}-v${Date.now().toString(36)}`, label: '', priceDelta: 0 }
+      ]
+    });
+  };
+
+  const updateValue = (gi: number, vi: number, patch: any) =>
+    updateGroup(gi, {
+      values: optionGroups[gi].values.map((v: any, i: number) =>
+        i === vi ? { ...v, ...patch } : v
+      )
+    });
+
+  const removeValue = (gi: number, vi: number) =>
+    updateGroup(gi, { values: optionGroups[gi].values.filter((_: any, i: number) => i !== vi) });
+
+  /** Harga akhir hasil rumus untuk satu kombinasi (dipakai di pratinjau). */
+  const comboPrice = (ids: string[]) => {
+    const base = Number(value.price) || 0;
+    const delta = optionGroups.reduce((sum, g, gi) => {
+      const v = g.values.find((x: any) => x.id === ids[gi]);
+      return sum + (Number(v?.priceDelta) || 0);
+    }, 0);
+    const exact = combinations.find(
+      (c: any) => Array.isArray(c.optionValueIds) && c.optionValueIds.join('|') === ids.join('|')
+    );
+    return Math.max(0, Number(exact?.price ?? base + delta));
+  };
+
   /* ------------------------------ video ----------------------------- */
   const videos: any[] = Array.isArray(value.videos) ? value.videos : [];
 
@@ -1111,6 +1172,164 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
           </SectionCard>
 
           {/* 5. Spesifikasi & isi paket */}
+          {/* 4c. Pilihan multi-dimensi (Model / Ukuran / Warna) */}
+          <SectionCard
+            step="4c"
+            title="Pilihan Multi-Dimensi"
+            hint={`${optionGroups.length}/3 dimensi`}
+          >
+            <div className="space-y-2">
+              <p className="text-[10.5px] text-slate-500 bg-slate-50 rounded-lg px-2.5 py-1.5 leading-snug">
+                Isi hanya bila produk punya beberapa pilihan sekaligus (mis. Model × Ukuran ×
+                Warna). <strong>Selisih harga diisi manual</strong> — isi 0 bila tidak menambah
+                biaya. Kosongkan seluruh bagian ini bila produk cukup memakai varian biasa.
+              </p>
+
+              {optionGroups.map((group, gi) => (
+                <div key={group.id} className="rounded-xl border border-slate-200 p-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={group.name}
+                      onChange={(e) => updateGroup(gi, { name: e.target.value })}
+                      placeholder="Nama dimensi (mis. Ukuran)"
+                      className="input-admin !text-[11px] !py-1 flex-1 font-bold"
+                    />
+                    <select
+                      value={group.display || 'button'}
+                      onChange={(e) => updateGroup(gi, { display: e.target.value })}
+                      className="input-admin !text-[10.5px] !py-1 w-24"
+                      title="Tampilan pilihan"
+                    >
+                      <option value="button">Tombol</option>
+                      <option value="swatch">Warna</option>
+                      <option value="select">Dropdown</option>
+                    </select>
+                    <label className="text-[9.5px] text-slate-600 inline-flex items-center gap-1 shrink-0">
+                      <input
+                        type="checkbox"
+                        checked={group.required !== false}
+                        onChange={(e) => updateGroup(gi, { required: e.target.checked })}
+                        className="w-3 h-3 accent-forest-600"
+                      />
+                      wajib
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => removeGroup(gi)}
+                      title="Hapus dimensi"
+                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-1 text-[9px] font-bold text-slate-400 uppercase">
+                      <span className="flex-1">Nilai</span>
+                      <span className="w-20 text-right">Selisih (Rp)</span>
+                      <span className="w-14 text-center">Warna</span>
+                      <span className="w-6" />
+                    </div>
+                    {group.values.map((v: any, vi: number) => (
+                      <div key={v.id} className="flex items-center gap-1">
+                        <input
+                          value={v.label}
+                          onChange={(e) => updateValue(gi, vi, { label: e.target.value })}
+                          placeholder="mis. XL"
+                          className="input-admin !text-[10.5px] !py-1 flex-1"
+                        />
+                        <input
+                          type="number"
+                          value={v.priceDelta ?? 0}
+                          onChange={(e) =>
+                            updateValue(gi, vi, { priceDelta: Number(e.target.value) || 0 })
+                          }
+                          placeholder="0"
+                          title="Selisih harga. Boleh minus, mis. -4000"
+                          className="input-admin !text-[10.5px] !py-1 w-20 text-right"
+                        />
+                        <input
+                          type="color"
+                          value={v.colorHex || '#1B365D'}
+                          onChange={(e) => updateValue(gi, vi, { colorHex: e.target.value })}
+                          title="Warna swatch (opsional)"
+                          className="w-9 h-6 rounded border border-slate-200 bg-white cursor-pointer"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeValue(gi, vi)}
+                          className="p-1 rounded bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600"
+                          title="Hapus nilai"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addValue(gi)}
+                      className="text-[10px] font-bold text-forest-700 hover:text-forest-800 inline-flex items-center gap-0.5"
+                    >
+                      <Plus className="w-2.5 h-2.5" /> Tambah nilai
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {optionGroups.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addGroup}
+                  className="px-2.5 py-1.5 rounded-lg bg-navy-50 hover:bg-navy-100 text-[10.5px] font-bold text-navy-800 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Tambah dimensi
+                </button>
+              )}
+
+              {/*
+                Pratinjau harga: admin TIDAK perlu mengisi harga tiap kombinasi.
+                Rumus harga produk + jumlah selisih ditampilkan di sini, jadi
+                langsung terlihat bila ada angka yang salah.
+              */}
+              {optionGroups.length > 0 && (
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="px-2 py-1.5 bg-slate-50 text-[9.5px] font-extrabold uppercase text-slate-500">
+                    Pratinjau harga (otomatis dari selisih di atas)
+                  </div>
+                  <div className="max-h-52 overflow-y-auto divide-y divide-slate-100">
+                    {(() => {
+                      // Susun kombinasi contoh: nilai pertama tiap grup + variasi.
+                      const first = optionGroups.map((g) => g.values[0]?.id).filter(Boolean);
+                      const sample: string[][] = [];
+                      if (first.length === optionGroups.length) sample.push(first);
+                      optionGroups.forEach((g, gi) => {
+                        g.values.slice(1, 4).forEach((v: any) => {
+                          const ids = [...first];
+                          ids[gi] = v.id;
+                          sample.push(ids);
+                        });
+                      });
+                      return sample.slice(0, 12).map((ids, idx) => {
+                        const labels = ids.map(
+                          (id, gi) =>
+                            optionGroups[gi].values.find((v: any) => v.id === id)?.label || '?'
+                        );
+                        return (
+                          <div key={idx} className="flex justify-between px-2 py-1 text-[10.5px]">
+                            <span className="text-slate-600">{labels.join(' · ')}</span>
+                            <span className="font-bold text-navy-800">
+                              {formatRupiah(comboPrice(ids))}
+                            </span>
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
           {/* 4b. Video produk */}
           <SectionCard
             step="4b"

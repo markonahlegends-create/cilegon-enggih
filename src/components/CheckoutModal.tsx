@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useStore, cacheOrderLocally } from '../context/StoreContext';
 import { formatRupiah, buildWhatsAppUrlFor, buildWhatsAppUrl } from '../data/products';
+import { resolveSelection } from '../lib/variantPricing';
 import { useBackClose } from '../hooks/useBackClose';
 import { ShippingCalculator } from './ShippingCalculator';
 import { InvoiceDocument } from './InvoiceDocument';
@@ -234,7 +235,14 @@ export const CheckoutModal: React.FC = () => {
     setSubmitting(true);
     try {
       const orderItems = cart.map((item) => {
-        const unitPrice = item.variant?.price ?? item.product.price;
+        /*
+         * Produk multi-dimensi tidak punya `variant`, harganya dihitung dari
+         * pilihan. resolveSelection() sama persis dengan yang dipakai server,
+         * jadi harga di checkout = harga yang ditagih.
+         */
+        const unitPrice = item.options
+          ? resolveSelection(item.product, item.options).price
+          : item.variant?.price ?? item.product.price;
         const effectivePrice =
           item.product.minWholesaleQty > 0 && item.qty >= item.product.minWholesaleQty
             ? Math.min(unitPrice, item.product.wholesalePrice || unitPrice)
@@ -245,7 +253,16 @@ export const CheckoutModal: React.FC = () => {
           productSlug: item.product.slug,
           variantId: item.variant?.id,
           variantLabel: item.variant?.label,
-          name: `${item.product.shortName}${item.variant ? ` (${item.variant.label})` : ''}`,
+          // Server menghitung ulang dari sini; tidak pernah percaya `price`.
+          options: item.options,
+          optionsLabel: item.optionsLabel,
+          name: `${item.product.shortName}${
+            item.optionsLabel
+              ? ` (${item.optionsLabel})`
+              : item.variant
+                ? ` (${item.variant.label})`
+                : ''
+          }`,
           qty: item.qty,
           price: effectivePrice
         };

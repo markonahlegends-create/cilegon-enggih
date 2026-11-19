@@ -16,6 +16,13 @@ export interface CartItem {
   key: string;
   product: Product;
   variant?: ProductVariant;
+  /**
+   * Pilihan multi-dimensi (Model/Ukuran/Warna) untuk produk yang memakainya.
+   * Kosong = produk biasa yang memakai `variant`.
+   */
+  options?: Record<string, string>;
+  /** Label ringkas pilihan: 'Oversize · XL · Navy'. */
+  optionsLabel?: string;
   qty: number;
   note?: string;
 }
@@ -147,7 +154,14 @@ interface StoreContextValue {
   setIsCartOpen: (open: boolean) => void;
   isCheckoutOpen: boolean;
   setIsCheckoutOpen: (open: boolean) => void;
-  addToCart: (product: Product, qty?: number, variant?: ProductVariant, note?: string) => void;
+  addToCart: (
+    product: Product,
+    qty?: number,
+    variant?: ProductVariant,
+    note?: string,
+    options?: Record<string, string>,
+    optionsLabel?: string
+  ) => void;
   updateCartQty: (key: string, qty: number) => void;
   removeFromCart: (key: string) => void;
   clearCart: () => void;
@@ -355,10 +369,21 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     product: Product,
     qty = 1,
     variant?: ProductVariant,
-    note?: string
+    note?: string,
+    options?: Record<string, string>,
+    optionsLabel?: string
   ) => {
     const chosenVariant = variant || product.variants?.[0];
-    const key = `${product.id}::${chosenVariant?.id || 'default'}`;
+    /*
+     * Kunci keranjang WAJIB memuat pilihan. Tanpa ini, "Oversize/XL/Navy" dan
+     * "Reguler/M/Putih" akan dianggap barang yang sama dan jumlahnya tergabung
+     * jadi satu baris — pesanan keluar dengan varian yang salah.
+     */
+    const key = options
+      ? `${product.id}::${Object.entries(options)
+          .map(([g, v]) => `${g}=${v}`)
+          .join('|')}`
+      : `${product.id}::${chosenVariant?.id || 'default'}`;
     // Analitik: minat terhadap produk (dasar konversi dilihat → keranjang).
     trackAddToCart({
       productId: product.id,
@@ -378,12 +403,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         };
         return updated;
       }
-      return [...prev, { key, product, variant: chosenVariant, qty, note }];
+      return [...prev, { key, product, variant: chosenVariant, options, optionsLabel, qty, note }];
     });
 
     pushToast(
       'Berhasil masuk keranjang!',
-      `${qty}x ${product.shortName}${chosenVariant ? ` (${chosenVariant.label})` : ''}`,
+      `${qty}x ${product.shortName}${
+        optionsLabel ? ` (${optionsLabel})` : chosenVariant ? ` (${chosenVariant.label})` : ''
+      }`,
       'success'
     );
   };

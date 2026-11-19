@@ -27,6 +27,7 @@ import {
   Ticket,
   Banknote,
   RotateCcw,
+  ExternalLink,
   Download,
   Users,
   Sparkles,
@@ -35,6 +36,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
+import { vendorLinks } from '../lib/vendorLinks';
 import { useStore } from '../context/StoreContext';
 import { InsightsPanel } from '../components/InsightsPanel';
 import { InvoiceDocument } from '../components/InvoiceDocument';
@@ -965,6 +967,7 @@ export const AdminDashboardPage: React.FC = () => {
               busy={busyId === order.orderId}
               onUpdate={updateOrder}
               onDelete={deleteOrder}
+              vendors={vendorOptions}
               onPrint={(mode) => {
                 setInvoiceOrder(order);
                 setInvoiceMode(mode);
@@ -1324,11 +1327,13 @@ export const AdminDashboardPage: React.FC = () => {
 
 const OrderCard: React.FC<{
   order: any;
+  /** Daftar vendor aktif — dipakai untuk membuat tautan pesanan ke vendor. */
+  vendors: any[];
   busy: boolean;
   onUpdate: (orderId: string, payload: Record<string, unknown>) => void;
   onPrint: (mode: 'invoice' | 'label') => void;
   onDelete: (orderId: string) => void;
-}> = ({ order, busy, onUpdate, onPrint, onDelete }) => {
+}> = ({ order, vendors, busy, onUpdate, onPrint, onDelete }) => {
   const [resi, setResi] = useState(order.resi || '');
   const [courier, setCourier] = useState(order.courier || COURIER_OPTIONS[0]);
   const [timelineNote, setTimelineNote] = useState('');
@@ -1390,6 +1395,87 @@ const OrderCard: React.FC<{
           <div className="text-[11px] text-slate-600 leading-relaxed border-t border-slate-100 pt-1.5">
             <strong className="text-slate-700">Alamat:</strong> {order.fullAddress || order.destination}
           </div>
+          {/*
+            TAUTAN VENDOR — fitur utama untuk admin.
+            Saat ada order masuk, admin harus memesan barangnya ke vendor
+            (dropship). Sebelumnya data vendor & nomor HP harus dicari manual
+            di menu Keuangan, padahal ordernya sudah di depan mata.
+            Di sini tautan toko (Shopee/TikTok Shop) dan WhatsApp vendor yang
+            menangani item pesanan ini langsung tampil, sekali klik.
+          */}
+          {(() => {
+            const items = Array.isArray(order.items) ? order.items : [];
+            /*
+             * Kumpulkan vendor unik dari item pesanan. Item pesanan sudah
+             * menyimpan vendorId/vendorName saat checkout (dibekukan), jadi
+             * tautan tetap benar walau produk dipindah vendor kemudian.
+             */
+            const seen = new Set<string>();
+            const used: any[] = [];
+            for (const it of items) {
+              const id = it?.vendorId ? String(it.vendorId) : '';
+              if (!id || seen.has(id)) continue;
+              seen.add(id);
+              const found = (vendors || []).find((v) => String(v.id) === id);
+              used.push(
+                found || {
+                  id,
+                  name: it.vendorName || 'Vendor',
+                  phone: '',
+                  shopUrl: '',
+                  platform: ''
+                }
+              );
+            }
+            if (!used.length) return null;
+
+            return (
+              <div className="rounded-xl border border-navy-100 bg-navy-50/60 p-2 space-y-1.5">
+                <div className="text-[9.5px] font-extrabold uppercase tracking-wide text-navy-700 flex items-center gap-1">
+                  <Building2 className="w-3 h-3" /> Vendor untuk pesanan ini
+                </div>
+                {used.map((v) => {
+                  const links = vendorLinks(v);
+                  return (
+                    <div key={v.id} className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-bold text-navy-800">{v.name}</span>
+                      {links.map((link) => (
+                        <a
+                          key={link.href}
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={
+                            link.kind === 'shop'
+                              ? `Buka toko ${link.label} vendor ${v.name}`
+                              : `Chat WhatsApp vendor ${v.name}`
+                          }
+                          className={
+                            link.kind === 'shop'
+                              ? 'inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-navy-800 hover:bg-navy-900 text-white text-[10px] font-bold'
+                              : 'inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-forest-600 hover:bg-forest-700 text-white text-[10px] font-bold'
+                          }
+                        >
+                          {link.kind === 'shop' ? (
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          ) : (
+                            <MessageCircle className="w-2.5 h-2.5" />
+                          )}
+                          {link.kind === 'shop' ? `Buka ${link.label}` : 'WhatsApp'}
+                        </a>
+                      ))}
+                      {links.length === 0 && (
+                        <span className="text-[9.5px] text-slate-500">
+                          tautan vendor belum diisi — lengkapi di menu Keuangan → Vendor
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+
           {order.notes && (
             <div className="text-[11px] text-amberbrand-800 bg-amberbrand-50 rounded-lg p-1.5">
               Catatan pembeli: {order.notes}
