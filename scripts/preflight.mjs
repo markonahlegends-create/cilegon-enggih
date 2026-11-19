@@ -25,7 +25,7 @@ const requiredFiles = [
   'dist/sitemap.xml',
   'dist/site.webmanifest',
   'dist/_redirects',
-  'dist/products/kaos-distro.png',
+  'dist/products/kaos-distro.jpg',
   'supabase-schema.sql',
   'vercel.json',
   'api/[...route].js',

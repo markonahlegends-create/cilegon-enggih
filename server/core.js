@@ -2312,7 +2312,7 @@ const normalizeProduct = async (payload, existing) => {
     src.categoryLabel || CATEGORY_LABELS[categorySlug] || base.categoryLabel || 'Aksesoris & Dekorasi';
 
   const galleryImages = cleanStringList(src.galleryImages ?? base.galleryImages).slice(0, 9);
-  const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.png').trim();
+  const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.jpg').trim();
 
   if (errors.length) return { errors, product: null };
 

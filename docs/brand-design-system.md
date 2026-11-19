@@ -21,15 +21,44 @@ Urutan dari atas ke bawah: antena → cakram → cincin kaca → badan berongga 
 
 ## 2. Palet warna merek
 
-| Peran | Nama | HEX |
-|---|---|---|
-| Dominan | Navy | `#1B365D` |
-| Sekunder | Forest | `#2E6F40` / `#255935` |
-| Aksen | Amber | `#E5A93C` |
-| Netral terang | Krem gading | `#F6F1E6` |
-| Netral gelap | Arang | `#1A1D22` |
+Palet ini diambil langsung dari `tailwind.config.js` — bukan perkiraan. Semua
+gambar produk WAJIB memakai warna ini.
 
-**Larangan:** jangan memakai merah Tokopedia/Shopee. Jangan memakai gradasi ungu-biru neon.
+| Peran | Nama | HEX | Token Tailwind |
+|---|---|---|---|
+| Dominan | Navy | `#1B365D` | `navy-800` |
+| Sekunder | Forest | `#2E6F40` / `#255935` | `forest-600` / `forest-700` |
+| Aksen | Amber | `#E5A93C` | `amberbrand-400` |
+| Netral terang | Krem gading | `#F6F1E6` | (custom) |
+| Netral gelap | Arang | `#1A1D22` | (custom) |
+
+### Pembagian peran (jangan dibalik)
+
+- **Navy = 60%** — badan menara, panel latar cetakan, judul teks.
+- **Forest green = 25%** — taman, terasering, trim bawah tas, panel aksen.
+- **Amber = 5%** — HANYA satu titik fokus: lift, satu garis tipis, satu matahari.
+- **Cream = 10%** — garis arsitektural, ruang negatif, teks di atas navy.
+
+**Larangan mutlak:**
+- ❌ Merah Tokopedia/Shopee.
+- ❌ Gradasi ungu-biru neon.
+- ❌ **Biru baja pucat (`#748D9D`), biru langit (`#99D1E2`), teal pudar (`#5F919F`).**
+  Ini kesalahan yang pernah terjadi: gambar lama memakai biru-biru ini sehingga
+  produk terlihat lepas dari merek.
+- ❌ **Khaki, olive, mustard-brown (`#898970`).** Warna ini muncul di tote bag
+  versi lama dan membuatnya terlihat kotor.
+- ❌ Amber sebagai warna dominan — kesannya jadi murah, bukan premium.
+
+### Cara memeriksa
+
+```bash
+# Ambil warna dominan area artwork (sesuaikan crop)
+convert gambar.png -crop 340x340+240+250 +repage \
+  -resize 40x40 -colors 5 -format "%c" histogram:info: | sort -rn | head -4
+```
+
+Hasil yang benar harus didominasi `#1B365D` dan `#2E6F40`. Kalau muncul
+`#6B8FA3` atau `#898970`, gambar itu belum ikut merek.
 
 ## 3. Tiga gaya grafis yang dipakai
 

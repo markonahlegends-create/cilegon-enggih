@@ -135,9 +135,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: '3D Rubber Keychain',
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
-    image: '/products/gantungan-kunci-3d.png',
+    image: '/products/gantungan-kunci-3d.jpg',
     galleryImages: [
-      '/products/gantungan-kunci-3d.png',
+      '/products/gantungan-kunci-3d.jpg',
       '/products/galeri/gantungan-kunci-3d-2.jpg',
       '/products/galeri/gantungan-kunci-3d-3.jpg'
     ],
@@ -213,9 +213,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: '3D Architectural Night Lamp',
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
-    image: '/products/lampu-tidur-3d.png',
+    image: '/products/lampu-tidur-3d.jpg',
     galleryImages: [
-      '/products/lampu-tidur-3d.png',
+      '/products/lampu-tidur-3d.jpg',
       '/products/galeri/lampu-tidur-3d-2.jpg'
     ],
     price: 169000,
@@ -289,9 +289,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Exclusive A3 Wall Calendar',
     categorySlug: 'perlengkapan-cetak',
     categoryLabel: 'Perlengkapan & Cetak',
-    image: '/products/kalender-dinding-a3.png',
+    image: '/products/kalender-dinding-a3.jpg',
     galleryImages: [
-      '/products/kalender-dinding-a3.png',
+      '/products/kalender-dinding-a3.jpg',
       '/products/galeri/kalender-dinding-3.jpg'
     ],
     price: 62000,
@@ -435,9 +435,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Ceramic Coffee Mug 11 oz',
     categorySlug: 'drinkware',
     categoryLabel: 'Drinkware',
-    image: '/products/mug-keramik.png',
+    image: '/products/mug-keramik.jpg',
     galleryImages: [
-      '/products/mug-keramik.png',
+      '/products/mug-keramik.jpg',
       '/products/galeri/mug-keramik-2.jpg',
       '/products/galeri/mug-keramik-3.jpg'
     ],
@@ -501,9 +501,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Weatherproof Die-Cut Sticker',
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
-    image: '/products/stiker-die-cut.png',
+    image: '/products/stiker-die-cut.jpg',
     galleryImages: [
-      '/products/stiker-die-cut.png',
+      '/products/stiker-die-cut.jpg',
       '/products/galeri/stiker-die-cut-2.jpg',
       '/products/galeri/stiker-die-cut-3.jpg'
     ],
@@ -564,9 +564,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Sporty Stainless Steel 304 Tumbler',
     categorySlug: 'drinkware',
     categoryLabel: 'Drinkware',
-    image: '/products/tumbler-sporty.png',
+    image: '/products/tumbler-sporty.jpg',
     galleryImages: [
-      '/products/tumbler-sporty.png',
+      '/products/tumbler-sporty.jpg',
       '/products/galeri/tumbler-sporty-2.jpg',
       '/products/galeri/tumbler-sporty-3.jpg'
     ],
@@ -632,9 +632,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Geometric Navy-Tosca Umbrella',
     categorySlug: 'perlengkapan-cetak',
     categoryLabel: 'Perlengkapan & Cetak',
-    image: '/products/payung-geometris.png',
+    image: '/products/payung-geometris.jpg',
     galleryImages: [
-      '/products/payung-geometris.png',
+      '/products/payung-geometris.jpg',
       '/products/galeri/payung-geometris-2.jpg',
       '/products/galeri/payung-geometris-3.jpg'
     ],
@@ -698,9 +698,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Premium Canvas Tote Bag with Side Pocket',
     categorySlug: 'apparel-tas',
     categoryLabel: 'Apparel & Tas',
-    image: '/products/tote-bag-kanvas.png',
+    image: '/products/tote-bag-kanvas.jpg',
     galleryImages: [
-      '/products/tote-bag-kanvas.png',
+      '/products/tote-bag-kanvas.jpg',
       '/products/galeri/tote-bag-2.jpg',
       '/products/galeri/tote-bag-3.jpg'
     ],
@@ -769,8 +769,8 @@ export const PRODUCTS: Product[] = [
     image: '/products/kaos-distro.jpg',
     galleryImages: [
       '/products/kaos-distro.jpg',
-      '/products/gantungan-kunci-3d.png',
-      '/products/stiker-die-cut.png'
+      '/products/gantungan-kunci-3d.jpg',
+      '/products/stiker-die-cut.jpg'
     ],
     price: 129000,
     priceRangeText: 'Hemat Rp 14.000 dari harga satuan',
@@ -824,11 +824,11 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Executive Corporate Hampers Hardbox',
     categorySlug: 'paket-bundling',
     categoryLabel: 'Paket Bundling / Hampers',
-    image: '/products/tumbler-sporty.png',
+    image: '/products/tumbler-sporty.jpg',
     galleryImages: [
-      '/products/tumbler-sporty.png',
-      '/products/tote-bag-kanvas.png',
-      '/products/payung-geometris.png'
+      '/products/tumbler-sporty.jpg',
+      '/products/tote-bag-kanvas.jpg',
+      '/products/payung-geometris.jpg'
     ],
     price: 245000,
     priceRangeText: 'Sudah termasuk Hardbox Magnetik Eksklusif',
@@ -881,12 +881,12 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Desk & Home Decor Gift Set',
     categorySlug: 'paket-bundling',
     categoryLabel: 'Paket Bundling / Hampers',
-    image: '/products/lampu-tidur-3d.png',
+    image: '/products/lampu-tidur-3d.jpg',
     galleryImages: [
-      '/products/lampu-tidur-3d.png',
-      '/products/mug-keramik.png',
-      '/products/kalender-dinding-a3.png',
-      '/products/stiker-die-cut.png'
+      '/products/lampu-tidur-3d.jpg',
+      '/products/mug-keramik.jpg',
+      '/products/kalender-dinding-a3.jpg',
+      '/products/stiker-die-cut.jpg'
     ],
     price: 249000,
     priceRangeText: 'Hemat Rp 28.000 (4 Produk Lengkap)',

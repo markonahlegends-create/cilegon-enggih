@@ -44,12 +44,12 @@ export const AboutPage: React.FC = () => {
 
         <div className="lg:col-span-5 grid grid-cols-2 gap-3">
           <img
-            src="/products/lampu-tidur-3d.png"
+            src="/products/lampu-tidur-3d.jpg"
             alt="Lampu 3D Landmark Cilegon"
             className="rounded-2xl object-cover aspect-[4/5] border-2 border-white/20 shadow-lg"
           />
           <img
-            src="/products/tote-bag-kanvas.png"
+            src="/products/tote-bag-kanvas.jpg"
             alt="Tote Bag Cilegon Enggih"
             className="rounded-2xl object-cover aspect-[4/5] border-2 border-white/20 shadow-lg mt-6"
           />

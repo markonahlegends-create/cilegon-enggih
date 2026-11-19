@@ -12,7 +12,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "3D Rubber Keychain",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/gantungan-kunci-3d.png",
+    "image": "/products/gantungan-kunci-3d.jpg",
     "price": 20000,
     "priceRangeText": "Rp 15.000 – Rp 25.000",
     "originalPrice": 25000,
@@ -97,7 +97,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/gantungan-kunci-3d.png",
+      "/products/gantungan-kunci-3d.jpg",
       "/products/galeri/gantungan-kunci-3d-2.jpg",
       "/products/galeri/gantungan-kunci-3d-3.jpg"
     ]
@@ -110,7 +110,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "3D Architectural Night Lamp",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/lampu-tidur-3d.png",
+    "image": "/products/lampu-tidur-3d.jpg",
     "price": 169000,
     "priceRangeText": "Rp 145.000 – Rp 195.000",
     "originalPrice": 195000,
@@ -188,7 +188,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/lampu-tidur-3d.png",
+      "/products/lampu-tidur-3d.jpg",
       "/products/galeri/lampu-tidur-3d-2.jpg"
     ]
   },
@@ -200,7 +200,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Exclusive A3 Wall Calendar",
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
-    "image": "/products/kalender-dinding-a3.png",
+    "image": "/products/kalender-dinding-a3.jpg",
     "price": 62000,
     "priceRangeText": "Rp 55.000 – Rp 75.000",
     "originalPrice": 75000,
@@ -267,7 +267,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/kalender-dinding-a3.png",
+      "/products/kalender-dinding-a3.jpg",
       "/products/galeri/kalender-dinding-3.jpg"
     ]
   },
@@ -392,7 +392,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Ceramic Coffee Mug 11 oz",
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
-    "image": "/products/mug-keramik.png",
+    "image": "/products/mug-keramik.jpg",
     "price": 38000,
     "priceRangeText": "Rp 30.000 – Rp 45.000",
     "originalPrice": 45000,
@@ -459,7 +459,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/mug-keramik.png",
+      "/products/mug-keramik.jpg",
       "/products/galeri/mug-keramik-2.jpg",
       "/products/galeri/mug-keramik-3.jpg"
     ]
@@ -472,7 +472,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Weatherproof Die-Cut Sticker",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/stiker-die-cut.png",
+    "image": "/products/stiker-die-cut.jpg",
     "price": 8000,
     "priceRangeText": "Rp 5.000 – Rp 10.000 / Paket Rp 20.000",
     "originalPrice": 10000,
@@ -542,7 +542,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/stiker-die-cut.png",
+      "/products/stiker-die-cut.jpg",
       "/products/galeri/stiker-die-cut-2.jpg",
       "/products/galeri/stiker-die-cut-3.jpg"
     ]
@@ -555,7 +555,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Sporty Stainless Steel 304 Tumbler",
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
-    "image": "/products/tumbler-sporty.png",
+    "image": "/products/tumbler-sporty.jpg",
     "price": 109000,
     "priceRangeText": "Rp 85.000 – Rp 125.000",
     "originalPrice": 125000,
@@ -624,7 +624,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/tumbler-sporty.png",
+      "/products/tumbler-sporty.jpg",
       "/products/galeri/tumbler-sporty-2.jpg",
       "/products/galeri/tumbler-sporty-3.jpg"
     ]
@@ -637,7 +637,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Geometric Navy-Tosca Umbrella",
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
-    "image": "/products/payung-geometris.png",
+    "image": "/products/payung-geometris.jpg",
     "price": 95000,
     "priceRangeText": "Rp 75.000 – Rp 110.000",
     "originalPrice": 110000,
@@ -704,7 +704,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/payung-geometris.png",
+      "/products/payung-geometris.jpg",
       "/products/galeri/payung-geometris-2.jpg",
       "/products/galeri/payung-geometris-3.jpg"
     ]
@@ -717,7 +717,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Premium Canvas Tote Bag with Side Pocket",
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
-    "image": "/products/tote-bag-kanvas.png",
+    "image": "/products/tote-bag-kanvas.jpg",
     "price": 68000,
     "priceRangeText": "Rp 55.000 – Rp 80.000",
     "originalPrice": 80000,
@@ -785,7 +785,7 @@ export const SEED_PRODUCTS = [
       }
     ],
     "galleryImages": [
-      "/products/tote-bag-kanvas.png",
+      "/products/tote-bag-kanvas.jpg",
       "/products/galeri/tote-bag-2.jpg",
       "/products/galeri/tote-bag-3.jpg"
     ]
@@ -801,8 +801,8 @@ export const SEED_PRODUCTS = [
     "image": "/products/kaos-distro.jpg",
     "galleryImages": [
       "/products/kaos-distro.jpg",
-      "/products/gantungan-kunci-3d.png",
-      "/products/stiker-die-cut.png"
+      "/products/gantungan-kunci-3d.jpg",
+      "/products/stiker-die-cut.jpg"
     ],
     "price": 129000,
     "priceRangeText": "Hemat Rp 14.000 dari harga satuan",
@@ -885,11 +885,11 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Executive Corporate Hampers Hardbox",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/tumbler-sporty.png",
+    "image": "/products/tumbler-sporty.jpg",
     "galleryImages": [
-      "/products/tumbler-sporty.png",
-      "/products/tote-bag-kanvas.png",
-      "/products/payung-geometris.png"
+      "/products/tumbler-sporty.jpg",
+      "/products/tote-bag-kanvas.jpg",
+      "/products/payung-geometris.jpg"
     ],
     "price": 245000,
     "priceRangeText": "Sudah termasuk Hardbox Magnetik Eksklusif",
@@ -965,12 +965,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Desk & Home Decor Gift Set",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/lampu-tidur-3d.png",
+    "image": "/products/lampu-tidur-3d.jpg",
     "galleryImages": [
-      "/products/lampu-tidur-3d.png",
-      "/products/mug-keramik.png",
-      "/products/kalender-dinding-a3.png",
-      "/products/stiker-die-cut.png"
+      "/products/lampu-tidur-3d.jpg",
+      "/products/mug-keramik.jpg",
+      "/products/kalender-dinding-a3.jpg",
+      "/products/stiker-die-cut.jpg"
     ],
     "price": 249000,
     "priceRangeText": "Hemat Rp 28.000 (4 Produk Lengkap)",
