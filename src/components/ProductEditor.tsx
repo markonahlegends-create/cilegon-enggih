@@ -424,11 +424,27 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         sizeBytes: file.size
       });
 
-      const putRes = await fetch(ticket.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type || 'video/mp4' },
-        body: file
-      });
+      /*
+       * Unggahan langsung ke Supabase bisa gagal SEBELUM request terkirim:
+       * kebijakan keamanan (CSP `connect-src`), campuran http/https, atau
+       * jaringan terputus. fetch() melempar TypeError "Failed to fetch" yang
+       * tidak menjelaskan apa pun, jadi kita terjemahkan di sini.
+       */
+      let putRes: Response;
+      try {
+        putRes = await fetch(ticket.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'video/mp4' },
+          body: file
+        });
+      } catch {
+        throw new Error(
+          'Unggahan ke penyimpanan diblokir sebelum terkirim. Penyebab tersering: ' +
+            'kebijakan keamanan browser (Content-Security-Policy) belum mengizinkan domain ' +
+            'Supabase, atau koneksi internet terputus. Coba lagi; bila tetap gagal, ' +
+            'laporkan pesan ini beserta alamat Supabase yang muncul di Console (F12).'
+        );
+      }
 
       if (!putRes.ok) {
         let detail = '';
