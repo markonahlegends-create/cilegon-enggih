@@ -36,8 +36,8 @@ export const Footer: React.FC = () => {
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <div className="font-bold text-white">Instan & Nasional</div>
-              <div className="text-slate-400">GoSend, Grab, JNE, J&T, SiCepat</div>
+              <div className="font-bold text-white">Kirim Seluruh Indonesia</div>
+              <div className="text-slate-400">JNE, J&amp;T, SiCepat</div>
             </div>
           </div>
 

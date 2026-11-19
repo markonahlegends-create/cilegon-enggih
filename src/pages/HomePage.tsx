@@ -30,8 +30,8 @@ const HERO_SLIDES = [
       'Hadirkan kebanggaan arsitektur Kota Cilegon dalam produk fungsional premium: Kaos Distro Cotton Combed, Lampu Tidur 3D, Tumbler Sporty 304, hingga Tote Bag Kanvas.',
     ctaPrimary: { label: 'Jelajahi Katalog Lengkap', to: '/katalog' },
     ctaSecondary: { label: 'Lihat Paket Bundling', to: '/katalog?kategori=paket-bundling' },
-    featuredImage: '/products/lampu-tidur-3d.png',
-    secondaryImage: '/products/kaos-distro.png',
+    featuredImage: '/products/lampu-tidur-3d.jpg',
+    secondaryImage: '/products/kaos-distro.jpg',
     highlightName: 'Lampu Tidur 3D Arsitektur',
     highlightPrice: 'Rp 169.000'
   },
@@ -44,8 +44,8 @@ const HERO_SLIDES = [
       'Tak bingung lagi mencari cendera mata khas Cilegon! Dari Gantungan Kunci Karet 3D timbul, Stiker Die-Cut tahan cuaca, hingga Mug Keramik SNI siap dibungkus untuk kerabat.',
     ctaPrimary: { label: 'Belanja Oleh-Oleh Praktis', to: '/katalog?kategori=aksesoris-dekorasi' },
     ctaSecondary: { label: 'Cek Ongkir Instan Cilegon', to: '/cara-order-faq' },
-    featuredImage: '/products/tote-bag-kanvas.png',
-    secondaryImage: '/products/gantungan-kunci-3d.png',
+    featuredImage: '/products/tote-bag-kanvas.jpg',
+    secondaryImage: '/products/gantungan-kunci-3d.jpg',
     highlightName: 'Tote Bag Kanvas Premium',
     highlightPrice: 'Rp 68.000'
   },
@@ -58,8 +58,8 @@ const HERO_SLIDES = [
       'Melayani pemesanan jumlah besar dengan opsi tambahan logo perusahaan/instansi, kemasan Hardbox Magnetik eksklusif, dan faktur resmi.',
     ctaPrimary: { label: 'Simulasi Harga Grosir B2B', to: '/custom-korporat' },
     ctaSecondary: { label: 'Lihat Paket Eksekutif', to: '/produk/paket-eksekutif-korporat' },
-    featuredImage: '/products/tumbler-sporty.png',
-    secondaryImage: '/products/payung-geometris.png',
+    featuredImage: '/products/tumbler-sporty.jpg',
+    secondaryImage: '/products/payung-geometris.jpg',
     highlightName: 'Tumbler Stainless 304 UV 360°',
     highlightPrice: 'Rp 109.000'
   }
@@ -91,7 +91,7 @@ const TESTIMONIALS = [
     rating: 5,
     product: 'Kalender A3, Tote Bag & Ganci 3D',
     quote:
-      'Pesan pagi pakai GoSend Instant langsung tiba di kantor sebelum makan siang! Kualitas karet gantungan kunci 3D dan tote bag kanvasnya benar-benar tebal rapi.'
+      'Pesan Senin, Kamisnya sudah sampai kantor di Jakarta. Kualitas karet gantungan kunci 3D dan tote bag kanvasnya benar-benar tebal rapi.'
   }
 ];
 
@@ -336,8 +336,8 @@ export const HomePage: React.FC = () => {
             },
             {
               icon: Zap,
-              title: 'Pengiriman Cepat dari Kota Cilegon',
-              desc: 'Tersedia GoSend/GrabExpress Instan 1–2 jam area Cilegon & ekspedisi nasional.',
+              title: 'Dikirim Seluruh Indonesia',
+              desc: 'JNE, J&T & SiCepat ke seluruh nusantara. Waktu kirim sudah termasuk proses siapkan pesanan.',
               accent: 'bg-forest-50 text-forest-700 border-forest-100'
             }
           ].map((vp, idx) => {
@@ -401,14 +401,14 @@ export const HomePage: React.FC = () => {
               <img
                 src={
                   cat.slug === 'apparel-tas'
-                    ? '/products/tote-bag-kanvas.png'
+                    ? '/products/tote-bag-kanvas.jpg'
                     : cat.slug === 'drinkware'
-                      ? '/products/tumbler-sporty.png'
+                      ? '/products/tumbler-sporty.jpg'
                       : cat.slug === 'aksesoris-dekorasi'
-                        ? '/products/gantungan-kunci-3d.png'
+                        ? '/products/gantungan-kunci-3d.jpg'
                         : cat.slug === 'perlengkapan-cetak'
-                          ? '/products/payung-geometris.png'
-                          : '/products/lampu-tidur-3d.png'
+                          ? '/products/payung-geometris.jpg'
+                          : '/products/lampu-tidur-3d.jpg'
                 }
                 alt={cat.label}
                 className="w-12 h-12 rounded-full object-cover border border-slate-200"
@@ -426,31 +426,31 @@ export const HomePage: React.FC = () => {
               slug: 'apparel-tas',
               title: 'Apparel & Tas',
               sub: 'Kaos Distro & Tote Bag',
-              img: '/products/tote-bag-kanvas.png'
+              img: '/products/tote-bag-kanvas.jpg'
             },
             {
               slug: 'drinkware',
               title: 'Drinkware',
               sub: 'Tumbler 304 & Mug SNI',
-              img: '/products/tumbler-sporty.png'
+              img: '/products/tumbler-sporty.jpg'
             },
             {
               slug: 'aksesoris-dekorasi',
               title: 'Aksesoris & 3D',
               sub: 'Ganci 3D, Stiker & Lampu',
-              img: '/products/gantungan-kunci-3d.png'
+              img: '/products/gantungan-kunci-3d.jpg'
             },
             {
               slug: 'perlengkapan-cetak',
               title: 'Payung & Cetak',
               sub: 'Payung & Kalender A3',
-              img: '/products/payung-geometris.png'
+              img: '/products/payung-geometris.jpg'
             },
             {
               slug: 'paket-bundling',
               title: 'Paket Bundling',
               sub: 'Hampers Wisata & VIP',
-              img: '/products/lampu-tidur-3d.png'
+              img: '/products/lampu-tidur-3d.jpg'
             }
           ].map((cat) => (
             <Link

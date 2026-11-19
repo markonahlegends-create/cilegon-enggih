@@ -229,6 +229,15 @@ export const adminFinanceMeta = () => apiRequest<any>('/api/admin/finance/meta',
 
 export const adminVendors = () => apiRequest<{ vendors: any[] }>('/api/admin/vendors', { admin: true });
 
+/** Kesiapan dropship: skor kelayakan vendor + margin per produk. */
+export const adminDropship = () => apiRequest<any>('/api/admin/dropship', { admin: true });
+
+/** Prosedur dropship harian & hal yang tidak boleh dijanjikan. */
+export const adminDropshipChecklist = () =>
+  apiRequest<{ steps: any[]; restrictions: string[] }>('/api/admin/dropship/checklist', {
+    admin: true
+  });
+
 export const adminCreateVendor = (payload: Record<string, unknown>) =>
   apiRequest<{ vendor: any; vendors: any[] }>('/api/admin/vendors', {
     method: 'POST',
@@ -402,6 +411,9 @@ export const adminUploadImage = (payload: {
 
 export const adminSettingsFull = () =>
   apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
+
+export const adminSendDigest = () =>
+  apiRequest<{ ok: boolean; sent: boolean }>('/api/admin/digest', { method: 'POST' });
 
 export const adminTestTelegram = (payload: { telegram: Record<string, unknown> }) =>
   apiRequest<{ sent: boolean; message: string }>('/api/admin/telegram/test', {

@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { trackProductView } from '../lib/tracker';
+import { trackProductView, trackShare } from '../lib/tracker';
 import {
   Star,
   ShoppingCart,
@@ -129,6 +129,43 @@ export const ProductDetailPage: React.FC = () => {
   const relatedProducts = products
     .filter((p) => p.id !== product?.id && !p.isBundle)
     .slice(0, 4);
+
+  /**
+   * Bagikan produk.
+   *
+   * Di Android (termasuk Chrome di HP) pakai Web Share API supaya pembeli bisa
+   * langsung kirim ke WhatsApp/Instagram tanpa menyalin apa pun. Kalau tidak
+   * tersedia (desktop lama, browser in-app), jatuh ke salin tautan.
+   * Pembatalan oleh pengguna bukan kegagalan — jangan tampilkan galat.
+   */
+  const handleShare = async () => {
+    const url = window.location.href;
+    const shareData = {
+      title: product.name,
+      text: `${product.name} — Cilegon Enggih`,
+      url
+    };
+
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share(shareData);
+        trackShare(product.id, product.name);
+        return;
+      }
+    } catch (err) {
+      // Pengguna menutup dialog share — bukan kesalahan.
+      if (err instanceof DOMException && err.name === 'AbortError') return;
+      // Kalau Web Share gagal karena alasan lain, lanjut ke salin tautan.
+    }
+
+    try {
+      await navigator.clipboard?.writeText(url);
+      pushToast('Tautan Produk Disalin!', product.name, 'info');
+      trackShare(product.id, product.name);
+    } catch {
+      pushToast('Tautan gagal disalin', 'Salin manual dari address bar.', 'error');
+    }
+  };
 
   const handleOrderWhatsApp = () => {
     const msg = `Halo Admin Cilegon Enggih! Saya tertarik memesan:\n\n• Produk: *${
@@ -314,7 +351,7 @@ export const ProductDetailPage: React.FC = () => {
               <Star className="w-3 h-3 fill-amberbrand-400 text-amberbrand-400" /> 4.9
             </span>
             <span className="ml-auto text-slate-400 shrink-0 hidden sm:inline">
-              Dikirim dari Kota Cilegon
+              Dikirim dari gudang mitra
             </span>
           </div>
 
@@ -634,10 +671,7 @@ export const ProductDetailPage: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  navigator.clipboard?.writeText(window.location.href);
-                  pushToast('Tautan Produk Disalin!', product.name, 'info');
-                }}
+                onClick={handleShare}
                 className="py-1.5 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-1.5"
               >
                 <Share2 className="w-4 h-4" />

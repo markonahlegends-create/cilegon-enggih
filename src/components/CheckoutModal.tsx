@@ -83,10 +83,16 @@ export const CheckoutModal: React.FC = () => {
   const [addressDetail, setAddressDetail] = useState('');
   const [notes, setNotes] = useState('');
 
+  /*
+   * Default kurir = reguler, BUKAN instan. Produk dikirim dari gudang pemasok
+   * (dropship), jadi GoSend/GrabExpress Instant tidak tersedia. Harga default
+   * mengikuti tarif JNE zona Cilegon untuk 1 kg; nilai sebenarnya diambil dari
+   * ShippingCalculator begitu pembeli memilih.
+   */
   const [selectedCourier, setSelectedCourier] = useState({
-    id: 'gosend-instant',
-    courier: 'GoSend Instant',
-    cost: 14000,
+    id: 'jne-reg',
+    courier: 'JNE Reguler (CTC/REG)',
+    cost: 8000,
     zoneLabel: 'Kota Cilegon',
     zoneId: 'cilegon-pusat'
   });

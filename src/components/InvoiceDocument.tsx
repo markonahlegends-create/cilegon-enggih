@@ -238,7 +238,8 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
                   )}
                   <div>{settings.invoice.footerNote}</div>
                   <div className="pt-1">
-                    Barang dikirim dari {settings.addressShort} — {settings.originPostal}.
+                    Pesanan disiapkan &amp; dikirim dari gudang mitra pemasok kami, lengkap
+                    dengan nomor resi yang dapat dilacak.
                   </div>
                 </div>
                 <div className="w-full sm:w-64 text-[11px] space-y-1">

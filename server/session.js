@@ -31,8 +31,33 @@ const unb64url = (input) => {
   return Buffer.from(padded, 'base64').toString('utf-8');
 };
 
-export const sessionSecret = (adminPassword) =>
-  process.env.ADMIN_TOKEN_SECRET || `cilegon-enggih::${adminPassword}::fadil-labs`;
+/**
+ * Rahasia penandatangan sesi.
+ *
+ * PENTING: sebelumnya ada fallback hardcoded (`cilegon-enggih::<password>::fadil-labs`).
+ * Itu berarti kalau ADMIN_PASSWORD tidak diset, siapa pun yang pernah membaca
+ * source code bisa membuat cookie admin palsu tanpa tahu password sama sekali.
+ * Sekarang:
+ *
+ *  1. ADMIN_TOKEN_SECRET dipakai kalau ada (paling benar).
+ *  2. Kalau tidak, turunkan dari ADMIN_PASSWORD (masih butuh tahu password).
+ *  3. Kalau keduanya kosong, pakai rahasia ACAK per proses — sesi lama jadi
+ *     tidak valid setelah restart, tapi tidak ada yang bisa ditebak.
+ */
+let ephemeralSecretCache = null;
+
+export const sessionSecret = (adminPassword) => {
+  if (process.env.ADMIN_TOKEN_SECRET) return process.env.ADMIN_TOKEN_SECRET;
+
+  if (adminPassword) {
+    return crypto.createHmac('sha256', String(adminPassword)).update('cilegon-enggih/session/v2').digest('hex');
+  }
+
+  if (!ephemeralSecretCache) {
+    ephemeralSecretCache = crypto.randomBytes(32).toString('hex');
+  }
+  return ephemeralSecretCache;
+};
 
 const sign = (payload, secret) =>
   crypto.createHmac('sha256', secret).update(payload).digest('hex');

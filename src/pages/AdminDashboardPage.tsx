@@ -31,7 +31,8 @@ import {
   Users,
   Sparkles,
   Calculator,
-  ShieldCheck
+  ShieldCheck,
+  BarChart3
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore } from '../context/StoreContext';
@@ -39,6 +40,7 @@ import { InsightsPanel } from '../components/InsightsPanel';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 import { ProductEditor } from '../components/ProductEditor';
 import { FinancePanel } from '../components/FinancePanel';
+import DropshipPanel from '../components/DropshipPanel';
 import { QrisUploader } from '../components/QrisUploader';
 import { SecurityPanel } from '../components/SecurityPanel';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
@@ -51,6 +53,7 @@ import {
   adminCreateProduct,
   adminDuplicateProduct,
   adminTestTelegram,
+  adminSendDigest,
   adminSettingsFull,
   adminVerifyOtp,
   adminSetTwoFactor,
@@ -85,7 +88,7 @@ import {
   ApiError
 } from '../lib/api';
 
-type Tab = 'overview' | 'insight' | 'orders' | 'products' | 'b2b' | 'finance' | 'security' | 'settings';
+type Tab = 'overview' | 'insight' | 'orders' | 'products' | 'b2b' | 'finance' | 'dropship' | 'security' | 'settings';
 
 const ORDER_STATUS_OPTIONS = [
   'MENUNGGU_KONFIRMASI',
@@ -98,8 +101,6 @@ const ORDER_STATUS_OPTIONS = [
 const PAYMENT_STATUS_OPTIONS = ['MENUNGGU_VERIFIKASI', 'LUNAS', 'DIBATALKAN'];
 
 const COURIER_OPTIONS = [
-  'GoSend Instant',
-  'GrabExpress SameDay',
   'JNE Reguler (CTC/REG)',
   'J&T Express EZ',
   'SiCepat BEST / HALU',
@@ -177,8 +178,8 @@ export const AdminDashboardPage: React.FC = () => {
     weightGrams: 300,
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
-    image: '/products/gantungan-kunci-3d.png',
-    galleryImages: ['/products/gantungan-kunci-3d.png'],
+    image: '/products/gantungan-kunci-3d.jpg',
+    galleryImages: ['/products/gantungan-kunci-3d.jpg'],
     description: '',
     specs: [],
     variants: [],
@@ -428,6 +429,24 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   const [testingTelegram, setTestingTelegram] = useState(false);
+
+  const [sendingDigest, setSendingDigest] = useState(false);
+
+  const sendDigestNow = async () => {
+    setSendingDigest(true);
+    try {
+      await adminSendDigest();
+      pushToast('Digest Terkirim', 'Ringkasan harian sudah masuk ke Telegram.', 'success');
+    } catch (err) {
+      pushToast(
+        'Digest Gagal Dikirim',
+        err instanceof ApiError ? err.message : 'Periksa bot token & chat id.',
+        'error'
+      );
+    } finally {
+      setSendingDigest(false);
+    }
+  };
 
   const testTelegram = async () => {
     setTestingTelegram(true);
@@ -681,9 +700,12 @@ export const AdminDashboardPage: React.FC = () => {
           )}
 
           <p className="text-[11px] text-slate-500 leading-relaxed bg-slate-50 rounded-xl p-3">
-            Password default development: <strong>enggih2026</strong>. Untuk produksi, set
-            environment variable <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di
-            hosting (Vercel/Cloudflare/VPS) — lihat <strong>DEPLOYMENT.md</strong>.
+            Password admin hanya berasal dari environment variable{' '}
+            <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di hosting
+            (Vercel/Cloudflare/VPS). Tidak ada password bawaan di dalam kode — kalau variabel
+            itu belum diset, login dinonaktifkan. Saat menjalankan server di komputer sendiri,
+            password acak untuk sesi tersebut tercetak di konsol. Lihat{' '}
+            <strong>DEPLOYMENT.md</strong>.
           </p>
         </div>
       </div>
@@ -746,6 +768,7 @@ export const AdminDashboardPage: React.FC = () => {
           { id: 'products', label: `Produk (${products.length})`, icon: Package },
           { id: 'b2b', label: `B2B (${inquiries.length})`, icon: Building2 },
           { id: 'finance', label: 'Keuangan', icon: Calculator },
+          { id: 'dropship', label: 'Dropship', icon: Truck },
           { id: 'security', label: 'Keamanan', icon: ShieldCheck },
           { id: 'settings', label: 'Pengaturan', icon: SettingsIcon }
         ].map((t) => {
@@ -1228,6 +1251,7 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* ------------------------------ SETTINGS ------------------------------ */}
       {tab === 'finance' && <FinancePanel pushToast={pushToast} />}
+      {tab === 'dropship' && <DropshipPanel pushToast={pushToast} />}
 
       {tab === 'security' && <SecurityPanel pushToast={pushToast} />}
 
@@ -1238,6 +1262,8 @@ export const AdminDashboardPage: React.FC = () => {
           onSave={saveSettings}
           onReset={resetSettings}
           onTestTelegram={testTelegram}
+          onSendDigest={sendDigestNow}
+          sendingDigest={sendingDigest}
           testingTelegram={testingTelegram}
           busy={busyId === 'settings' || busyId === 'reset-settings'}
           pushToast={pushToast}
@@ -1598,6 +1624,8 @@ const SettingsPanel: React.FC<{
   onSave: () => void;
   onReset: () => void;
   onTestTelegram: () => void;
+  onSendDigest: () => void;
+  sendingDigest: boolean;
   testingTelegram: boolean;
   busy: boolean;
   pushToast: (title: string, message: string, kind?: 'success' | 'error' | 'info') => void;
@@ -1607,6 +1635,8 @@ const SettingsPanel: React.FC<{
   onSave,
   onReset,
   onTestTelegram,
+  onSendDigest,
+  sendingDigest,
   testingTelegram,
   busy,
   pushToast
@@ -2005,6 +2035,20 @@ const SettingsPanel: React.FC<{
               <MessageCircle className="w-3.5 h-3.5" />
             )}
             {testingTelegram ? 'Mengirim…' : 'Tes Koneksi'}
+          </button>
+          <button
+            type="button"
+            onClick={onSendDigest}
+            disabled={sendingDigest}
+            className="px-3 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 disabled:opacity-60 text-white text-[11px] font-extrabold inline-flex items-center gap-1.5"
+            title="Kirim ringkasan harian (penjualan, trafik, kata kunci) ke Telegram sekarang"
+          >
+            {sendingDigest ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <BarChart3 className="w-3.5 h-3.5" />
+            )}
+            {sendingDigest ? 'Menyusun…' : 'Kirim Digest Sekarang'}
           </button>
           <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
             <input

@@ -44,8 +44,8 @@ export const ShippingCalculator: React.FC<ShippingCalculatorProps> = ({
       })
       .catch(() => {
         setZones([
-          { id: 'cilegon-pusat', label: 'Kota Cilegon (Jombang, Purwakarta, Cibeber)', allowInstant: true },
-          { id: 'serang', label: 'Kota Serang & Kab. Serang', allowInstant: true },
+          { id: 'cilegon-pusat', label: 'Kota Cilegon (Jombang, Purwakarta, Cibeber)', allowInstant: false },
+          { id: 'serang', label: 'Kota Serang & Kab. Serang', allowInstant: false },
           { id: 'jakarta', label: 'DKI Jakarta', allowInstant: false },
           { id: 'bandung-jabar', label: 'Bandung & Jawa Barat', allowInstant: false }
         ]);
@@ -93,7 +93,7 @@ export const ShippingCalculator: React.FC<ShippingCalculatorProps> = ({
               Kalkulator Ongkir Otomatis
             </h4>
             <p className="text-[11px] text-slate-500">
-              Dikirim dari Kel. Karang Asem, Kec. Cibeber, Kota Cilegon ({Math.max(1, Math.ceil(weightGrams / 1000))} kg / {weightGrams} gr)
+              Dikirim dari gudang mitra pemasok · {Math.max(1, Math.ceil(weightGrams / 1000))} kg / {weightGrams} gr
             </p>
           </div>
         </div>

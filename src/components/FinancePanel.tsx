@@ -187,7 +187,18 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
     phone: '',
     category: 'Produksi',
     paymentTerm: 14,
-    debt: 0
+    debt: 0,
+    platform: 'Shopee',
+    shopUrl: '',
+    rating: 0,
+    ratingCount: 0,
+    leadTimeDays: 0,
+    acceptsDropship: false,
+    neutralPackaging: false,
+    noInvoice: false,
+    supportsCustomLogo: false,
+    hasRealPhotos: false,
+    responsiveChat: false
   });
   const [editingVendor, setEditingVendor] = useState<any>(null);
 
@@ -871,7 +882,18 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                       phone: '',
                       category: 'Produksi',
                       paymentTerm: 14,
-                      debt: 0
+                      debt: 0,
+                      platform: 'Shopee',
+                      shopUrl: '',
+                      rating: 0,
+                      ratingCount: 0,
+                      leadTimeDays: 0,
+                      acceptsDropship: false,
+                      neutralPackaging: false,
+                      noInvoice: false,
+                      supportsCustomLogo: false,
+                      hasRealPhotos: false,
+                      responsiveChat: false
                     });
                   }}
                   className="text-[10.5px] font-bold text-slate-500 inline-flex items-center gap-1"
@@ -940,6 +962,119 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                 />
               </AdminField>
             </div>
+            {/* --- Data dropship --- */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-2.5">
+              <div className="text-[10.5px] font-extrabold text-navy-700 mb-1.5 flex items-center gap-1.5">
+                <Building2 className="w-3 h-3" /> Data Dropship
+                <span className="font-normal text-slate-400">— dipakai halaman Dropship</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <AdminField label="Platform">
+                  <select
+                    value={vendorDraft.platform || 'Shopee'}
+                    onChange={(e) => setVendorDraft({ ...vendorDraft, platform: e.target.value })}
+                    className="input-admin !text-[11px] !py-1.5"
+                  >
+                    <option value="Shopee">Shopee</option>
+                    <option value="Tokopedia">Tokopedia</option>
+                    <option value="TikTok Shop">TikTok Shop</option>
+                    <option value="Lainnya">Lainnya</option>
+                  </select>
+                </AdminField>
+                <AdminField label="Rating Toko (0-5)">
+                  <input
+                    type="number"
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    value={vendorDraft.rating ?? 0}
+                    onChange={(e) => setVendorDraft({ ...vendorDraft, rating: Number(e.target.value) })}
+                    placeholder="4.8"
+                    className="input-admin !text-[11px] !py-1.5"
+                  />
+                </AdminField>
+                <AdminField label="Jumlah Ulasan">
+                  <input
+                    type="number"
+                    min={0}
+                    value={vendorDraft.ratingCount ?? 0}
+                    onChange={(e) =>
+                      setVendorDraft({ ...vendorDraft, ratingCount: Number(e.target.value) })
+                    }
+                    placeholder="420"
+                    className="input-admin !text-[11px] !py-1.5"
+                  />
+                </AdminField>
+                <AdminField label="Lama Proses (hari)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={vendorDraft.leadTimeDays ?? 0}
+                    onChange={(e) =>
+                      setVendorDraft({ ...vendorDraft, leadTimeDays: Number(e.target.value) })
+                    }
+                    placeholder="1"
+                    className="input-admin !text-[11px] !py-1.5"
+                  />
+                </AdminField>
+                <AdminField label="Tautan Toko" className="col-span-2 sm:col-span-4">
+                  <input
+                    value={vendorDraft.shopUrl || ''}
+                    onChange={(e) => setVendorDraft({ ...vendorDraft, shopUrl: e.target.value })}
+                    placeholder="https://shopee.co.id/nama-toko"
+                    className="input-admin !text-[11px] !py-1.5"
+                  />
+                </AdminField>
+              </div>
+
+              <div className="mt-2 space-y-1">
+                <div className="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wide">
+                  Syarat wajib dropship
+                </div>
+                {(
+                  [
+                    ['acceptsDropship', 'Menerima dropship (kirim ke alamat pembeli)'],
+                    ['neutralPackaging', 'Packing netral — tanpa merek toko vendor'],
+                    ['noInvoice', 'Tidak menyertakan invoice / harga kulakan']
+                  ] as [string, string][]
+                ).map(([key, label]) => (
+                  <label key={key} className="flex items-start gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((vendorDraft as any)[key])}
+                      onChange={(e) =>
+                        setVendorDraft({ ...vendorDraft, [key]: e.target.checked })
+                      }
+                      className="mt-0.5 w-3 h-3 accent-forest-600"
+                    />
+                    <span className="text-[10.5px] text-slate-700 leading-snug">{label}</span>
+                  </label>
+                ))}
+                <div className="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wide pt-1">
+                  Nilai tambah
+                </div>
+                {(
+                  [
+                    ['supportsCustomLogo', 'Bisa custom logo / branding'],
+                    ['hasRealPhotos', 'Ada foto produk asli'],
+                    ['responsiveChat', 'Balas chat cepat (< 2 jam)']
+                  ] as [string, string][]
+                ).map(([key, label]) => (
+                  <label key={key} className="flex items-start gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean((vendorDraft as any)[key])}
+                      onChange={(e) =>
+                        setVendorDraft({ ...vendorDraft, [key]: e.target.checked })
+                      }
+                      className="mt-0.5 w-3 h-3 accent-forest-600"
+                    />
+                    <span className="text-[10.5px] text-slate-700 leading-snug">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <button
               type="button"
               onClick={saveVendor}

@@ -1,6 +1,8 @@
 /**
  * Seed katalog produk Cilegon Enggih (hasil generate dari src/data/products.ts).
- * Dipakai backend saat admin menekan "Reset Katalog". Jangan diedit manual.
+ * Dipakai backend saat admin menekan "Reset Katalog". JANGAN diedit manual.
+ *
+ * Regenerate dengan: npm run seed:catalog
  */
 
 export const SEED_PRODUCTS = [
@@ -12,7 +14,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "3D Rubber Keychain",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/gantungan-kunci-3d.png",
+    "image": "/products/gantungan-kunci-3d.jpg",
+    "galleryImages": [
+      "/products/gantungan-kunci-3d.jpg",
+      "/products/galeri/gantungan-kunci-3d-2.jpg",
+      "/products/galeri/gantungan-kunci-3d-3.jpg"
+    ],
     "price": 20000,
     "priceRangeText": "Rp 15.000 – Rp 25.000",
     "originalPrice": 25000,
@@ -95,7 +102,8 @@ export const SEED_PRODUCTS = [
         "variant": "Satuan (1 Pcs)",
         "comment": "Warna birunya cakep, ring besinya juga tebel anti karat. Dipasang di kunci motor aman nggak bikin lecet bodi."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-2",
@@ -105,7 +113,11 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "3D Architectural Night Lamp",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/lampu-tidur-3d.png",
+    "image": "/products/lampu-tidur-3d.jpg",
+    "galleryImages": [
+      "/products/lampu-tidur-3d.jpg",
+      "/products/galeri/lampu-tidur-3d-2.jpg"
+    ],
     "price": 169000,
     "priceRangeText": "Rp 145.000 – Rp 195.000",
     "originalPrice": 195000,
@@ -181,7 +193,8 @@ export const SEED_PRODUCTS = [
         "variant": "Standard Gift Box + Kabel USB",
         "comment": "Cahaya warm white-nya beneran nyaman di mata pas malam hari. Tulisan Cilegon Enggih di kayu bawahnya ikutan nyala elegan."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-3",
@@ -191,11 +204,15 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Exclusive A3 Wall Calendar",
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
-    "image": "/products/kalender-dinding-a3.png",
-    "price": 42000,
-    "priceRangeText": "Rp 35.000 – Rp 50.000",
-    "originalPrice": 50000,
-    "discountPercent": 16,
+    "image": "/products/kalender-dinding-a3.jpg",
+    "galleryImages": [
+      "/products/kalender-dinding-a3.jpg",
+      "/products/galeri/kalender-dinding-3.jpg"
+    ],
+    "price": 62000,
+    "priceRangeText": "Rp 55.000 – Rp 75.000",
+    "originalPrice": 75000,
+    "discountPercent": 17,
     "rating": 4.9,
     "reviewCount": 96,
     "soldCount": 530,
@@ -225,27 +242,27 @@ export const SEED_PRODUCTS = [
       },
       {
         "label": "Rekomendasi Harga Retail",
-        "value": "Rp 35.000 – Rp 50.000 / pcs"
+        "value": "Rp 55.000 – Rp 75.000 / pcs"
       }
     ],
     "variants": [
       {
         "id": "cal-230",
         "label": "Art Carton 230 gsm (Spiral Putih)",
-        "price": 39000,
-        "originalPrice": 45000,
+        "price": 62000,
+        "originalPrice": 75000,
         "stock": 100
       },
       {
         "id": "cal-260",
         "label": "Art Carton 260 gsm Tebal (Spiral Hitam)",
-        "price": 45000,
-        "originalPrice": 50000,
+        "price": 68000,
+        "originalPrice": 82000,
         "stock": 90
       }
     ],
     "minWholesaleQty": 50,
-    "wholesalePrice": 35000,
+    "wholesalePrice": 52000,
     "reviews": [
       {
         "id": "r5",
@@ -256,7 +273,8 @@ export const SEED_PRODUCTS = [
         "variant": "Art Carton 260 gsm Tebal",
         "comment": "Ilustrasi menaranya berasa poster art print! Kertasnya tebal banget dan ada kolom catatan agenda di bawah tanggalan."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-4",
@@ -266,7 +284,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Premium Cotton Combed T-Shirt",
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
-    "image": "/products/kaos-distro.png",
+    "image": "/products/kaos-distro.jpg",
+    "galleryImages": [
+      "/products/kaos-distro.jpg",
+      "/products/galeri/kaos-distro-2.jpg",
+      "/products/galeri/kaos-distro-3.jpg"
+    ],
     "price": 115000,
     "priceRangeText": "Rp 95.000 – Rp 135.000",
     "originalPrice": 135000,
@@ -364,7 +387,8 @@ export const SEED_PRODUCTS = [
         "variant": "Ukuran M (50 x 70 cm)",
         "comment": "Size chart akurat, jahitan rantai rapi sampai bagian kerah dalam ada label Cilegon Enggih-nya."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-5",
@@ -374,7 +398,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Ceramic Coffee Mug 11 oz",
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
-    "image": "/products/mug-keramik.png",
+    "image": "/products/mug-keramik.jpg",
+    "galleryImages": [
+      "/products/mug-keramik.jpg",
+      "/products/galeri/mug-keramik-2.jpg",
+      "/products/galeri/mug-keramik-3.jpg"
+    ],
     "price": 38000,
     "priceRangeText": "Rp 30.000 – Rp 45.000",
     "originalPrice": 45000,
@@ -439,7 +468,8 @@ export const SEED_PRODUCTS = [
         "variant": "Mug + Gift Box Kraft Pita",
         "comment": "Packing sangat aman berlapis-lapis, tidak ada satupun yang retak. Hasil cetak warnanya tajam persis foto."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-6",
@@ -449,7 +479,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Weatherproof Die-Cut Sticker",
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
-    "image": "/products/stiker-die-cut.png",
+    "image": "/products/stiker-die-cut.jpg",
+    "galleryImages": [
+      "/products/stiker-die-cut.jpg",
+      "/products/galeri/stiker-die-cut-2.jpg",
+      "/products/galeri/stiker-die-cut-3.jpg"
+    ],
     "price": 8000,
     "priceRangeText": "Rp 5.000 – Rp 10.000 / Paket Rp 20.000",
     "originalPrice": 10000,
@@ -517,7 +552,8 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Hemat Isi 3 Pcs (Campur)",
         "comment": "Ditempel di MacBook sama helm harian kehujanan tetap awet nggak luntur sama sekali. Potongan die-cut halus!"
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-7",
@@ -527,7 +563,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Sporty Stainless Steel 304 Tumbler",
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
-    "image": "/products/tumbler-sporty.png",
+    "image": "/products/tumbler-sporty.jpg",
+    "galleryImages": [
+      "/products/tumbler-sporty.jpg",
+      "/products/galeri/tumbler-sporty-2.jpg",
+      "/products/galeri/tumbler-sporty-3.jpg"
+    ],
     "price": 109000,
     "priceRangeText": "Rp 85.000 – Rp 125.000",
     "originalPrice": 125000,
@@ -594,7 +635,8 @@ export const SEED_PRODUCTS = [
         "variant": "Gunmetal Matte + Grafir Nama Laser",
         "comment": "Dibawa ke lapangan pabrik seharian es batu masih awet dingin sampai sore. Cetakan UV-nya timbul bertekstur mewah banget!"
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-8",
@@ -604,7 +646,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Geometric Navy-Tosca Umbrella",
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
-    "image": "/products/payung-geometris.png",
+    "image": "/products/payung-geometris.jpg",
+    "galleryImages": [
+      "/products/payung-geometris.jpg",
+      "/products/galeri/payung-geometris-2.jpg",
+      "/products/galeri/payung-geometris-3.jpg"
+    ],
     "price": 95000,
     "priceRangeText": "Rp 75.000 – Rp 110.000",
     "originalPrice": 110000,
@@ -669,7 +716,8 @@ export const SEED_PRODUCTS = [
         "variant": "Model Standar Gagang Kayu J-Handle",
         "comment": "Perpaduan warna navy dan hijau tosca-nya elegan sekali, gagang kayunya bikin kelihatan mahal seperti payung hotel bintang 5."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "prod-9",
@@ -679,7 +727,12 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Premium Canvas Tote Bag with Side Pocket",
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
-    "image": "/products/tote-bag-kanvas.png",
+    "image": "/products/tote-bag-kanvas.jpg",
+    "galleryImages": [
+      "/products/tote-bag-kanvas.jpg",
+      "/products/galeri/tote-bag-2.jpg",
+      "/products/galeri/tote-bag-3.jpg"
+    ],
     "price": 68000,
     "priceRangeText": "Rp 55.000 – Rp 80.000",
     "originalPrice": 80000,
@@ -745,7 +798,8 @@ export const SEED_PRODUCTS = [
         "variant": "Resleting Utama + Saku Samping",
         "comment": "Jatuh cinta sama kombinasi warna krem & forest green-nya! Muat laptop 14 inch plus tumbler masuk di saku sampingnya."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "bundle-1",
@@ -755,11 +809,11 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Traveler Value Souvenir Bundle",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/kaos-distro.png",
+    "image": "/products/kaos-distro.jpg",
     "galleryImages": [
-      "/products/kaos-distro.png",
-      "/products/gantungan-kunci-3d.png",
-      "/products/stiker-die-cut.png"
+      "/products/kaos-distro.jpg",
+      "/products/gantungan-kunci-3d.jpg",
+      "/products/stiker-die-cut.jpg"
     ],
     "price": 129000,
     "priceRangeText": "Hemat Rp 14.000 dari harga satuan",
@@ -832,7 +886,8 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Kaos Ukuran L",
         "comment": "Mampir dinas ke Cilegon bingung cari oleh-oleh selain makanan, ketemu paket ini langsung beres praktis banget!"
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "bundle-2",
@@ -842,11 +897,11 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Executive Corporate Hampers Hardbox",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/tumbler-sporty.png",
+    "image": "/products/tumbler-sporty.jpg",
     "galleryImages": [
-      "/products/tumbler-sporty.png",
-      "/products/tote-bag-kanvas.png",
-      "/products/payung-geometris.png"
+      "/products/tumbler-sporty.jpg",
+      "/products/tote-bag-kanvas.jpg",
+      "/products/payung-geometris.jpg"
     ],
     "price": 245000,
     "priceRangeText": "Sudah termasuk Hardbox Magnetik Eksklusif",
@@ -912,7 +967,8 @@ export const SEED_PRODUCTS = [
         "variant": "Hardbox + Custom Kartu & Pita Instansi",
         "comment": "Sangat representatif untuk VIP gift acara peresmian pabrik kami. Hardbox-nya kokoh dan kelihatan sangat berkelas."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "bundle-3",
@@ -922,17 +978,17 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Desk & Home Decor Gift Set",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/lampu-tidur-3d.png",
+    "image": "/products/lampu-tidur-3d.jpg",
     "galleryImages": [
-      "/products/lampu-tidur-3d.png",
-      "/products/mug-keramik.png",
-      "/products/kalender-dinding-a3.png",
-      "/products/stiker-die-cut.png"
+      "/products/lampu-tidur-3d.jpg",
+      "/products/mug-keramik.jpg",
+      "/products/kalender-dinding-a3.jpg",
+      "/products/stiker-die-cut.jpg"
     ],
-    "price": 229000,
+    "price": 249000,
     "priceRangeText": "Hemat Rp 28.000 (4 Produk Lengkap)",
-    "originalPrice": 257000,
-    "discountPercent": 11,
+    "originalPrice": 277000,
+    "discountPercent": 10,
     "rating": 4.9,
     "reviewCount": 41,
     "soldCount": 145,
@@ -968,13 +1024,13 @@ export const SEED_PRODUCTS = [
       {
         "id": "bmk-std",
         "label": "Paket Lengkap 4-in-1 + Gift Card",
-        "price": 229000,
-        "originalPrice": 257000,
+        "price": 249000,
+        "originalPrice": 277000,
         "stock": 45
       }
     ],
     "minWholesaleQty": 15,
-    "wholesalePrice": 199000,
+    "wholesalePrice": 219000,
     "reviews": [
       {
         "id": "r15",
@@ -985,7 +1041,608 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Lengkap 4-in-1 + Gift Card",
         "comment": "Beli buat kado ulang tahun ayah yang dulu lama dinas di Cilegon. Beliau terharu banget lihat lampu menaranya!"
       }
-    ]
+    ],
+    "active": true
+  },
+  {
+    "id": "bundle-4",
+    "slug": "paket-nataru-mug-stiker",
+    "name": "Paket Nataru Cilegon Enggih (Mug + Stiker + Kartu Ucapan)",
+    "shortName": "Paket Nataru Mug & Stiker",
+    "englishSubtitle": "Christmas & New Year Gift Set",
+    "categorySlug": "paket-bundling",
+    "categoryLabel": "Paket Bundling / Hampers",
+    "image": "/products/paket-nataru-mug.jpg",
+    "galleryImages": [
+      "/products/paket-nataru-mug.jpg",
+      "/products/mug-keramik.jpg",
+      "/products/stiker-die-cut.jpg"
+    ],
+    "price": 72000,
+    "priceRangeText": "Rp 70.000 – Rp 85.000",
+    "originalPrice": 82000,
+    "discountPercent": 12,
+    "rating": 5,
+    "reviewCount": 24,
+    "soldCount": 96,
+    "weightGrams": 620,
+    "stock": 60,
+    "isBundle": true,
+    "isBestSeller": false,
+    "bundleItems": [
+      "1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)",
+      "3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)",
+      "1x Kartu Ucapan Custom (tulis pesan saat checkout)",
+      "Hardbox Navy Gold Foil + Tissue Krem + Pita Emas",
+      "Bonus Sprocket Pinus & Ornamen Emas (dekorasi meja)"
+    ],
+    "badges": [
+      "Edisi Nataru",
+      "Siap Jadi Kado"
+    ],
+    "description": "Paket kado akhir tahun yang paling praktis: mug keramik bermotif Menara Simpang Tiga, tiga stiker vinyl tahan cuaca, dan kartu ucapan yang bisa Anda tulis sendiri saat checkout. Semuanya tersusun rapi di dalam hardbox navy dengan pita emas, siap diserahkan tanpa perlu membungkus lagi. Cocok untuk kado kolega, klien, atau keluarga — dan bisa dipesan dalam jumlah banyak untuk hadiah kantor.",
+    "specs": [
+      {
+        "label": "Isi Paket",
+        "value": "Mug Keramik 11 oz + 3 Stiker Vinyl Die-Cut + Kartu Ucapan Custom"
+      },
+      {
+        "label": "Kemasan",
+        "value": "Hardbox navy dengan aksen gold foil, alas tissue krem, pita emas, plus ornamen pinus & bauble emas"
+      },
+      {
+        "label": "Material",
+        "value": "Mug keramik SNI food-grade, stiker vinyl laminasi doff/glossy tahan air"
+      },
+      {
+        "label": "Kartu Ucapan",
+        "value": "Kertas art carton 260 gsm, dicetak sesuai pesan yang Anda tulis di kolom catatan checkout"
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 70.000 – Rp 85.000 / set"
+      }
+    ],
+    "variants": [
+      {
+        "id": "nataru-std",
+        "label": "Hardbox Navy + Pita Emas",
+        "price": 72000,
+        "originalPrice": 82000,
+        "stock": 40
+      },
+      {
+        "id": "nataru-corp",
+        "label": "Hardbox + Kartu Logo Instansi (min. 10 set)",
+        "price": 82000,
+        "originalPrice": 92000,
+        "stock": 20
+      }
+    ],
+    "minWholesaleQty": 10,
+    "wholesalePrice": 66000,
+    "reviews": [
+      {
+        "id": "r16",
+        "user": "Dian Kusumawardhani",
+        "role": "Pembeli Terverifikasi - Cilegon",
+        "rating": 5,
+        "date": "3 hari lalu",
+        "variant": "Hardbox Navy + Pita Emas",
+        "comment": "Pesan 12 set buat kado tim kantor. Boxnya rapi banget, gak perlu bungkus lagi. Mugnya tebal dan motif menaranya jelas, bukan cetakan murahan."
+      },
+      {
+        "id": "r17",
+        "user": "Rizky Pratama",
+        "role": "Pembeli Terverifikasi - Serang",
+        "rating": 5,
+        "date": "1 minggu lalu",
+        "variant": "Hardbox Navy + Pita Emas",
+        "comment": "Beli buat kado natal tukang service motor langganan. Dia sampai foto-foto boxnya. Stikernya langsung ditempel di helm."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "prod-10",
+    "slug": "tumbler-bpa-500ml",
+    "name": "Tumbler BPA Free 500 ml Cilegon Enggih",
+    "shortName": "Tumbler BPA 500 ml",
+    "englishSubtitle": "BPA-Free Everyday Tumbler",
+    "categorySlug": "drinkware",
+    "categoryLabel": "Drinkware",
+    "image": "/products/tumbler-bpa-500.jpg",
+    "galleryImages": [
+      "/products/tumbler-bpa-500.jpg"
+    ],
+    "price": 48000,
+    "priceRangeText": "Rp 35.000 – Rp 55.000",
+    "originalPrice": 55000,
+    "discountPercent": 13,
+    "rating": 4.8,
+    "reviewCount": 96,
+    "soldCount": 240,
+    "weightGrams": 180,
+    "stock": 160,
+    "isBestSeller": false,
+    "badges": [
+      "BPA Free Food Grade",
+      "Ringan & Anti Pecah"
+    ],
+    "description": "Tumbler harian yang ringan dan aman dibawa ke mana-mana. Bodi plastik Tritan food grade bebas BPA membuatnya jauh lebih ringan dari tumbler stainless, cocok untuk anak sekolah dan mahasiswa yang membawanya sepanjang hari. Desain ikon Menara Simpang Tiga dicetak penuh 360 derajat dengan warna navy dan amber khas Cilegon Enggih.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Plastik Tritan food grade, BPA Free, tahan benturan"
+      },
+      {
+        "label": "Kapasitas",
+        "value": "± 500 ml"
+      },
+      {
+        "label": "Fitur",
+        "value": "Tutup sekrup anti bocor dengan silikon seal dan tali gantung (carry loop)"
+      },
+      {
+        "label": "Cetak Desain",
+        "value": "UV Print 360 derajat ilustrasi Menara Simpang Tiga + teks \"CILEGON ENGGIH\""
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 35.000 – Rp 55.000 / pcs"
+      }
+    ],
+    "variants": [
+      {
+        "id": "tmb-bpa-cream",
+        "label": "Cream (Bodi Terang)",
+        "price": 48000,
+        "originalPrice": 55000,
+        "stock": 90
+      },
+      {
+        "id": "tmb-bpa-navy",
+        "label": "Navy (Bodi Gelap)",
+        "price": 48000,
+        "originalPrice": 55000,
+        "stock": 70
+      }
+    ],
+    "minWholesaleQty": 30,
+    "wholesalePrice": 38000,
+    "reviews": [
+      {
+        "id": "r18",
+        "user": "Fitri Ramadhani",
+        "role": "Pembeli Terverifikasi - Cilegon",
+        "rating": 5,
+        "date": "4 hari lalu",
+        "variant": "Cream (Bodi Terang)",
+        "comment": "Beli buat anak SD, ringan banget jadi dia mau bawa sendiri. Motif menaranya jelas dan warnanya tidak luntur setelah dicuci berkali-kali."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "prod-11",
+    "slug": "tumbler-keramik-500ml",
+    "name": "Tumbler Keramik Premium 500 ml Cilegon Enggih",
+    "shortName": "Tumbler Keramik 500 ml",
+    "englishSubtitle": "Premium Ceramic Lined Tumbler",
+    "categorySlug": "drinkware",
+    "categoryLabel": "Drinkware",
+    "image": "/products/tumbler-keramik-500.jpg",
+    "galleryImages": [
+      "/products/tumbler-keramik-500.jpg"
+    ],
+    "price": 199000,
+    "priceRangeText": "Rp 175.000 – Rp 220.000",
+    "originalPrice": 225000,
+    "discountPercent": 12,
+    "rating": 5,
+    "reviewCount": 34,
+    "soldCount": 58,
+    "weightGrams": 520,
+    "stock": 40,
+    "isBestSeller": false,
+    "badges": [
+      "Coating Keramik Dalam",
+      "Rasa Minuman Tetap Murni"
+    ],
+    "description": "Tumbler kelas eksekutif dengan lapisan keramik di seluruh permukaan dalam. Berbeda dari stainless biasa yang kadang menimbulkan rasa logam, lapisan keramik menjaga rasa kopi, teh, dan jus tetap murni tanpa jejak aroma dari minuman sebelumnya. Bodi stainless berlapis doff navy dengan grafir laser ikon Menara Simpang Tiga — pilihan suvenir korporat yang paling pantas untuk jajaran direksi.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Stainless 316 di luar, coating keramik food grade di seluruh dinding dalam"
+      },
+      {
+        "label": "Kapasitas",
+        "value": "± 500 ml"
+      },
+      {
+        "label": "Ketahanan Suhu",
+        "value": "Menjaga suhu panas ± 6 jam dan dingin ± 12 jam"
+      },
+      {
+        "label": "Fitur",
+        "value": "Tutup press-fit dengan katup anti bocor, alas anti gores, gagang ergonomis"
+      },
+      {
+        "label": "Cetak Desain",
+        "value": "Grafir laser ikon Menara Simpang Tiga + badge \"CILEGON ENGGIH\""
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 175.000 – Rp 220.000 / pcs"
+      }
+    ],
+    "variants": [
+      {
+        "id": "tmb-krm-navy",
+        "label": "Navy Doff (Reguler)",
+        "price": 199000,
+        "originalPrice": 225000,
+        "stock": 25
+      },
+      {
+        "id": "tmb-krm-forest",
+        "label": "Forest Green Doff",
+        "price": 199000,
+        "originalPrice": 225000,
+        "stock": 15
+      }
+    ],
+    "minWholesaleQty": 20,
+    "wholesalePrice": 168000,
+    "reviews": [
+      {
+        "id": "r19",
+        "user": "Hendra Wijaya",
+        "role": "Purchasing - Perusahaan Cilegon",
+        "rating": 5,
+        "date": "1 minggu lalu",
+        "variant": "Navy Doff (Reguler)",
+        "comment": "Pesan 20 unit untuk hadiah klien. Kesan premium langsung terasa saat dipegang, tidak ada bau logam saat dipakai kopi. Grafir logonya rapi."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "prod-12",
+    "slug": "tumbler-sus316-780ml",
+    "name": "Tumbler Stainless 316 Sport 780 ml Cilegon Enggih",
+    "shortName": "Tumbler SUS316 780 ml",
+    "englishSubtitle": "SUS316 Large Capacity Sport Tumbler",
+    "categorySlug": "drinkware",
+    "categoryLabel": "Drinkware",
+    "image": "/products/tumbler-sus316-780.jpg",
+    "galleryImages": [
+      "/products/tumbler-sus316-780.jpg"
+    ],
+    "price": 145000,
+    "priceRangeText": "Rp 130.000 – Rp 165.000",
+    "originalPrice": 165000,
+    "discountPercent": 12,
+    "rating": 4.9,
+    "reviewCount": 67,
+    "soldCount": 132,
+    "weightGrams": 460,
+    "stock": 75,
+    "isBestSeller": false,
+    "isFlashDeal": true,
+    "badges": [
+      "Stainless 316 Food Grade",
+      "Tahan 12 Jam Dingin"
+    ],
+    "description": "Untuk yang minumnya banyak sepanjang hari. Kapasitas 780 ml penuh dengan body stainless 316 — grade yang lebih tahan karat dibanding 304 dan biasa dipakai alat makan medis. Dinding ganda vakum membuat es batu masih utuh setelah dua belas jam. Cocok dibawa nge-gym, tugas lapangan di kawasan industri, atau perjalanan jauh.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Stainless Steel 316 food grade, dinding ganda vakum, BPA Free"
+      },
+      {
+        "label": "Kapasitas",
+        "value": "± 780 ml"
+      },
+      {
+        "label": "Ketahanan Suhu",
+        "value": "Dingin ± 12 jam, panas ± 8 jam"
+      },
+      {
+        "label": "Fitur",
+        "value": "Tutup flip-lock dengan sedotan (straw) dan pegangan lipat, mulut lebar mudah dicuci"
+      },
+      {
+        "label": "Cetak Desain",
+        "value": "UV Print 360 derajat ilustrasi Menara Simpang Tiga + teks \"CILEGON ENGGIH\""
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 130.000 – Rp 165.000 / pcs"
+      }
+    ],
+    "variants": [
+      {
+        "id": "tmb-316-navy",
+        "label": "Navy Matte + Sedotan (Reguler)",
+        "price": 145000,
+        "originalPrice": 165000,
+        "stock": 45
+      },
+      {
+        "id": "tmb-316-custom",
+        "label": "Navy Matte + Grafir Nama Laser",
+        "price": 159000,
+        "originalPrice": 179000,
+        "stock": 30
+      }
+    ],
+    "minWholesaleQty": 25,
+    "wholesalePrice": 118000,
+    "reviews": [
+      {
+        "id": "r20",
+        "user": "Agus Setiawan",
+        "role": "Pembeli Terverifikasi - Ciwandan",
+        "rating": 5,
+        "date": "5 hari lalu",
+        "variant": "Navy Matte + Sedotan (Reguler)",
+        "comment": "Bawa ke proyek di kawasan industri, kena panas seharian tapi airnya masih dingin pas pulang. Kapasitas 780 ml pas untuk sekali isi."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "prod-13",
+    "slug": "tumbler-1200ml-family",
+    "name": "Tumbler Jumbo 1200 ml Keluarga Cilegon Enggih",
+    "shortName": "Tumbler Jumbo 1200 ml",
+    "englishSubtitle": "Family Size Jumbo Tumbler",
+    "categorySlug": "drinkware",
+    "categoryLabel": "Drinkware",
+    "image": "/products/tumbler-1200.jpg",
+    "galleryImages": [
+      "/products/tumbler-1200.jpg"
+    ],
+    "price": 175000,
+    "priceRangeText": "Rp 155.000 – Rp 195.000",
+    "originalPrice": 199000,
+    "discountPercent": 12,
+    "rating": 4.8,
+    "reviewCount": 29,
+    "soldCount": 46,
+    "weightGrams": 620,
+    "stock": 35,
+    "isBestSeller": false,
+    "badges": [
+      "1,2 Liter",
+      "Bisa Buah & Es Batu"
+    ],
+    "description": "Satu isi cukup untuk sehari. Mulut tumbler dibuat lebar supaya bisa memasukkan es batu besar dan potongan buah langsung — bukan sekadar minuman bening. Dinding ganda vakum stainless 304 menjaga suhu tetap stabil sampai sore. Ukuran besar ini paling pas untuk meja kerja, perjalanan keluarga, atau menemani hari-hari menyusui.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Stainless Steel 304, dinding ganda vakum, BPA Free"
+      },
+      {
+        "label": "Kapasitas",
+        "value": "± 1200 ml (1,2 liter)"
+      },
+      {
+        "label": "Ketahanan Suhu",
+        "value": "Dingin ± 14 jam, panas ± 10 jam"
+      },
+      {
+        "label": "Fitur",
+        "value": "Tutup sekrup besar dengan pegangan angkat, mulut lebar untuk es & buah, sedotan stainless bonus"
+      },
+      {
+        "label": "Cetak Desain",
+        "value": "UV Print 360 derajat ilustrasi Menara Simpang Tiga + teks \"CILEGON ENGGIH\""
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 155.000 – Rp 195.000 / pcs"
+      }
+    ],
+    "variants": [
+      {
+        "id": "tmb-1200-navy",
+        "label": "Navy Matte (Reguler)",
+        "price": 175000,
+        "originalPrice": 199000,
+        "stock": 20
+      },
+      {
+        "id": "tmb-1200-cream",
+        "label": "Cream + Sedotan Stainless Bonus",
+        "price": 185000,
+        "originalPrice": 209000,
+        "stock": 15
+      }
+    ],
+    "minWholesaleQty": 20,
+    "wholesalePrice": 148000,
+    "reviews": [
+      {
+        "id": "r21",
+        "user": "Siti Nurhaliza",
+        "role": "Pembeli Terverifikasi - Serang",
+        "rating": 5,
+        "date": "1 minggu lalu",
+        "variant": "Cream + Sedotan Stainless Bonus",
+        "comment": "Buat dibawa ke kantor, sekali isi cukup sampai pulang. Muat es batu besar dan potongan lemon. Warnanya creamnya cantik, tidak norak."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "prod-14",
+    "slug": "ornamen-natal-menara-cilegon",
+    "name": "Ornamen Pohon Natal Menara Cilegon",
+    "shortName": "Ornamen Menara Natal",
+    "englishSubtitle": "Cilegon Tower Christmas Ornament",
+    "categorySlug": "aksesoris-dekorasi",
+    "categoryLabel": "Aksesoris & Dekorasi",
+    "image": "/products/ornamen-menara.jpg",
+    "galleryImages": [
+      "/products/ornamen-menara.jpg"
+    ],
+    "price": 45000,
+    "priceRangeText": "Rp 30.000 – Rp 50.000",
+    "originalPrice": 55000,
+    "discountPercent": 18,
+    "rating": 4.9,
+    "reviewCount": 41,
+    "soldCount": 88,
+    "weightGrams": 70,
+    "stock": 120,
+    "isBestSeller": false,
+    "isPreOrder": true,
+    "preOrderNote": "Dibuat setelah pesanan masuk, 7-10 hari kerja sebelum dikirim.",
+    "badges": [
+      "Edisi Nataru",
+      "Menara Simpang Tiga"
+    ],
+    "description": "Hiasan pohon Natal yang hanya ada di Cilegon. Siluet Menara Simpang Tiga dibuat dari akrilik 3 mm dua lapis — lapisan navy di belakang, lapisan amber di depan — sehingga menaranya terlihat berdimensi saat lampu pohon menyala di belakangnya. Dilengkapi pita emas untuk menggantung dan kotak kado kecil, siap langsung dipasang begitu paket dibuka.",
+    "specs": [
+      {
+        "label": "Material",
+        "value": "Akrilik 3 mm dua lapis (navy + amber), potong laser"
+      },
+      {
+        "label": "Ukuran",
+        "value": "± 9 cm x 6 cm, tebal total 6 mm"
+      },
+      {
+        "label": "Kelengkapan",
+        "value": "Pita emas siap gantung + kotak kado kecil"
+      },
+      {
+        "label": "Detail Desain",
+        "value": "Siluet Menara Simpang Tiga Cilegon dengan bola lampu amber bercahaya"
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 30.000 – Rp 50.000 / pcs"
+      }
+    ],
+    "variants": [
+      {
+        "id": "orn-satuan",
+        "label": "Satuan (1 pcs)",
+        "price": 45000,
+        "originalPrice": 55000,
+        "stock": 90
+      },
+      {
+        "id": "orn-set6",
+        "label": "Set 6 pcs (Hemat)",
+        "price": 245000,
+        "originalPrice": 270000,
+        "stock": 30
+      }
+    ],
+    "minWholesaleQty": 20,
+    "wholesalePrice": 35000,
+    "reviews": [
+      {
+        "id": "r22",
+        "user": "Maya Anggraini",
+        "role": "Pembeli Terverifikasi - Cilegon",
+        "rating": 5,
+        "date": "6 hari lalu",
+        "variant": "Set 6 pcs (Hemat)",
+        "comment": "Beli set 6 buat pohon di kantor. Pas lampu nyala, bagian amber-nya kelihatan nyala juga. Rekan kerja banyak yang nanya beli di mana."
+      }
+    ],
+    "active": true
+  },
+  {
+    "id": "bundle-5",
+    "slug": "paket-nataru-tumbler-tote",
+    "name": "Paket Nataru Tumbler + Tote Bag Cilegon Enggih",
+    "shortName": "Paket Tumbler + Tote",
+    "englishSubtitle": "Holiday Tumbler & Tote Bag Set",
+    "categorySlug": "paket-bundling",
+    "categoryLabel": "Paket Bundling / Hampers",
+    "image": "/products/paket-nataru-tumbler-tote.jpg",
+    "galleryImages": [
+      "/products/paket-nataru-tumbler-tote.jpg"
+    ],
+    "price": 169000,
+    "priceRangeText": "Rp 155.000 – Rp 190.000",
+    "originalPrice": 205000,
+    "discountPercent": 18,
+    "rating": 4.9,
+    "reviewCount": 52,
+    "soldCount": 97,
+    "weightGrams": 780,
+    "stock": 60,
+    "isBundle": true,
+    "badges": [
+      "Edisi Nataru",
+      "Hemat dari Satuan"
+    ],
+    "bundleItems": [
+      "1x Tumbler Stainless Sporty 304 550 ml (UV Print Menara Simpang Tiga)",
+      "1x Tote Bag Kanvas Premium (saku samping + resleting)",
+      "Packing Hardbox Navy + Tissue Krem + Pita Emas",
+      "Kartu Ucapan Custom (tulis pesan saat checkout)"
+    ],
+    "description": "Kombinasi paling sering dibeli untuk hadiah akhir tahun: tumbler yang dipakai setiap hari dan tote bag yang ikut ke mana-mana. Keduanya membawa ilustrasi Menara Simpang Tiga yang sama, jadi terlihat seperti satu set yang memang dirancang bersama — bukan dua barang terpisah yang dibungkus jadi satu. Sudah tersusun di hardbox navy dengan pita emas, siap diserahkan tanpa repot membungkus.",
+    "specs": [
+      {
+        "label": "Isi Paket",
+        "value": "Tumbler Stainless 550 ml + Tote Bag Kanvas + Kartu Ucapan"
+      },
+      {
+        "label": "Kemasan",
+        "value": "Hardbox navy dengan aksen gold foil, alas tissue krem, dan pita emas"
+      },
+      {
+        "label": "Material",
+        "value": "Tumbler stainless 304, tote bag kanvas Marsoto tebal"
+      },
+      {
+        "label": "Hemat",
+        "value": "Beli terpisah Rp 177.000 — paket ini Rp 169.000, lebih murah Rp 8.000 dan sudah termasuk hardbox, tissue, pita serta kartu ucapan"
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 175.000 – Rp 210.000 / set"
+      }
+    ],
+    "variants": [
+      {
+        "id": "ntt-std",
+        "label": "Hardbox Navy + Pita Emas",
+        "price": 169000,
+        "originalPrice": 205000,
+        "stock": 40
+      },
+      {
+        "id": "ntt-corp",
+        "label": "Hardbox + Kartu Logo Instansi (min. 10 set)",
+        "price": 174000,
+        "originalPrice": 215000,
+        "stock": 20
+      }
+    ],
+    "minWholesaleQty": 10,
+    "wholesalePrice": 152000,
+    "reviews": [
+      {
+        "id": "r23",
+        "user": "Ramdhan Firmansyah",
+        "role": "Pembeli Terverifikasi - Jakarta",
+        "rating": 5,
+        "date": "3 hari lalu",
+        "variant": "Hardbox Navy + Pita Emas",
+        "comment": "Kirim ke klien di Jakarta sebagai hadiah akhir tahun. Katanya boxnya mewah dan dua barangnya senada. Worth it untuk harga segini."
+      }
+    ],
+    "active": true
   }
 ];
 

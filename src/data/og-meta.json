@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-18T18:32:44.408Z",
+  "generatedAt": "2026-11-19T02:10:04.922Z",
   "domain": "cilegon-enggih.vercel.app",
   "baseUrl": "https://cilegon-enggih.vercel.app",
   "defaultImage": "https://cilegon-enggih.vercel.app/og/toko-cilegon-enggih.jpg",
@@ -80,9 +80,9 @@
       "id": "prod-3",
       "name": "Kalender Dinding Eksklusif Ukuran A3 (Edisi 2027)",
       "title": "Kalender Dinding A3 | Cilegon Enggih",
-      "description": "Atur jadwal harian Anda dengan penuh inspirasi bersama Kalender Dinding A3 edisi \"CILEGON ENGGIH\". Rp 35.000 – Rp 50.000.",
+      "description": "Atur jadwal harian Anda dengan penuh inspirasi bersama Kalender Dinding A3 edisi \"CILEGON ENGGIH\". Rp 55.000 – Rp 75.000.",
       "category": "Perlengkapan & Cetak",
-      "priceRange": "Rp 35.000 – Rp 50.000",
+      "priceRange": "Rp 55.000 – Rp 75.000",
       "image": "https://cilegon-enggih.vercel.app/og/kalender-dinding-eksklusif-a3.jpg",
       "url": "https://cilegon-enggih.vercel.app/produk/kalender-dinding-eksklusif-a3"
     },
@@ -184,6 +184,83 @@
       "priceRange": "Hemat Rp 28.000 (4 Produk Lengkap)",
       "image": "https://cilegon-enggih.vercel.app/og/paket-meja-kerja-inspiratif.jpg",
       "url": "https://cilegon-enggih.vercel.app/produk/paket-meja-kerja-inspiratif"
+    },
+    "/produk/paket-nataru-mug-stiker": {
+      "slug": "paket-nataru-mug-stiker",
+      "id": "bundle-4",
+      "name": "Paket Nataru Cilegon Enggih (Mug + Stiker + Kartu Ucapan)",
+      "title": "Paket Nataru Mug & Stiker | Cilegon Enggih",
+      "description": "Paket kado akhir tahun yang paling praktis: mug keramik bermotif Menara Simpang Tiga, tiga stiker vinyl tahan cuaca. Rp 70.000 – Rp 85.000.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Rp 70.000 – Rp 85.000",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-nataru-mug-stiker.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-nataru-mug-stiker"
+    },
+    "/produk/tumbler-bpa-500ml": {
+      "slug": "tumbler-bpa-500ml",
+      "id": "prod-10",
+      "name": "Tumbler BPA Free 500 ml Cilegon Enggih",
+      "title": "Tumbler BPA 500 ml | Cilegon Enggih",
+      "description": "Tumbler harian yang ringan dan aman dibawa ke mana-mana. Bodi plastik Tritan food grade bebas BPA membuatnya jauh lebih. Rp 35.000 – Rp 55.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 35.000 – Rp 55.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tumbler-bpa-500ml.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tumbler-bpa-500ml"
+    },
+    "/produk/tumbler-keramik-500ml": {
+      "slug": "tumbler-keramik-500ml",
+      "id": "prod-11",
+      "name": "Tumbler Keramik Premium 500 ml Cilegon Enggih",
+      "title": "Tumbler Keramik 500 ml | Cilegon Enggih",
+      "description": "Tumbler kelas eksekutif dengan lapisan keramik di seluruh permukaan dalam. Rp 175.000 – Rp 220.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 175.000 – Rp 220.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tumbler-keramik-500ml.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tumbler-keramik-500ml"
+    },
+    "/produk/tumbler-sus316-780ml": {
+      "slug": "tumbler-sus316-780ml",
+      "id": "prod-12",
+      "name": "Tumbler Stainless 316 Sport 780 ml Cilegon Enggih",
+      "title": "Tumbler SUS316 780 ml | Cilegon Enggih",
+      "description": "Untuk yang minumnya banyak sepanjang hari. Kapasitas 780 ml penuh dengan body stainless 316 — grade yang lebih tahan. Rp 130.000 – Rp 165.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 130.000 – Rp 165.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tumbler-sus316-780ml.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tumbler-sus316-780ml"
+    },
+    "/produk/tumbler-1200ml-family": {
+      "slug": "tumbler-1200ml-family",
+      "id": "prod-13",
+      "name": "Tumbler Jumbo 1200 ml Keluarga Cilegon Enggih",
+      "title": "Tumbler Jumbo 1200 ml | Cilegon Enggih",
+      "description": "Satu isi cukup untuk sehari. Mulut tumbler dibuat lebar supaya bisa memasukkan es batu besar dan potongan buah langsung. Rp 155.000 – Rp 195.000.",
+      "category": "Drinkware",
+      "priceRange": "Rp 155.000 – Rp 195.000",
+      "image": "https://cilegon-enggih.vercel.app/og/tumbler-1200ml-family.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/tumbler-1200ml-family"
+    },
+    "/produk/ornamen-natal-menara-cilegon": {
+      "slug": "ornamen-natal-menara-cilegon",
+      "id": "prod-14",
+      "name": "Ornamen Pohon Natal Menara Cilegon",
+      "title": "Ornamen Menara Natal | Cilegon Enggih",
+      "description": "Hiasan pohon Natal yang hanya ada di Cilegon. Siluet Menara Simpang Tiga dibuat dari akrilik 3 mm dua lapis — lapisan navy di belakang. Rp 30.000 – Rp 50.000.",
+      "category": "Aksesoris & Dekorasi",
+      "priceRange": "Rp 30.000 – Rp 50.000",
+      "image": "https://cilegon-enggih.vercel.app/og/ornamen-natal-menara-cilegon.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/ornamen-natal-menara-cilegon"
+    },
+    "/produk/paket-nataru-tumbler-tote": {
+      "slug": "paket-nataru-tumbler-tote",
+      "id": "bundle-5",
+      "name": "Paket Nataru Tumbler + Tote Bag Cilegon Enggih",
+      "title": "Paket Tumbler + Tote | Cilegon Enggih",
+      "description": "Kombinasi paling sering dibeli untuk hadiah akhir tahun: tumbler yang dipakai setiap hari dan tote bag yang ikut ke mana-mana. Rp 155.000 – Rp 190.000.",
+      "category": "Paket Bundling / Hampers",
+      "priceRange": "Rp 155.000 – Rp 190.000",
+      "image": "https://cilegon-enggih.vercel.app/og/paket-nataru-tumbler-tote.jpg",
+      "url": "https://cilegon-enggih.vercel.app/produk/paket-nataru-tumbler-tote"
     }
   }
 }

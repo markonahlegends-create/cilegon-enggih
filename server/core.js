@@ -46,6 +46,15 @@ import {
   revokeSession,
   revokeAllSessions
 } from './session.js';
+import { sendDailyDigest } from './digest.js';
+import {
+  scoreVendorForDropship,
+  computeMargin,
+  buildDropshipReadiness,
+  REQUIRED_CHECKS,
+  BONUS_CHECKS,
+  DEFAULT_RETURN_RESERVE_PERCENT
+} from './dropship.js';
 import {
   runBackup,
   listBackups,
@@ -90,9 +99,35 @@ import {
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'enggih2026';
-const ADMIN_TOKEN_SECRET =
-  process.env.ADMIN_TOKEN_SECRET || `cilegon-enggih::${ADMIN_PASSWORD}::fadil-labs`;
+/**
+ * Password admin.
+ *
+ * Dulu ada fallback hardcoded 'enggih2026'. Itu berbahaya: kalau hosting lupa
+ * menyetel ADMIN_PASSWORD, dashboard tetap bisa dibuka siapa pun yang tahu
+ * nilai default dari repo. Sekarang:
+ *
+ *  - Di produksi (NODE_ENV=production atau VERCEL=1): WAJIB set ADMIN_PASSWORD.
+ *    Kalau tidak diset, login admin ditolak seluruhnya.
+ *  - Di development: pakai password acak per proses, dicetak ke konsol supaya
+ *    tetap bisa dipakai, tapi tidak bisa ditebak dari source code.
+ */
+const IS_PRODUCTION =
+  process.env.NODE_ENV === 'production' ||
+  process.env.VERCEL === '1' ||
+  process.env.CF_PAGES === '1';
+
+const DEV_ADMIN_PASSWORD = crypto.randomBytes(9).toString('base64url');
+
+const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD || (IS_PRODUCTION ? '' : DEV_ADMIN_PASSWORD);
+
+/** True kalau password berasal dari mode dev (bukan dari env produksi). */
+const IS_DEV_PASSWORD = !process.env.ADMIN_PASSWORD && !IS_PRODUCTION;
+
+/** True kalau admin bisa login (password tersedia dari env atau mode dev). */
+const ADMIN_LOGIN_ENABLED = Boolean(ADMIN_PASSWORD);
+
+const ADMIN_TOKEN_SECRET = sessionSecret(ADMIN_PASSWORD);
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12; // 12 jam
 
 const ok = (body, status = 200, headers = null) => ({ status, body, headers: headers || undefined });
@@ -447,30 +482,46 @@ export const SHIPPING_ORIGIN = {
   label: 'Kel. Karang Asem, Kec. Cibeber, Kota Cilegon 42425'
 };
 
+/**
+ * Model pengiriman.
+ *
+ * SEMUA produk dikirim lewat dropship dari gudang pemasok (lihat
+ * server/dropship.js), BUKAN dari Karang Asem. Karena itu:
+ *
+ * - Layanan instan/same-day (GoSend Instant, GrabExpress SameDay) DIMATIKAN.
+ *   Kurir instan harus dijemput dari lokasi barang berada; pemasok tidak akan
+ *   memesan kurir instan ke alamat pembeli kita.
+ * - Estimasi waktu ditambah waktu proses pemasok (1-2 hari) supaya janji ke
+ *   pembeli tidak terlalu optimistis.
+ * - `origin` dipertahankan sebagai alamat penagihan/identitas toko, tetapi
+ *   TIDAK lagi dipakai sebagai titik jemput kurir.
+ */
+export const SHIPPING_MODEL = 'dropship';
+
 export const SHIPPING_ZONES = [
   {
     id: 'cilegon-pusat',
     label: 'Kota Cilegon (Jombang, Purwakarta, Cibeber, Citangkil, Ramanuju)',
     zone: 'local-cilegon',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 8000,
-    etaReg: '1 Hari'
+    etaReg: '2 - 3 Hari'
   },
   {
     id: 'cilegon-industri',
     label: 'Kota Cilegon Barat & Pelabuhan (Ciwandan, Anyer, Pulomerak, Grogol)',
     zone: 'local-cilegon-west',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 9000,
-    etaReg: '1 Hari'
+    etaReg: '2 - 3 Hari'
   },
   {
     id: 'serang',
     label: 'Kota Serang & Kab. Serang (Kramatwatu, Bojonegara, Ciruas)',
     zone: 'banten-near',
-    allowInstant: true,
+    allowInstant: false,
     baseReg: 10000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'tangerang',
@@ -478,7 +529,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabodetabek',
     allowInstant: false,
     baseReg: 12000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'jakarta',
@@ -486,7 +537,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabodetabek',
     allowInstant: false,
     baseReg: 13000,
-    etaReg: '1 - 2 Hari'
+    etaReg: '2 - 4 Hari'
   },
   {
     id: 'bandung-jabar',
@@ -494,7 +545,7 @@ export const SHIPPING_ZONES = [
     zone: 'jabar',
     allowInstant: false,
     baseReg: 16000,
-    etaReg: '2 - 3 Hari'
+    etaReg: '3 - 5 Hari'
   },
   {
     id: 'jateng-diy',
@@ -502,7 +553,7 @@ export const SHIPPING_ZONES = [
     zone: 'jateng',
     allowInstant: false,
     baseReg: 22000,
-    etaReg: '2 - 4 Hari'
+    etaReg: '3 - 6 Hari'
   },
   {
     id: 'jatim-bali',
@@ -510,7 +561,7 @@ export const SHIPPING_ZONES = [
     zone: 'jatim',
     allowInstant: false,
     baseReg: 27000,
-    etaReg: '3 - 5 Hari'
+    etaReg: '3 - 6 Hari'
   },
   {
     id: 'sumatera',
@@ -518,7 +569,7 @@ export const SHIPPING_ZONES = [
     zone: 'sumatera',
     allowInstant: false,
     baseReg: 24000,
-    etaReg: '2 - 5 Hari'
+    etaReg: '3 - 7 Hari'
   },
   {
     id: 'kalimantan-sulawesi',
@@ -526,7 +577,7 @@ export const SHIPPING_ZONES = [
     zone: 'luar-jawa',
     allowInstant: false,
     baseReg: 42000,
-    etaReg: '4 - 7 Hari'
+    etaReg: '4 - 9 Hari'
   }
 ];
 
@@ -535,30 +586,10 @@ const calcShipping = ({ destinationId = 'cilegon-pusat', weightGrams = 500 }) =>
   const weightKg = Math.max(1, Math.ceil(Number(weightGrams) / 1000));
   const services = [];
 
-  if (zone.allowInstant) {
-    const instantBase =
-      zone.id === 'cilegon-pusat' ? 14000 : zone.id === 'cilegon-industri' ? 20000 : 32000;
-    const sameDayBase =
-      zone.id === 'cilegon-pusat' ? 11000 : zone.id === 'cilegon-industri' ? 15000 : 22000;
-    services.push(
-      {
-        id: 'gosend-instant',
-        courier: 'GoSend Instant',
-        badge: 'Lokal Cepat',
-        type: 'Instan',
-        eta: '1 - 2 Jam Tiba',
-        cost: instantBase + Math.max(0, weightKg - 3) * 4000
-      },
-      {
-        id: 'grab-sameday',
-        courier: 'GrabExpress SameDay',
-        badge: 'Hari Ini Sampai',
-        type: 'Same Day',
-        eta: '4 - 6 Jam Tiba',
-        cost: sameDayBase + Math.max(0, weightKg - 3) * 3000
-      }
-    );
-  }
+  /*
+   * Tidak ada layanan instan/same-day. Barang dikirim dari gudang pemasok,
+   * jadi kurir instan tidak bisa dijemput di sini. Lihat SHIPPING_MODEL.
+   */
 
   services.push(
     {
@@ -582,13 +613,15 @@ const calcShipping = ({ destinationId = 'cilegon-pusat', weightGrams = 500 }) =>
       courier: 'SiCepat BEST / HALU',
       badge: 'Rekomendasi',
       type: 'Express',
-      eta: zone.allowInstant ? '1 Hari' : '1 - 2 Hari',
+      eta: zone.etaReg,
       cost: Math.round(zone.baseReg * 1.35) * weightKg
     }
   );
 
   return {
     origin: SHIPPING_ORIGIN,
+    shippingModel: SHIPPING_MODEL,
+    note: 'Produk dikirim dari gudang mitra pemasok. Waktu di atas sudah termasuk proses siap kirim 1-2 hari.',
     destinationId: zone.id,
     destination: zone.label,
     weightGrams: Number(weightGrams),
@@ -816,9 +849,13 @@ route('GET', '/api/diagnose', async () => {
   add(
     'password',
     'ADMIN_PASSWORD dari environment',
-    process.env.ADMIN_PASSWORD ? 'ok' : 'warn',
-    process.env.ADMIN_PASSWORD ? 'terpasang' : 'memakai default development',
-    'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy.'
+    process.env.ADMIN_PASSWORD ? 'ok' : IS_PRODUCTION ? 'fail' : 'warn',
+    process.env.ADMIN_PASSWORD
+      ? 'terpasang'
+      : IS_PRODUCTION
+        ? 'BELUM DISET — login admin dinonaktifkan'
+        : 'belum diset — memakai password acak sesi dev',
+    'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy. Tanpa ini login admin ditolak.'
   );
   add(
     'token-secret',
@@ -1524,8 +1561,16 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
     );
   }
 
-  const passwordOk = String(password) === ADMIN_PASSWORD;
+  const passwordOk = ADMIN_LOGIN_ENABLED && String(password) === ADMIN_PASSWORD;
   const usernameOk = String(username).toLowerCase() === 'admin';
+
+  if (!ADMIN_LOGIN_ENABLED) {
+    return bad(
+      'Login admin dinonaktifkan: ADMIN_PASSWORD belum diset di server ini. ' +
+        'Set environment variable ADMIN_PASSWORD lalu redeploy.',
+      503
+    );
+  }
 
   if (!passwordOk || !usernameOk) {
     await recordAudit(store, {
@@ -2312,7 +2357,7 @@ const normalizeProduct = async (payload, existing) => {
     src.categoryLabel || CATEGORY_LABELS[categorySlug] || base.categoryLabel || 'Aksesoris & Dekorasi';
 
   const galleryImages = cleanStringList(src.galleryImages ?? base.galleryImages).slice(0, 9);
-  const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.png').trim();
+  const image = String(src.image ?? base.image ?? '/products/gantungan-kunci-3d.jpg').trim();
 
   if (errors.length) return { errors, product: null };
 
@@ -2711,6 +2756,19 @@ const normalizeVendor = (payload, existing) => {
       dueDate: String(payload?.dueDate ?? base.dueDate ?? '').trim(),
       notes: String(payload?.notes ?? base.notes ?? '').trim(),
       active: (payload?.active ?? base.active) !== false,
+
+      /* --- Data khusus dropship (dipakai /api/admin/dropship) --- */
+      shopUrl: String(payload?.shopUrl ?? base.shopUrl ?? '').trim(),
+      platform: String(payload?.platform ?? base.platform ?? 'Shopee').trim(),
+      rating: Math.max(0, Math.min(5, Number(payload?.rating ?? base.rating ?? 0) || 0)),
+      ratingCount: Math.max(0, Number(payload?.ratingCount ?? base.ratingCount ?? 0) || 0),
+      leadTimeDays: Math.max(0, Number(payload?.leadTimeDays ?? base.leadTimeDays ?? 0) || 0),
+      acceptsDropship: (payload?.acceptsDropship ?? base.acceptsDropship) === true,
+      neutralPackaging: (payload?.neutralPackaging ?? base.neutralPackaging) === true,
+      noInvoice: (payload?.noInvoice ?? base.noInvoice) === true,
+      supportsCustomLogo: (payload?.supportsCustomLogo ?? base.supportsCustomLogo) === true,
+      hasRealPhotos: (payload?.hasRealPhotos ?? base.hasRealPhotos) === true,
+      responsiveChat: (payload?.responsiveChat ?? base.responsiveChat) === true,
       createdAt: base.createdAt || nowIso(),
       updatedAt: nowIso()
     }
@@ -3142,7 +3200,144 @@ route('GET', '/api/cron/backup', async ({ headers }) => {
   }
 });
 
+/**
+ * Endpoint cron untuk digest harian ke Telegram.
+ *
+ * Dipanggil Vercel Cron tiap pagi. Sama seperti backup: memakai CRON_SECRET,
+ * bukan sesi admin, karena cron tidak punya cookie.
+ * Bisa juga dipicu manual dari dashboard (POST /api/admin/digest).
+ */
+route('GET', '/api/cron/digest', async ({ headers }) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return bad(
+      'CRON_SECRET belum diisi di environment. Tambahkan lalu redeploy agar digest harian aktif.',
+      503
+    );
+  }
+  const provided = bearer(headers);
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(secret));
+  const valid = a.length === b.length && crypto.timingSafeEqual(a, b);
+  if (!valid) return bad('Tidak diizinkan.', 401);
+
+  const settings = await readSettings();
+  const result = await sendDailyDigest({
+    store,
+    settings,
+    readOrders,
+    readProducts
+  });
+
+  await recordAudit(store, {
+    action: 'digest.harian',
+    actor: 'cron',
+    ip: clientIp(headers),
+    status: result.sent ? 'ok' : 'failed',
+    detail: { reason: result.reason || null }
+  });
+
+  if (!result.sent) {
+    return bad(`Digest tidak terkirim: ${result.reason}`, 502);
+  }
+  return ok({ ok: true, sent: true });
+});
+
+/** POST /api/admin/digest — kirim digest sekarang (untuk uji coba & preview). */
+route('POST', '/api/admin/digest', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const settings = await readSettings();
+  const result = await sendDailyDigest({ store, settings, readOrders, readProducts });
+
+  await recordAudit(store, {
+    action: 'digest.manual',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: result.sent ? 'ok' : 'failed',
+    detail: { reason: result.reason || null }
+  });
+
+  if (!result.sent) return bad(`Digest tidak terkirim: ${result.reason}`, 502);
+  return ok({ ok: true, sent: true });
+});
+
+/* ------------------------------------------------------------------ */
+/* Dropship                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * GET /api/admin/dropship — kesiapan dropship seluruh vendor + produk.
+ *
+ * Memakai data `vendors` dan `costPrice`/`vendorId` pada produk yang sudah
+ * diisi lewat tab Keuangan. Tidak ada koleksi baru; ini murni analisis.
+ */
+route('GET', '/api/admin/dropship', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const [vendors, products] = await Promise.all([readVendors(), readProducts()]);
+  const settings = await readSettings();
+  const adminFeePercent = Number(settings?.finance?.adminFeePercent) || 0;
+
+  return ok({
+    ...buildDropshipReadiness({ vendors, products, adminFeePercent }),
+    requiredChecks: REQUIRED_CHECKS,
+    bonusChecks: BONUS_CHECKS,
+    returnReservePercent: DEFAULT_RETURN_RESERVE_PERCENT,
+    adminFeePercent
+  });
+});
+
+/**
+ * GET /api/admin/dropship/checklist — prosedur operasional harian.
+ * Disimpan di server supaya bisa diperbarui tanpa mengubah UI.
+ */
+route('GET', '/api/admin/dropship/checklist', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  return ok({
+    steps: [
+      {
+        title: '1. Sebelum jualan — pilih & uji vendor',
+        items: [
+          'Tanyakan lewat chat: "Bisa dropship? Kirim ke alamat pembeli, packing netral, tanpa invoice?" Simpan jawabannya.',
+          'Beli 1 unit sebagai sampel. Periksa: ada nama toko lain di box? ada nota harga di dalam?',
+          'Foto produk sampel sendiri untuk katalog — jangan pakai foto milik vendor lain.',
+          'Isi data vendor di tab Keuangan → Vendor, lalu centang 3 syarat wajib dropship.',
+          'Isi HPP per produk di tab Produk supaya margin terhitung otomatis.'
+        ]
+      },
+      {
+        title: '2. Saat ada pesanan masuk',
+        items: [
+          'Pastikan status pembayaran LUNAS sebelum memesan ke vendor.',
+          'Pesan dengan alamat pembeli sebagai alamat pengiriman.',
+          'Tulis di catatan pesanan vendor: "DROPSHIP — packing netral, tanpa invoice/harga di dalam paket."',
+          'Simpan nomor pesanan vendor di catatan internal pesanan kita.',
+          'Input nomor resi di dashboard agar pembeli bisa melacak sendiri.'
+        ]
+      },
+      {
+        title: '3. Kalau ada masalah',
+        items: [
+          'Barang rusak/salah kirim: klaim ke vendor DULU sebelum mengganti ke pembeli.',
+          'Kalau vendor menolak bertanggung jawab, ganti dulu ke pembeli, lalu hentikan pemakaian vendor itu.',
+          'Catat insiden di catatan vendor — ini dasar memutuskan pindah pemasok.'
+        ]
+      }
+    ],
+    restrictions: [
+      'JANGAN menjanjikan pengiriman instan 1–2 jam. Paket berangkat dari gudang vendor, bukan dari Cilegon.',
+      'JANGAN menjanjikan stok pasti. Stok ada di tangan vendor dan bisa habis kapan saja.',
+      'Sebutkan kota asal pengiriman yang sebenarnya di halaman produk, bukan "Dikirim dari Kota Cilegon".',
+      'JANGAN mengaku memproduksi sendiri kalau barang dipasok vendor.'
+    ]
+  });
+});
+
 /* ---------------- Audit log ---------------- */
+/* ---------------- Audit log ---------------- */
+
 
 route('GET', '/api/admin/audit', async ({ headers, query }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
@@ -3235,6 +3430,8 @@ export {
   ORDER_STATUSES,
   PAYMENT_STATUSES,
   ADMIN_PASSWORD,
+  ADMIN_LOGIN_ENABLED,
+  IS_DEV_PASSWORD,
   SEED_PRODUCTS,
   SEED_CATEGORIES,
   SEED_SIZE_CHART
