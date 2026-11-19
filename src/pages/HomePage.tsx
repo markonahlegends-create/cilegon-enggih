@@ -14,7 +14,8 @@ import {
   Layers,
   CheckCircle2,
   Ticket,
-  Quote
+  Quote,
+  Truck
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
@@ -297,7 +298,13 @@ export const HomePage: React.FC = () => {
             { icon: Award, title: 'Desain Eksklusif', accent: 'bg-navy-50 text-navy-800 border-navy-100' },
             { icon: ShieldCheck, title: 'Material Premium', accent: 'bg-forest-50 text-forest-700 border-forest-100' },
             { icon: Building2, title: 'Custom Logo', accent: 'bg-amberbrand-50 text-amberbrand-800 border-amberbrand-100' },
-            { icon: Zap, title: 'Kirim 1–2 Jam', accent: 'bg-forest-50 text-forest-700 border-forest-100' }
+            // Klaim "Kirim 1–2 Jam" sudah dicabut (pengiriman dropship JNE/J&T/
+            // SiCepat, bukan kurir instan). Diganti janji yang benar-benar berlaku.
+            {
+              icon: Truck,
+              title: 'Kirim Seluruh Indonesia',
+              accent: 'bg-forest-50 text-forest-700 border-forest-100'
+            }
           ].map((vp, idx) => {
             const Icon = vp.icon;
             return (
