@@ -115,10 +115,14 @@ dan hampers keramik.
 
 ### Rekomendasi konkret
 
-**A. Paket Silaturahmi "Mug + Tote Bag + Kalender" — Rp 175.000**
+**A. Paket Silaturahmi "Mug + Tote Bag + Kalender" — Rp 160.000**
 
 Isi: mug (38.000) + tote bag (68.000) + kalender (62.000) = Rp 168.000 satuan.
-Dijual Rp 175.000 dengan packaging. Cocok untuk parcel keluarga.
+
+> **Koreksi:** draf pertama menyebut Rp 175.000 — itu Rp 7.000 LEBIH MAHAL dari
+> jumlah komponennya, melanggar aturan harga paket. Diturunkan ke **Rp 160.000**
+> (Rp 8.000 lebih murah dari beli terpisah), masih menutup hardbox + tissue +
+> pita + kartu.
 
 **B. Tumbler Edisi Eid — Rp 145.000**
 
@@ -152,13 +156,15 @@ menghasilkan lebih dari 3 unit gantungan kunci.
 
 Kalau waktu dan tenaga terbatas, kerjakan berurutan:
 
-1. **Paket Nataru Mug + Stiker + Kartu (Rp 78.000)** — aset sudah ada,
-   bisa live dalam hitungan hari. Deadline 1 Desember 2026.
-2. **Tumbler BPA 500 ml (Rp 48.000)** — buka segmen harga bawah yang
-   sekarang kosong. Bisa kapan saja.
-3. **Paket Bukber Korporat (Rp 145.000)** — siapkan Januari 2027.
-4. **Ornamen Nataru menara (Rp 45.000)** — butuh vendor, mulai sekarang
-   untuk Nataru 2027.
+1. ~~Paket Nataru Mug + Stiker + Kartu~~ — **SUDAH LIVE** di Rp 72.000
+   (komponen Rp 62.000 + kemasan Rp 10.000, tanpa markup).
+2. ~~Tumbler BPA 500 ml (Rp 48.000)~~ — **SUDAH LIVE**, plus 3 varian tumbler lain.
+3. ~~Paket Bukber Korporat~~ — **SUDAH LIVE** di Rp 228.000 bersama 2 paket
+   Bukber lain (Hemat Rp 92.000, Keluarga Rp 178.000).
+4. **Ornamen Nataru menara (Rp 45.000)** — **SUDAH LIVE**, pre-order 7-10 hari.
+
+Sisa yang belum dibuat: Paket Silaturahmi, Tumbler Edisi Eid, Hantaran Tampah,
+Gantungan Tasbih Mini, dan Paket Bukber Furoshiki versi kain.
 
 ---
 
