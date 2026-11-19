@@ -265,6 +265,10 @@ export const SEED_PRODUCTS = [
         "variant": "Art Carton 260 gsm Tebal",
         "comment": "Ilustrasi menaranya berasa poster art print! Kertasnya tebal banget dan ada kolom catatan agenda di bawah tanggalan."
       }
+    ],
+    "galleryImages": [
+      "/products/kalender-dinding-a3.png",
+      "/products/galeri/kalender-dinding-3.jpg"
     ]
   },
   {
@@ -536,6 +540,11 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Hemat Isi 3 Pcs (Campur)",
         "comment": "Ditempel di MacBook sama helm harian kehujanan tetap awet nggak luntur sama sekali. Potongan die-cut halus!"
       }
+    ],
+    "galleryImages": [
+      "/products/stiker-die-cut.png",
+      "/products/galeri/stiker-die-cut-2.jpg",
+      "/products/galeri/stiker-die-cut-3.jpg"
     ]
   },
   {
@@ -693,6 +702,11 @@ export const SEED_PRODUCTS = [
         "variant": "Model Standar Gagang Kayu J-Handle",
         "comment": "Perpaduan warna navy dan hijau tosca-nya elegan sekali, gagang kayunya bikin kelihatan mahal seperti payung hotel bintang 5."
       }
+    ],
+    "galleryImages": [
+      "/products/payung-geometris.png",
+      "/products/galeri/payung-geometris-2.jpg",
+      "/products/galeri/payung-geometris-3.jpg"
     ]
   },
   {
@@ -769,6 +783,11 @@ export const SEED_PRODUCTS = [
         "variant": "Resleting Utama + Saku Samping",
         "comment": "Jatuh cinta sama kombinasi warna krem & forest green-nya! Muat laptop 14 inch plus tumbler masuk di saku sampingnya."
       }
+    ],
+    "galleryImages": [
+      "/products/tote-bag-kanvas.png",
+      "/products/galeri/tote-bag-2.jpg",
+      "/products/galeri/tote-bag-3.jpg"
     ]
   },
   {

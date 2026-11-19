@@ -291,7 +291,8 @@ export const PRODUCTS: Product[] = [
     categoryLabel: 'Perlengkapan & Cetak',
     image: '/products/kalender-dinding-a3.png',
     galleryImages: [
-      '/products/kalender-dinding-a3.png'
+      '/products/kalender-dinding-a3.png',
+      '/products/galeri/kalender-dinding-3.jpg'
     ],
     price: 62000,
     priceRangeText: 'Rp 55.000 – Rp 75.000',
@@ -502,7 +503,9 @@ export const PRODUCTS: Product[] = [
     categoryLabel: 'Aksesoris & Dekorasi',
     image: '/products/stiker-die-cut.png',
     galleryImages: [
-      '/products/stiker-die-cut.png'
+      '/products/stiker-die-cut.png',
+      '/products/galeri/stiker-die-cut-2.jpg',
+      '/products/galeri/stiker-die-cut-3.jpg'
     ],
     price: 8000,
     priceRangeText: 'Rp 5.000 – Rp 10.000 / Paket Rp 20.000',
@@ -631,7 +634,9 @@ export const PRODUCTS: Product[] = [
     categoryLabel: 'Perlengkapan & Cetak',
     image: '/products/payung-geometris.png',
     galleryImages: [
-      '/products/payung-geometris.png'
+      '/products/payung-geometris.png',
+      '/products/galeri/payung-geometris-2.jpg',
+      '/products/galeri/payung-geometris-3.jpg'
     ],
     price: 95000,
     priceRangeText: 'Rp 75.000 – Rp 110.000',
@@ -694,6 +699,11 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'apparel-tas',
     categoryLabel: 'Apparel & Tas',
     image: '/products/tote-bag-kanvas.png',
+    galleryImages: [
+      '/products/tote-bag-kanvas.png',
+      '/products/galeri/tote-bag-2.jpg',
+      '/products/galeri/tote-bag-3.jpg'
+    ],
     price: 68000,
     priceRangeText: 'Rp 55.000 – Rp 80.000',
     originalPrice: 80000,
