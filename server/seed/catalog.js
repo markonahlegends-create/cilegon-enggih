@@ -1,6 +1,8 @@
 /**
  * Seed katalog produk Cilegon Enggih (hasil generate dari src/data/products.ts).
- * Dipakai backend saat admin menekan "Reset Katalog". Jangan diedit manual.
+ * Dipakai backend saat admin menekan "Reset Katalog". JANGAN diedit manual.
+ *
+ * Regenerate dengan: npm run seed:catalog
  */
 
 export const SEED_PRODUCTS = [
@@ -13,6 +15,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
     "image": "/products/gantungan-kunci-3d.jpg",
+    "galleryImages": [
+      "/products/gantungan-kunci-3d.jpg",
+      "/products/galeri/gantungan-kunci-3d-2.jpg",
+      "/products/galeri/gantungan-kunci-3d-3.jpg"
+    ],
     "price": 20000,
     "priceRangeText": "Rp 15.000 – Rp 25.000",
     "originalPrice": 25000,
@@ -96,11 +103,7 @@ export const SEED_PRODUCTS = [
         "comment": "Warna birunya cakep, ring besinya juga tebel anti karat. Dipasang di kunci motor aman nggak bikin lecet bodi."
       }
     ],
-    "galleryImages": [
-      "/products/gantungan-kunci-3d.jpg",
-      "/products/galeri/gantungan-kunci-3d-2.jpg",
-      "/products/galeri/gantungan-kunci-3d-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-2",
@@ -111,6 +114,10 @@ export const SEED_PRODUCTS = [
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
     "image": "/products/lampu-tidur-3d.jpg",
+    "galleryImages": [
+      "/products/lampu-tidur-3d.jpg",
+      "/products/galeri/lampu-tidur-3d-2.jpg"
+    ],
     "price": 169000,
     "priceRangeText": "Rp 145.000 – Rp 195.000",
     "originalPrice": 195000,
@@ -187,10 +194,7 @@ export const SEED_PRODUCTS = [
         "comment": "Cahaya warm white-nya beneran nyaman di mata pas malam hari. Tulisan Cilegon Enggih di kayu bawahnya ikutan nyala elegan."
       }
     ],
-    "galleryImages": [
-      "/products/lampu-tidur-3d.jpg",
-      "/products/galeri/lampu-tidur-3d-2.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-3",
@@ -201,6 +205,10 @@ export const SEED_PRODUCTS = [
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
     "image": "/products/kalender-dinding-a3.jpg",
+    "galleryImages": [
+      "/products/kalender-dinding-a3.jpg",
+      "/products/galeri/kalender-dinding-3.jpg"
+    ],
     "price": 62000,
     "priceRangeText": "Rp 55.000 – Rp 75.000",
     "originalPrice": 75000,
@@ -266,10 +274,7 @@ export const SEED_PRODUCTS = [
         "comment": "Ilustrasi menaranya berasa poster art print! Kertasnya tebal banget dan ada kolom catatan agenda di bawah tanggalan."
       }
     ],
-    "galleryImages": [
-      "/products/kalender-dinding-a3.jpg",
-      "/products/galeri/kalender-dinding-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-4",
@@ -280,6 +285,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
     "image": "/products/kaos-distro.jpg",
+    "galleryImages": [
+      "/products/kaos-distro.jpg",
+      "/products/galeri/kaos-distro-2.jpg",
+      "/products/galeri/kaos-distro-3.jpg"
+    ],
     "price": 115000,
     "priceRangeText": "Rp 95.000 – Rp 135.000",
     "originalPrice": 135000,
@@ -378,11 +388,7 @@ export const SEED_PRODUCTS = [
         "comment": "Size chart akurat, jahitan rantai rapi sampai bagian kerah dalam ada label Cilegon Enggih-nya."
       }
     ],
-    "galleryImages": [
-      "/products/kaos-distro.jpg",
-      "/products/galeri/kaos-distro-2.jpg",
-      "/products/galeri/kaos-distro-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-5",
@@ -393,6 +399,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
     "image": "/products/mug-keramik.jpg",
+    "galleryImages": [
+      "/products/mug-keramik.jpg",
+      "/products/galeri/mug-keramik-2.jpg",
+      "/products/galeri/mug-keramik-3.jpg"
+    ],
     "price": 38000,
     "priceRangeText": "Rp 30.000 – Rp 45.000",
     "originalPrice": 45000,
@@ -458,11 +469,7 @@ export const SEED_PRODUCTS = [
         "comment": "Packing sangat aman berlapis-lapis, tidak ada satupun yang retak. Hasil cetak warnanya tajam persis foto."
       }
     ],
-    "galleryImages": [
-      "/products/mug-keramik.jpg",
-      "/products/galeri/mug-keramik-2.jpg",
-      "/products/galeri/mug-keramik-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-6",
@@ -473,6 +480,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "aksesoris-dekorasi",
     "categoryLabel": "Aksesoris & Dekorasi",
     "image": "/products/stiker-die-cut.jpg",
+    "galleryImages": [
+      "/products/stiker-die-cut.jpg",
+      "/products/galeri/stiker-die-cut-2.jpg",
+      "/products/galeri/stiker-die-cut-3.jpg"
+    ],
     "price": 8000,
     "priceRangeText": "Rp 5.000 – Rp 10.000 / Paket Rp 20.000",
     "originalPrice": 10000,
@@ -541,11 +553,7 @@ export const SEED_PRODUCTS = [
         "comment": "Ditempel di MacBook sama helm harian kehujanan tetap awet nggak luntur sama sekali. Potongan die-cut halus!"
       }
     ],
-    "galleryImages": [
-      "/products/stiker-die-cut.jpg",
-      "/products/galeri/stiker-die-cut-2.jpg",
-      "/products/galeri/stiker-die-cut-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-7",
@@ -556,6 +564,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "drinkware",
     "categoryLabel": "Drinkware",
     "image": "/products/tumbler-sporty.jpg",
+    "galleryImages": [
+      "/products/tumbler-sporty.jpg",
+      "/products/galeri/tumbler-sporty-2.jpg",
+      "/products/galeri/tumbler-sporty-3.jpg"
+    ],
     "price": 109000,
     "priceRangeText": "Rp 85.000 – Rp 125.000",
     "originalPrice": 125000,
@@ -623,11 +636,7 @@ export const SEED_PRODUCTS = [
         "comment": "Dibawa ke lapangan pabrik seharian es batu masih awet dingin sampai sore. Cetakan UV-nya timbul bertekstur mewah banget!"
       }
     ],
-    "galleryImages": [
-      "/products/tumbler-sporty.jpg",
-      "/products/galeri/tumbler-sporty-2.jpg",
-      "/products/galeri/tumbler-sporty-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-8",
@@ -638,6 +647,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
     "image": "/products/payung-geometris.jpg",
+    "galleryImages": [
+      "/products/payung-geometris.jpg",
+      "/products/galeri/payung-geometris-2.jpg",
+      "/products/galeri/payung-geometris-3.jpg"
+    ],
     "price": 95000,
     "priceRangeText": "Rp 75.000 – Rp 110.000",
     "originalPrice": 110000,
@@ -703,11 +717,7 @@ export const SEED_PRODUCTS = [
         "comment": "Perpaduan warna navy dan hijau tosca-nya elegan sekali, gagang kayunya bikin kelihatan mahal seperti payung hotel bintang 5."
       }
     ],
-    "galleryImages": [
-      "/products/payung-geometris.jpg",
-      "/products/galeri/payung-geometris-2.jpg",
-      "/products/galeri/payung-geometris-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "prod-9",
@@ -718,6 +728,11 @@ export const SEED_PRODUCTS = [
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
     "image": "/products/tote-bag-kanvas.jpg",
+    "galleryImages": [
+      "/products/tote-bag-kanvas.jpg",
+      "/products/galeri/tote-bag-2.jpg",
+      "/products/galeri/tote-bag-3.jpg"
+    ],
     "price": 68000,
     "priceRangeText": "Rp 55.000 – Rp 80.000",
     "originalPrice": 80000,
@@ -784,11 +799,7 @@ export const SEED_PRODUCTS = [
         "comment": "Jatuh cinta sama kombinasi warna krem & forest green-nya! Muat laptop 14 inch plus tumbler masuk di saku sampingnya."
       }
     ],
-    "galleryImages": [
-      "/products/tote-bag-kanvas.jpg",
-      "/products/galeri/tote-bag-2.jpg",
-      "/products/galeri/tote-bag-3.jpg"
-    ]
+    "active": true
   },
   {
     "id": "bundle-1",
@@ -875,7 +886,8 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Kaos Ukuran L",
         "comment": "Mampir dinas ke Cilegon bingung cari oleh-oleh selain makanan, ketemu paket ini langsung beres praktis banget!"
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "bundle-2",
@@ -955,7 +967,8 @@ export const SEED_PRODUCTS = [
         "variant": "Hardbox + Custom Kartu & Pita Instansi",
         "comment": "Sangat representatif untuk VIP gift acara peresmian pabrik kami. Hardbox-nya kokoh dan kelihatan sangat berkelas."
       }
-    ]
+    ],
+    "active": true
   },
   {
     "id": "bundle-3",
@@ -1028,9 +1041,109 @@ export const SEED_PRODUCTS = [
         "variant": "Paket Lengkap 4-in-1 + Gift Card",
         "comment": "Beli buat kado ulang tahun ayah yang dulu lama dinas di Cilegon. Beliau terharu banget lihat lampu menaranya!"
       }
-    ]
+    ],
+    "active": true
+  },
+  {
+    "id": "bundle-4",
+    "slug": "paket-nataru-mug-stiker",
+    "name": "Paket Nataru Cilegon Enggih (Mug + Stiker + Kartu Ucapan)",
+    "shortName": "Paket Nataru Mug & Stiker",
+    "englishSubtitle": "Christmas & New Year Gift Set",
+    "categorySlug": "paket-bundling",
+    "categoryLabel": "Paket Bundling / Hampers",
+    "image": "/products/paket-nataru-mug.jpg",
+    "galleryImages": [
+      "/products/paket-nataru-mug.jpg",
+      "/products/mug-keramik.jpg",
+      "/products/stiker-die-cut.jpg"
+    ],
+    "price": 72000,
+    "priceRangeText": "Rp 70.000 – Rp 85.000",
+    "originalPrice": 82000,
+    "discountPercent": 12,
+    "rating": 5,
+    "reviewCount": 24,
+    "soldCount": 96,
+    "weightGrams": 620,
+    "stock": 60,
+    "isBundle": true,
+    "isBestSeller": false,
+    "bundleItems": [
+      "1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)",
+      "3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)",
+      "1x Kartu Ucapan Custom (tulis pesan saat checkout)",
+      "Hardbox Navy Gold Foil + Tissue Krem + Pita Emas",
+      "Bonus Sprocket Pinus & Ornamen Emas (dekorasi meja)"
+    ],
+    "badges": [
+      "Edisi Nataru",
+      "Siap Jadi Kado"
+    ],
+    "description": "Paket kado akhir tahun yang paling praktis: mug keramik bermotif Menara Simpang Tiga, tiga stiker vinyl tahan cuaca, dan kartu ucapan yang bisa Anda tulis sendiri saat checkout. Semuanya tersusun rapi di dalam hardbox navy dengan pita emas, siap diserahkan tanpa perlu membungkus lagi. Cocok untuk kado kolega, klien, atau keluarga — dan bisa dipesan dalam jumlah banyak untuk hadiah kantor.",
+    "specs": [
+      {
+        "label": "Isi Paket",
+        "value": "Mug Keramik 11 oz + 3 Stiker Vinyl Die-Cut + Kartu Ucapan Custom"
+      },
+      {
+        "label": "Kemasan",
+        "value": "Hardbox navy dengan aksen gold foil, alas tissue krem, pita emas, plus ornamen pinus & bauble emas"
+      },
+      {
+        "label": "Material",
+        "value": "Mug keramik SNI food-grade, stiker vinyl laminasi doff/glossy tahan air"
+      },
+      {
+        "label": "Kartu Ucapan",
+        "value": "Kertas art carton 260 gsm, dicetak sesuai pesan yang Anda tulis di kolom catatan checkout"
+      },
+      {
+        "label": "Rekomendasi Harga Retail",
+        "value": "Rp 70.000 – Rp 85.000 / set"
+      }
+    ],
+    "variants": [
+      {
+        "id": "nataru-std",
+        "label": "Hardbox Navy + Pita Emas",
+        "price": 72000,
+        "originalPrice": 82000,
+        "stock": 40
+      },
+      {
+        "id": "nataru-corp",
+        "label": "Hardbox + Kartu Logo Instansi (min. 10 set)",
+        "price": 82000,
+        "originalPrice": 92000,
+        "stock": 20
+      }
+    ],
+    "minWholesaleQty": 10,
+    "wholesalePrice": 66000,
+    "reviews": [
+      {
+        "id": "r16",
+        "user": "Dian Kusumawardhani",
+        "role": "Pembeli Terverifikasi - Cilegon",
+        "rating": 5,
+        "date": "3 hari lalu",
+        "variant": "Hardbox Navy + Pita Emas",
+        "comment": "Pesan 12 set buat kado tim kantor. Boxnya rapi banget, gak perlu bungkus lagi. Mugnya tebal dan motif menaranya jelas, bukan cetakan murahan."
+      },
+      {
+        "id": "r17",
+        "user": "Rizky Pratama",
+        "role": "Pembeli Terverifikasi - Serang",
+        "rating": 5,
+        "date": "1 minggu lalu",
+        "variant": "Hardbox Navy + Pita Emas",
+        "comment": "Beli buat kado natal tukang service motor langganan. Dia sampai foto-foto boxnya. Stikernya langsung ditempel di helm."
+      }
+    ],
+    "active": true
   }
-]
+];
 
 export const SEED_CATEGORIES = [
   {

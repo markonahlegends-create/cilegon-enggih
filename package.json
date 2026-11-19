@@ -17,6 +17,7 @@
     "og:images": "node scripts/generate-og-images.mjs",
     "og:data": "node scripts/generate-og-data.mjs",
     "og:pages": "node scripts/generate-og-pages.mjs",
+    "seed:catalog": "node scripts/generate-seed.mjs",
     "validate:vercel": "node scripts/validate-vercel-config.mjs"
   },
   "dependencies": {

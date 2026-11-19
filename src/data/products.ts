@@ -928,7 +928,92 @@ export const PRODUCTS: Product[] = [
         comment: 'Beli buat kado ulang tahun ayah yang dulu lama dinas di Cilegon. Beliau terharu banget lihat lampu menaranya!'
       }
     ]
+  }  ,
+  {
+    id: 'bundle-4',
+    slug: 'paket-nataru-mug-stiker',
+    name: 'Paket Nataru Cilegon Enggih (Mug + Stiker + Kartu Ucapan)',
+    shortName: 'Paket Nataru Mug & Stiker',
+    englishSubtitle: 'Christmas & New Year Gift Set',
+    categorySlug: 'paket-bundling',
+    categoryLabel: 'Paket Bundling / Hampers',
+    image: '/products/paket-nataru-mug.jpg',
+    galleryImages: [
+      '/products/paket-nataru-mug.jpg',
+      '/products/mug-keramik.jpg',
+      '/products/stiker-die-cut.jpg'
+    ],
+    price: 72000,
+    priceRangeText: 'Rp 70.000 – Rp 85.000',
+    originalPrice: 82000,
+    discountPercent: 12,
+    rating: 5.0,
+    reviewCount: 24,
+    soldCount: 96,
+    weightGrams: 620,
+    stock: 60,
+    isBundle: true,
+    isBestSeller: false,
+    bundleItems: [
+      '1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)',
+      '3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)',
+      '1x Kartu Ucapan Custom (tulis pesan saat checkout)',
+      'Hardbox Navy Gold Foil + Tissue Krem + Pita Emas',
+      'Bonus Sprocket Pinus & Ornamen Emas (dekorasi meja)'
+    ],
+    badges: ['Edisi Nataru', 'Siap Jadi Kado'],
+    description:
+      'Paket kado akhir tahun yang paling praktis: mug keramik bermotif Menara Simpang Tiga, tiga stiker vinyl tahan cuaca, dan kartu ucapan yang bisa Anda tulis sendiri saat checkout. Semuanya tersusun rapi di dalam hardbox navy dengan pita emas, siap diserahkan tanpa perlu membungkus lagi. Cocok untuk kado kolega, klien, atau keluarga — dan bisa dipesan dalam jumlah banyak untuk hadiah kantor.',
+    specs: [
+      {
+        label: 'Isi Paket',
+        value: 'Mug Keramik 11 oz + 3 Stiker Vinyl Die-Cut + Kartu Ucapan Custom'
+      },
+      {
+        label: 'Kemasan',
+        value: 'Hardbox navy dengan aksen gold foil, alas tissue krem, pita emas, plus ornamen pinus & bauble emas'
+      },
+      {
+        label: 'Material',
+        value: 'Mug keramik SNI food-grade, stiker vinyl laminasi doff/glossy tahan air'
+      },
+      {
+        label: 'Kartu Ucapan',
+        value: 'Kertas art carton 260 gsm, dicetak sesuai pesan yang Anda tulis di kolom catatan checkout'
+      },
+      {
+        label: 'Rekomendasi Harga Retail',
+        value: 'Rp 70.000 – Rp 85.000 / set'
+      }
+    ],
+    variants: [
+      { id: 'nataru-std', label: 'Hardbox Navy + Pita Emas', price: 72000, originalPrice: 82000, stock: 40 },
+      { id: 'nataru-corp', label: 'Hardbox + Kartu Logo Instansi (min. 10 set)', price: 82000, originalPrice: 92000, stock: 20 }
+    ],
+    minWholesaleQty: 10,
+    wholesalePrice: 66000,
+    reviews: [
+      {
+        id: 'r16',
+        user: 'Dian Kusumawardhani',
+        role: 'Pembeli Terverifikasi - Cilegon',
+        rating: 5,
+        date: '3 hari lalu',
+        variant: 'Hardbox Navy + Pita Emas',
+        comment: 'Pesan 12 set buat kado tim kantor. Boxnya rapi banget, gak perlu bungkus lagi. Mugnya tebal dan motif menaranya jelas, bukan cetakan murahan.'
+      },
+      {
+        id: 'r17',
+        user: 'Rizky Pratama',
+        role: 'Pembeli Terverifikasi - Serang',
+        rating: 5,
+        date: '1 minggu lalu',
+        variant: 'Hardbox Navy + Pita Emas',
+        comment: 'Beli buat kado natal tukang service motor langganan. Dia sampai foto-foto boxnya. Stikernya langsung ditempel di helm.'
+      }
+    ]
   }
+
 ];
 
 export const VOUCHER_CODES = [

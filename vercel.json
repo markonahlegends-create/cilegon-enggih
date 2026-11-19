@@ -243,6 +243,19 @@
       "destination": "/og/produk--paket-meja-kerja-inspiratif.html"
     },
     {
+      "source": "/produk/paket-nataru-mug-stiker",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": {
+            "re": "[Ww]hatsapp|[Ff]acebookexternalhit|[Ff]acebot|[Tt]witterbot|[Tt]elegram[Bb]ot|[Ll]inked[Ii]n[Bb]ot|[Ss]lackbot|[Dd]iscordbot|[Ee]mbedly|[Pp]interest|[Rr]edditbot|[Ss]kype[Uu]ri[Pp]review|[Aa]pplebot|[Vv][Kk]share|[Nn]uzzel|[Bb]itlybot|[Mm]astodon|[Bb]luesky|[Cc]ardyb"
+          }
+        }
+      ],
+      "destination": "/og/produk--paket-nataru-mug-stiker.html"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
