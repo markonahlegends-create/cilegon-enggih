@@ -59,13 +59,19 @@ const StatCard: React.FC<{
   label: string;
   value: string;
   hint?: string;
-  tone?: 'default' | 'good' | 'bad';
+  tone?: 'default' | 'good' | 'bad' | 'warn';
 }> = ({ label, value, hint, tone = 'default' }) => (
   <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-soft">
     <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{label}</div>
     <div
       className={`text-base sm:text-lg font-extrabold mt-0.5 ${
-        tone === 'good' ? 'text-forest-700' : tone === 'bad' ? 'text-red-600' : 'text-navy-800'
+        tone === 'good'
+          ? 'text-forest-700'
+          : tone === 'bad'
+            ? 'text-red-600'
+            : tone === 'warn'
+              ? 'text-amber-600'
+              : 'text-navy-800'
       }`}
     >
       {value}
@@ -333,11 +339,30 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
               hint={periodLabel}
             />
             <StatCard label="HPP" value={formatRupiah(profitLoss.cogs.productCost)} />
+            {/*
+              Angka laba TIDAK BISA dipercaya bila HPP belum diisi: biaya
+              barang jadi 0, sehingga laba kotor tampil sebesar omzet penuh.
+              Admin harus tahu itu, bukan mengira untungnya besar.
+            */}
+            {profitLoss.cogsWarning && (
+              <div className="col-span-2 lg:col-span-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] text-amber-900 leading-snug">
+                <strong>Laba belum akurat.</strong> {profitLoss.cogsWarning}
+                {profitLoss.productsWithoutCost?.length > 0 && (
+                  <> Contoh produk yang belum ada HPP: {profitLoss.productsWithoutCost.slice(0, 3).map((x: any) => x.name).join(', ')}{profitLoss.productsWithoutCost.length > 3 ? ', …' : ''}.</>
+                )}
+              </div>
+            )}
             <StatCard
               label="Laba Kotor"
               value={formatRupiah(profitLoss.grossProfit)}
-              hint={`${profitLoss.grossMarginPercent}% dari pendapatan`}
-              tone={profitLoss.grossProfit >= 0 ? 'good' : 'bad'}
+              hint={
+                profitLoss.cogsIncomplete
+                  ? `${profitLoss.grossMarginPercent}% · HPP belum lengkap`
+                  : `${profitLoss.grossMarginPercent}% dari pendapatan`
+              }
+              tone={
+                profitLoss.cogsIncomplete ? 'warn' : profitLoss.grossProfit >= 0 ? 'good' : 'bad'
+              }
             />
             <StatCard
               label="Laba Bersih"
