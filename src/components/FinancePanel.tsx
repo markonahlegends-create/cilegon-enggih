@@ -10,6 +10,8 @@ import {
   RefreshCw,
   Save,
   ShoppingBag,
+  ExternalLink,
+  MessageCircle,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -17,6 +19,7 @@ import {
   X
 } from 'lucide-react';
 import { formatRupiah } from '../data/products';
+import { vendorLinks } from '../lib/vendorLinks';
 import {
   adminCashReport,
   adminCreateExpense,
@@ -1094,6 +1097,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                     <th className="text-left px-3 py-2 font-bold">Vendor</th>
                     <th className="text-left px-2 py-2 font-bold">Kontak</th>
                     <th className="text-left px-2 py-2 font-bold">Kategori</th>
+                    <th className="text-left px-2 py-2 font-bold">Toko</th>
                     <th className="text-right px-2 py-2 font-bold">Termin</th>
                     <th className="text-right px-2 py-2 font-bold">Hutang</th>
                     <th className="text-right px-3 py-2 font-bold">Aksi</th>
@@ -1111,6 +1115,40 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                         {v.phone && <div className="text-[9.5px] text-slate-400">{v.phone}</div>}
                       </td>
                       <td className="px-2 py-1.5">{v.category}</td>
+                      <td className="px-2 py-1.5">
+                        {/*
+                          Tautan toko vendor supaya saat order masuk admin bisa
+                          langsung membuka produknya di Shopee/TikTok Shop.
+                          vendorLinks() memvalidasi protokol (mencegah
+                          javascript:) dan mengubah nomor HP jadi tautan
+                          WhatsApp bila tautan toko belum diisi.
+                        */}
+                        <div className="flex flex-wrap items-center gap-1">
+                          {vendorLinks(v).map((link) => (
+                            <a
+                              key={link.href}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={
+                                link.kind === 'shop'
+                                  ? 'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-navy-50 hover:bg-navy-100 text-navy-800 text-[10px] font-bold'
+                                  : 'inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-forest-50 hover:bg-forest-100 text-forest-800 text-[10px] font-bold'
+                              }
+                            >
+                              {link.kind === 'shop' ? (
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              ) : (
+                                <MessageCircle className="w-2.5 h-2.5" />
+                              )}
+                              {link.label}
+                            </a>
+                          ))}
+                          {vendorLinks(v).length === 0 && (
+                            <span className="text-[9.5px] text-slate-400">belum diisi</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-2 py-1.5 text-right">{v.paymentTerm} hari</td>
                       <td className="px-2 py-1.5 text-right font-bold">
                         {v.debt > 0 ? (
@@ -1142,7 +1180,7 @@ export const FinancePanel: React.FC<{ pushToast: (t: string, m: string, k?: any)
                   ))}
                   {vendors.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="px-3 py-6 text-center text-slate-400">
+                      <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
                         Belum ada vendor. Tambahkan supplier produksi/bahan Anda di atas.
                       </td>
                     </tr>
