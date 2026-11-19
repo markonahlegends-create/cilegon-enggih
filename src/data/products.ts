@@ -136,6 +136,11 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
     image: '/products/gantungan-kunci-3d.png',
+    galleryImages: [
+      '/products/gantungan-kunci-3d.png',
+      '/products/galeri/gantungan-kunci-3d-2.jpg',
+      '/products/galeri/gantungan-kunci-3d-3.jpg'
+    ],
     price: 20000,
     priceRangeText: 'Rp 15.000 – Rp 25.000',
     originalPrice: 25000,
@@ -209,6 +214,10 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
     image: '/products/lampu-tidur-3d.png',
+    galleryImages: [
+      '/products/lampu-tidur-3d.png',
+      '/products/galeri/lampu-tidur-3d-2.jpg'
+    ],
     price: 169000,
     priceRangeText: 'Rp 145.000 – Rp 195.000',
     originalPrice: 195000,
@@ -281,6 +290,9 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'perlengkapan-cetak',
     categoryLabel: 'Perlengkapan & Cetak',
     image: '/products/kalender-dinding-a3.png',
+    galleryImages: [
+      '/products/kalender-dinding-a3.png'
+    ],
     price: 42000,
     priceRangeText: 'Rp 35.000 – Rp 50.000',
     originalPrice: 50000,
@@ -341,7 +353,12 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Premium Cotton Combed T-Shirt',
     categorySlug: 'apparel-tas',
     categoryLabel: 'Apparel & Tas',
-    image: '/products/kaos-distro.png',
+    image: '/products/kaos-distro.jpg',
+    galleryImages: [
+      '/products/kaos-distro.jpg',
+      '/products/galeri/kaos-distro-2.jpg',
+      '/products/galeri/kaos-distro-3.jpg'
+    ],
     price: 115000,
     priceRangeText: 'Rp 95.000 – Rp 135.000',
     originalPrice: 135000,
@@ -418,6 +435,11 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'drinkware',
     categoryLabel: 'Drinkware',
     image: '/products/mug-keramik.png',
+    galleryImages: [
+      '/products/mug-keramik.png',
+      '/products/galeri/mug-keramik-2.jpg',
+      '/products/galeri/mug-keramik-3.jpg'
+    ],
     price: 38000,
     priceRangeText: 'Rp 30.000 – Rp 45.000',
     originalPrice: 45000,
@@ -479,6 +501,9 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'aksesoris-dekorasi',
     categoryLabel: 'Aksesoris & Dekorasi',
     image: '/products/stiker-die-cut.png',
+    galleryImages: [
+      '/products/stiker-die-cut.png'
+    ],
     price: 8000,
     priceRangeText: 'Rp 5.000 – Rp 10.000 / Paket Rp 20.000',
     originalPrice: 10000,
@@ -537,6 +562,11 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'drinkware',
     categoryLabel: 'Drinkware',
     image: '/products/tumbler-sporty.png',
+    galleryImages: [
+      '/products/tumbler-sporty.png',
+      '/products/galeri/tumbler-sporty-2.jpg',
+      '/products/galeri/tumbler-sporty-3.jpg'
+    ],
     price: 109000,
     priceRangeText: 'Rp 85.000 – Rp 125.000',
     originalPrice: 125000,
@@ -600,6 +630,9 @@ export const PRODUCTS: Product[] = [
     categorySlug: 'perlengkapan-cetak',
     categoryLabel: 'Perlengkapan & Cetak',
     image: '/products/payung-geometris.png',
+    galleryImages: [
+      '/products/payung-geometris.png'
+    ],
     price: 95000,
     priceRangeText: 'Rp 75.000 – Rp 110.000',
     originalPrice: 110000,
@@ -723,9 +756,9 @@ export const PRODUCTS: Product[] = [
     englishSubtitle: 'Traveler Value Souvenir Bundle',
     categorySlug: 'paket-bundling',
     categoryLabel: 'Paket Bundling / Hampers',
-    image: '/products/kaos-distro.png',
+    image: '/products/kaos-distro.jpg',
     galleryImages: [
-      '/products/kaos-distro.png',
+      '/products/kaos-distro.jpg',
       '/products/gantungan-kunci-3d.png',
       '/products/stiker-die-cut.png'
     ],

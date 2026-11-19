@@ -31,7 +31,7 @@ const HERO_SLIDES = [
     ctaPrimary: { label: 'Jelajahi Katalog Lengkap', to: '/katalog' },
     ctaSecondary: { label: 'Lihat Paket Bundling', to: '/katalog?kategori=paket-bundling' },
     featuredImage: '/products/lampu-tidur-3d.png',
-    secondaryImage: '/products/kaos-distro.png',
+    secondaryImage: '/products/kaos-distro.jpg',
     highlightName: 'Lampu Tidur 3D Arsitektur',
     highlightPrice: 'Rp 169.000'
   },

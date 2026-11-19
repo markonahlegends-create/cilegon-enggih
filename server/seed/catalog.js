@@ -95,6 +95,11 @@ export const SEED_PRODUCTS = [
         "variant": "Satuan (1 Pcs)",
         "comment": "Warna birunya cakep, ring besinya juga tebel anti karat. Dipasang di kunci motor aman nggak bikin lecet bodi."
       }
+    ],
+    "galleryImages": [
+      "/products/gantungan-kunci-3d.png",
+      "/products/galeri/gantungan-kunci-3d-2.jpg",
+      "/products/galeri/gantungan-kunci-3d-3.jpg"
     ]
   },
   {
@@ -181,6 +186,10 @@ export const SEED_PRODUCTS = [
         "variant": "Standard Gift Box + Kabel USB",
         "comment": "Cahaya warm white-nya beneran nyaman di mata pas malam hari. Tulisan Cilegon Enggih di kayu bawahnya ikutan nyala elegan."
       }
+    ],
+    "galleryImages": [
+      "/products/lampu-tidur-3d.png",
+      "/products/galeri/lampu-tidur-3d-2.jpg"
     ]
   },
   {
@@ -266,7 +275,7 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Premium Cotton Combed T-Shirt",
     "categorySlug": "apparel-tas",
     "categoryLabel": "Apparel & Tas",
-    "image": "/products/kaos-distro.png",
+    "image": "/products/kaos-distro.jpg",
     "price": 115000,
     "priceRangeText": "Rp 95.000 – Rp 135.000",
     "originalPrice": 135000,
@@ -364,6 +373,11 @@ export const SEED_PRODUCTS = [
         "variant": "Ukuran M (50 x 70 cm)",
         "comment": "Size chart akurat, jahitan rantai rapi sampai bagian kerah dalam ada label Cilegon Enggih-nya."
       }
+    ],
+    "galleryImages": [
+      "/products/kaos-distro.jpg",
+      "/products/galeri/kaos-distro-2.jpg",
+      "/products/galeri/kaos-distro-3.jpg"
     ]
   },
   {
@@ -439,6 +453,11 @@ export const SEED_PRODUCTS = [
         "variant": "Mug + Gift Box Kraft Pita",
         "comment": "Packing sangat aman berlapis-lapis, tidak ada satupun yang retak. Hasil cetak warnanya tajam persis foto."
       }
+    ],
+    "galleryImages": [
+      "/products/mug-keramik.png",
+      "/products/galeri/mug-keramik-2.jpg",
+      "/products/galeri/mug-keramik-3.jpg"
     ]
   },
   {
@@ -594,6 +613,11 @@ export const SEED_PRODUCTS = [
         "variant": "Gunmetal Matte + Grafir Nama Laser",
         "comment": "Dibawa ke lapangan pabrik seharian es batu masih awet dingin sampai sore. Cetakan UV-nya timbul bertekstur mewah banget!"
       }
+    ],
+    "galleryImages": [
+      "/products/tumbler-sporty.png",
+      "/products/galeri/tumbler-sporty-2.jpg",
+      "/products/galeri/tumbler-sporty-3.jpg"
     ]
   },
   {
@@ -755,9 +779,9 @@ export const SEED_PRODUCTS = [
     "englishSubtitle": "Traveler Value Souvenir Bundle",
     "categorySlug": "paket-bundling",
     "categoryLabel": "Paket Bundling / Hampers",
-    "image": "/products/kaos-distro.png",
+    "image": "/products/kaos-distro.jpg",
     "galleryImages": [
-      "/products/kaos-distro.png",
+      "/products/kaos-distro.jpg",
       "/products/gantungan-kunci-3d.png",
       "/products/stiker-die-cut.png"
     ],
@@ -987,7 +1011,7 @@ export const SEED_PRODUCTS = [
       }
     ]
   }
-];
+]
 
 export const SEED_CATEGORIES = [
   {

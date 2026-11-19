@@ -851,7 +851,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                   <input
                     value={value.image || ''}
                     onChange={(e) => set('image', e.target.value)}
-                    placeholder="/products/kaos-distro.png"
+                    placeholder="/products/kaos-distro.jpg"
                     className="input-admin"
                   />
                 </Labelled>
