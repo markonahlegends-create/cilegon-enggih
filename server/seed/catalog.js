@@ -201,10 +201,10 @@ export const SEED_PRODUCTS = [
     "categorySlug": "perlengkapan-cetak",
     "categoryLabel": "Perlengkapan & Cetak",
     "image": "/products/kalender-dinding-a3.png",
-    "price": 42000,
-    "priceRangeText": "Rp 35.000 – Rp 50.000",
-    "originalPrice": 50000,
-    "discountPercent": 16,
+    "price": 62000,
+    "priceRangeText": "Rp 55.000 – Rp 75.000",
+    "originalPrice": 75000,
+    "discountPercent": 17,
     "rating": 4.9,
     "reviewCount": 96,
     "soldCount": 530,
@@ -234,27 +234,27 @@ export const SEED_PRODUCTS = [
       },
       {
         "label": "Rekomendasi Harga Retail",
-        "value": "Rp 35.000 – Rp 50.000 / pcs"
+        "value": "Rp 55.000 – Rp 75.000 / pcs"
       }
     ],
     "variants": [
       {
         "id": "cal-230",
         "label": "Art Carton 230 gsm (Spiral Putih)",
-        "price": 39000,
-        "originalPrice": 45000,
+        "price": 62000,
+        "originalPrice": 75000,
         "stock": 100
       },
       {
         "id": "cal-260",
         "label": "Art Carton 260 gsm Tebal (Spiral Hitam)",
-        "price": 45000,
-        "originalPrice": 50000,
+        "price": 68000,
+        "originalPrice": 82000,
         "stock": 90
       }
     ],
     "minWholesaleQty": 50,
-    "wholesalePrice": 35000,
+    "wholesalePrice": 52000,
     "reviews": [
       {
         "id": "r5",
@@ -953,10 +953,10 @@ export const SEED_PRODUCTS = [
       "/products/kalender-dinding-a3.png",
       "/products/stiker-die-cut.png"
     ],
-    "price": 229000,
+    "price": 249000,
     "priceRangeText": "Hemat Rp 28.000 (4 Produk Lengkap)",
-    "originalPrice": 257000,
-    "discountPercent": 11,
+    "originalPrice": 277000,
+    "discountPercent": 10,
     "rating": 4.9,
     "reviewCount": 41,
     "soldCount": 145,
@@ -992,13 +992,13 @@ export const SEED_PRODUCTS = [
       {
         "id": "bmk-std",
         "label": "Paket Lengkap 4-in-1 + Gift Card",
-        "price": 229000,
-        "originalPrice": 257000,
+        "price": 249000,
+        "originalPrice": 277000,
         "stock": 45
       }
     ],
     "minWholesaleQty": 15,
-    "wholesalePrice": 199000,
+    "wholesalePrice": 219000,
     "reviews": [
       {
         "id": "r15",
