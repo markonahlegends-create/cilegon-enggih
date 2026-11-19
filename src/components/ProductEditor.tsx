@@ -478,8 +478,20 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
         );
       }
 
-      updateVideo(idx, 'url', ticket.publicUrl);
-      updateVideo(idx, 'source', 'file');
+      /*
+       * SATU panggilan, bukan dua.
+       *
+       * Dulu di sini ada dua baris:
+       *     updateVideo(idx, 'url', ticket.publicUrl);
+       *     updateVideo(idx, 'source', 'file');
+       * Keduanya membaca `videos` dari render yang SAMA, jadi panggilan kedua
+       * menimpa hasil yang pertama memakai data lama — URL unggahan terbuang.
+       * Akibatnya unggahan "berhasil" tanpa error, tapi video tidak pernah
+       * muncul. Sekarang URL dan source diubah bersamaan.
+       */
+      patchVideos(
+        videos.map((v, i) => (i === idx ? { ...v, url: ticket.publicUrl, source: 'file' } : v))
+      );
     } catch (err) {
       setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload video gagal.');
     } finally {
@@ -1510,18 +1522,32 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       onChange={(e) => updateVideo(idx, 'source', e.target.value)}
                       className="input-admin !text-[11px] !py-1.5 w-28"
                     >
-                      <option value="embed">Tautan</option>
-                      <option value="file">File</option>
+                      <option value="embed">Tautan YouTube</option>
+                      <option value="file">Unggah file</option>
                     </select>
                     <input
                       value={v.url || ''}
                       onChange={(e) => updateVideo(idx, 'url', e.target.value)}
+                      /*
+                       * Mode "Unggah file": kolom ini hanya-baca dan diisi
+                       * otomatis oleh hasil unggahan. Dulu bisa diketik manual
+                       * dan placeholder-nya berbunyi "Unggah file di bawah",
+                       * sehingga tampak seolah unggahan tidak menghasilkan apa-apa.
+                       */
+                      readOnly={v.source === 'file'}
                       placeholder={
                         v.source === 'embed'
                           ? 'https://youtube.com/watch?v=...'
-                          : 'Unggah file di bawah'
+                          : uploading && videoUploadIdx === idx
+                            ? 'Mengunggah…'
+                            : 'Terisi otomatis setelah unggahan selesai'
                       }
-                      className="input-admin !text-[11px] !py-1.5 flex-1"
+                      title={
+                        v.source === 'file'
+                          ? 'Diisi otomatis dari hasil unggahan. Untuk mengetik URL sendiri, pilih "Tautan YouTube".'
+                          : undefined
+                      }
+                      className={`input-admin !text-[11px] !py-1.5 flex-1 ${v.source === 'file' ? 'bg-slate-50 text-slate-500' : ''}`}
                     />
                     <button
                       type="button"
@@ -1581,11 +1607,28 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                   </div>
 
                   {v.url && (
-                    <div className="text-[9.5px] text-slate-400 break-all">
-                      {v.source === 'file' && !v.poster && (
-                        <span className="text-amber-600 font-bold">Poster belum diisi. </span>
+                    <div className="space-y-1">
+                      {/*
+                        Pratinjau: bukti nyata bahwa file sudah benar-benar
+                        tersimpan. Sebelumnya tidak ada umpan balik apa pun,
+                        sehingga unggahan yang gagal/bocor tampak sama dengan
+                        yang berhasil.
+                      */}
+                      {v.source === 'file' && (
+                        <video
+                          src={v.url}
+                          poster={v.poster || undefined}
+                          controls
+                          preload="metadata"
+                          className="w-full max-h-40 rounded-lg bg-black"
+                        />
                       )}
-                      {v.url}
+                      <div className="text-[9.5px] text-slate-400 break-all">
+                        {v.source === 'file' && !v.poster && (
+                          <span className="text-amber-600 font-bold">Poster belum diisi. </span>
+                        )}
+                        {v.url}
+                      </div>
                     </div>
                   )}
                 </div>
