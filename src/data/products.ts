@@ -151,12 +151,25 @@ export const CATEGORIES: {
   }
 ];
 
+/**
+ * Panduan ukuran kaos.
+ *
+ * ANGKA RESMI DARI PEMILIK TOKO (lebar dada × panjang badan):
+ *   S 42×62 · M 46×66 · L 50×70 · XL 52×72 · 2XL 56×74 · 3XL 60×76 · 4XL 64×77
+ *
+ * CATATAN: kolom "estimasi berat badan" dan "lebar bahu" yang dulu ada SUDAH
+ * DIHAPUS — datanya tidak pernah resmi dan bertentangan dengan ukuran pabrik,
+ * sehingga pembeli bisa salah pilih. Lebih baik tabel lebih ringkas tapi
+ * angkanya benar. Kalau nanti ada rekomendasi BB resmi, tambahkan lagi.
+ */
 export const KAOS_SIZE_CHART = [
-  { size: 'S', chest: '48 cm', length: '68 cm', shoulder: '42 cm', weightRec: '45 – 55 kg' },
-  { size: 'M', chest: '50 cm', length: '70 cm', shoulder: '44 cm', weightRec: '55 – 65 kg' },
-  { size: 'L', chest: '52 cm', length: '72 cm', shoulder: '46 cm', weightRec: '65 – 75 kg' },
-  { size: 'XL', chest: '55 cm', length: '75 cm', shoulder: '49 cm', weightRec: '75 – 85 kg' },
-  { size: 'XXL', chest: '58 cm', length: '77 cm', shoulder: '52 cm', weightRec: '85 – 100 kg' }
+  { size: 'S', chest: '42 cm', length: '62 cm' },
+  { size: 'M', chest: '46 cm', length: '66 cm' },
+  { size: 'L', chest: '50 cm', length: '70 cm' },
+  { size: 'XL', chest: '52 cm', length: '72 cm' },
+  { size: '2XL', chest: '56 cm', length: '74 cm' },
+  { size: '3XL', chest: '60 cm', length: '76 cm' },
+  { size: '4XL', chest: '64 cm', length: '77 cm' }
 ];
 
 export const PRODUCTS: Product[] = [
@@ -431,11 +444,17 @@ export const PRODUCTS: Product[] = [
       }
     ],
     variants: [
-      { id: 'ts-s', label: 'Ukuran S (48 x 68 cm)', price: 110000, originalPrice: 130000, stock: 25 },
-      { id: 'ts-m', label: 'Ukuran M (50 x 70 cm)', price: 115000, originalPrice: 135000, stock: 40 },
-      { id: 'ts-l', label: 'Ukuran L (52 x 72 cm)', price: 115000, originalPrice: 135000, stock: 50 },
-      { id: 'ts-xl', label: 'Ukuran XL (55 x 75 cm)', price: 120000, originalPrice: 135000, stock: 35 },
-      { id: 'ts-xxl', label: 'Ukuran XXL (58 x 77 cm)', price: 125000, originalPrice: 145000, stock: 15 }
+      /*
+       * Label sengaja hanya berisi ukuran, tanpa dimensi dalam tanda kurung.
+       * Dimensi lama (48 x 68 cm dst.) bertentangan dengan panduan ukuran resmi
+       * di atas — pembeli yang membandingkan keduanya jadi ragu.
+       * Detail dimensi tinggal di tabel panduan ukuran.
+       */
+      { id: 'ts-s', label: 'Ukuran S', price: 110000, originalPrice: 130000, stock: 25 },
+      { id: 'ts-m', label: 'Ukuran M', price: 115000, originalPrice: 135000, stock: 40 },
+      { id: 'ts-l', label: 'Ukuran L', price: 115000, originalPrice: 135000, stock: 50 },
+      { id: 'ts-xl', label: 'Ukuran XL', price: 120000, originalPrice: 135000, stock: 35 },
+      { id: 'ts-xxl', label: 'Ukuran XXL', price: 125000, originalPrice: 145000, stock: 15 }
     ],
     minWholesaleQty: 24,
     wholesalePrice: 95000,

@@ -23,7 +23,14 @@ import {
   EXPENSE_CATEGORY_LABEL,
   num
 } from './finance.js';
-import { saveImage, saveVideo, MAX_UPLOAD_BYTES, MAX_PROOF_BYTES, MAX_VIDEO_BYTES } from './storage.js';
+import {
+  saveImage,
+  saveVideo,
+  createVideoUploadTicket,
+  MAX_UPLOAD_BYTES,
+  MAX_PROOF_BYTES,
+  MAX_VIDEO_BYTES
+} from './storage.js';
 import { checkStock, applyStockMovement, stockAlreadyApplied } from './stock.js';
 import {
   normalizeEvent,
@@ -2755,6 +2762,41 @@ const UPLOAD_KINDS = {
     prefix: 'video'
   }
 };
+
+/**
+ * Tiket unggah video langsung ke Supabase Storage.
+ *
+ * Video TIDAK dikirim lewat server karena Vercel menolak body > 4.5 MB (413).
+ * Alur: browser minta tiket -> unggah langsung ke Supabase -> kirim publicUrl
+ * sebagai field `videos[].url` produk.
+ */
+route('POST', '/api/admin/video-upload-ticket', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const filename = String((body && body.filename) || 'video-produk');
+  const sizeBytes = Number((body && body.sizeBytes) || 0);
+
+  if (sizeBytes > MAX_VIDEO_BYTES) {
+    return bad(
+      `Ukuran video ${(sizeBytes / (1024 * 1024)).toFixed(1)} MB melebihi batas 5 MB. ` +
+        'Pendekkan durasi (anjuran 30 detik) atau kecilkan resolusi ke 720p.',
+      413
+    );
+  }
+
+  try {
+    const ticket = await createVideoUploadTicket({ filename });
+    return ok({ ...ticket, maxBytes: MAX_VIDEO_BYTES });
+  } catch (err) {
+    if (err.message === 'SUPABASE_NOT_CONFIGURED') {
+      return bad(
+        'Unggah video langsung butuh Supabase Storage. Set SUPABASE_URL + kunci layanan di server.',
+        503
+      );
+    }
+    return bad(err.message, 502);
+  }
+});
 
 route('POST', '/api/admin/upload', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);

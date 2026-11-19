@@ -429,6 +429,23 @@ export const adminUploadVideo = (payload: { dataUrl: string; filename?: string }
     admin: true
   });
 
+/**
+ * Minta tiket unggah video langsung ke Supabase Storage.
+ *
+ * KENAPA BUKAN adminUploadVideo: Vercel menolak body request > 4.5 MB dan
+ * batas itu tidak bisa dinaikkan. video 5 MB -> base64 ±6,7 MB -> 413 sebelum
+ * kode server jalan. Dengan tiket ini, file diunggah browser langsung ke
+ * Supabase dan server hanya menerima URL publiknya.
+ */
+export const adminRequestVideoTicket = (payload: { filename: string; sizeBytes: number }) =>
+  apiRequest<{
+    uploadUrl: string;
+    path: string;
+    publicUrl: string;
+    bucket: string;
+    maxBytes: number;
+  }>('/api/admin/video-upload-ticket', { method: 'POST', body: payload, admin: true });
+
 export const adminSettingsFull = () =>
   apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
 
