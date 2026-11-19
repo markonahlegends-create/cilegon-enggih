@@ -5,7 +5,9 @@ import {
   ChevronUp,
   Copy,
   Image as ImageIcon,
+  ImagePlus,
   Layers,
+  RefreshCw,
   Loader2,
   Plus,
   Save,
@@ -14,7 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { formatRupiah } from '../data/products';
-import { adminUploadImage, ApiError } from '../lib/api';
+import { adminUploadImage, adminUploadVideo, ApiError } from '../lib/api';
 
 /* ------------------------------------------------------------------ */
 /* Helper kecil                                                        */
@@ -120,6 +122,12 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const [showErrors, setShowErrors] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  /** Indeks varian yang sedang diunggah fotonya (null = tidak ada). */
+  const [variantUploadIdx, setVariantUploadIdx] = useState<number | null>(null);
+  const variantInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  /** Indeks video yang sedang diunggah file-nya. */
+  const [videoUploadIdx, setVideoUploadIdx] = useState<number>(0);
 
   const isNew: boolean = Boolean(value.__isNew);
   const dirty = Boolean(value.__dirty);
@@ -183,6 +191,115 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
       stock: 0
     }));
     setMany({ variants: created, hasSizeChart: true });
+  };
+
+  /**
+   * Unggah foto khusus satu varian.
+   *
+   * Dipisah dari uploadFiles karena hasilnya masuk ke variants[idx].image /
+   * .images, bukan ke galeri produk. Batas 3 foto per varian supaya ringan.
+   */
+  const uploadVariantFiles = async (files: FileList | null, idx: number) => {
+    if (!files || files.length === 0) return;
+    setUploadError('');
+    setUploading(true);
+    setVariantUploadIdx(idx);
+    try {
+      const current = Array.isArray(variants[idx]?.images) ? variants[idx].images : [];
+      const uploaded: string[] = [];
+      for (const file of Array.from(files).slice(0, 3)) {
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 8 * 1024 * 1024) {
+          throw new Error(`${file.name} lebih dari 8 MB. Kompres dulu.`);
+        }
+        const dataUrl = await compressImage(file);
+        const res = await adminUploadImage({ dataUrl, filename: file.name.replace(/\.[^.]+$/, '') });
+        uploaded.push(res.url);
+      }
+      if (uploaded.length === 0) return;
+
+      const [first, ...rest] = uploaded;
+      const merged = Array.from(new Set([...current, ...rest])).slice(0, 4);
+      const next = variants.map((v, i) =>
+        i === idx ? { ...v, image: v.image || first, images: merged } : v
+      );
+      setMany({ variants: next });
+    } catch (err) {
+      setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload gagal.');
+    } finally {
+      setUploading(false);
+      setVariantUploadIdx(null);
+      if (variantInputRef.current) variantInputRef.current.value = '';
+    }
+  };
+
+  const removeVariantImage = (idx: number, url: string) => {
+    const v = variants[idx] || {};
+    const images = (Array.isArray(v.images) ? v.images : []).filter((x: string) => x !== url);
+    // Kalau foto utama dihapus, promosikan foto tambahan pertama.
+    const image = v.image === url ? images[0] || '' : v.image;
+    const next = variants.map((item, i) =>
+      i === idx ? { ...item, image, images: images.filter((x: string) => x !== image) } : item
+    );
+    setMany({ variants: next });
+  };
+
+  const clearVariantImages = (idx: number) => {
+    const next = variants.map((item, i) =>
+      i === idx ? { ...item, image: '', images: [] } : item
+    );
+    setMany({ variants: next });
+  };
+
+  /* ------------------------------ video ----------------------------- */
+  const videos: any[] = Array.isArray(value.videos) ? value.videos : [];
+
+  const patchVideos = (next: any[]) => setMany({ videos: next.slice(0, 3) });
+
+  const addVideoLink = () => {
+    if (videos.length >= 3) return;
+    patchVideos([
+      ...videos,
+      { id: `vid-${Date.now().toString(36)}`, url: '', source: 'embed', poster: '', title: '', startAt: 0 }
+    ]);
+  };
+
+  const updateVideo = (idx: number, key: string, val: any) =>
+    patchVideos(videos.map((v, i) => (i === idx ? { ...v, [key]: val } : v)));
+
+  const removeVideo = (idx: number) => patchVideos(videos.filter((_, i) => i !== idx));
+
+  /** Unggah file video (maks 5 MB) — tanpa kompresi, jadi batasnya ketat. */
+  const uploadVideoFile = async (files: FileList | null, idx: number) => {
+    const file = files && files[0];
+    if (!file) return;
+    setUploadError('');
+    setUploading(true);
+    setVariantUploadIdx(null);
+    try {
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error(
+          `${file.name} berukuran ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maksimal 5 MB — pendekkan durasi atau kecilkan resolusi ke 720p.`
+        );
+      }
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('Gagal membaca file video.'));
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(file);
+      });
+      const res = await adminUploadVideo({
+        dataUrl,
+        filename: file.name.replace(/\.[^.]+$/, '')
+      });
+      updateVideo(idx, 'url', res.url);
+      updateVideo(idx, 'source', 'file');
+    } catch (err) {
+      setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload video gagal.');
+    } finally {
+      setUploading(false);
+      if (videoInputRef.current) videoInputRef.current.value = '';
+    }
   };
 
   /* --------------------------- spesifikasi --------------------------- */
@@ -620,6 +737,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                       <th className="text-left px-1 py-1 font-bold w-24">Harga Coret</th>
                       <th className="text-left px-1 py-1 font-bold w-20">Stok</th>
                       <th className="text-left px-1 py-1 font-bold w-24">HPP</th>
+                      <th className="text-left px-1 py-1 font-bold w-32">Foto Varian</th>
                       <th className="text-right px-1 py-1 font-bold w-24">Aksi</th>
                     </tr>
                   </thead>
@@ -671,6 +789,66 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
                             title="Harga pokok per varian (0 = ikut HPP produk)"
                             className="input-admin !text-[11px] !py-1.5"
                           />
+                        </td>
+                        <td className="px-1 py-1.5">
+                          {(() => {
+                            const shots: string[] = [
+                              v.image,
+                              ...(Array.isArray(v.images) ? v.images : [])
+                            ].filter(Boolean);
+                            return (
+                              <div className="flex items-center gap-1">
+                                {shots.slice(0, 2).map((url: string) => (
+                                  <div key={url} className="relative shrink-0">
+                                    <img
+                                      src={url}
+                                      alt=""
+                                      className="w-8 h-8 rounded-md object-cover border border-slate-200"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeVariantImage(idx, url)}
+                                      title="Hapus foto"
+                                      className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500 text-white text-[8px] leading-none flex items-center justify-center"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ))}
+                                {shots.length > 2 && (
+                                  <span className="text-[9px] text-slate-400 font-bold">
+                                    +{shots.length - 2}
+                                  </span>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVariantUploadIdx(idx);
+                                    variantInputRef.current?.click();
+                                  }}
+                                  disabled={uploading || shots.length >= 5}
+                                  title="Unggah foto khusus varian ini"
+                                  className="w-8 h-8 rounded-md border border-dashed border-slate-300 text-slate-400 hover:border-forest-500 hover:text-forest-600 disabled:opacity-40 flex items-center justify-center"
+                                >
+                                  {uploading && variantUploadIdx === idx ? (
+                                    <RefreshCw className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <ImagePlus className="w-3 h-3" />
+                                  )}
+                                </button>
+                                {shots.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => clearVariantImages(idx)}
+                                    title="Kosongkan — pakai galeri produk"
+                                    className="text-[9px] text-slate-400 hover:text-red-600 font-bold underline"
+                                  >
+                                    reset
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-1 py-1.5">
                           <div className="flex items-center justify-end gap-0.5">
@@ -890,9 +1068,143 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
               className="hidden"
               onChange={(e) => uploadFiles(e.target.files, false)}
             />
+            {/* Foto khusus varian — target diambil dari variantUploadIdx. */}
+            <input
+              ref={variantInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                if (variantUploadIdx !== null) uploadVariantFiles(e.target.files, variantUploadIdx);
+              }}
+            />
           </SectionCard>
 
           {/* 5. Spesifikasi & isi paket */}
+          {/* 4b. Video produk */}
+          <SectionCard
+            step="4b"
+            title="Video Produk"
+            hint={`${videos.length}/3 video · maks 5 MB per file`}
+          >
+            <div className="space-y-2">
+              {videos.length === 0 && (
+                <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+                  Belum ada video. Video singkat (20–30 detik) membuat calon pembeli jauh lebih
+                  yakin — cukup rekam produk berputar dengan ponsel.
+                </p>
+              )}
+
+              {videos.map((v, idx) => (
+                <div key={v.id || idx} className="rounded-xl border border-slate-200 p-2 space-y-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <select
+                      value={v.source || 'embed'}
+                      onChange={(e) => updateVideo(idx, 'source', e.target.value)}
+                      className="input-admin !text-[11px] !py-1.5 w-28"
+                    >
+                      <option value="embed">Tautan</option>
+                      <option value="file">File</option>
+                    </select>
+                    <input
+                      value={v.url || ''}
+                      onChange={(e) => updateVideo(idx, 'url', e.target.value)}
+                      placeholder={
+                        v.source === 'embed'
+                          ? 'https://youtube.com/watch?v=...'
+                          : 'Unggah file di bawah'
+                      }
+                      className="input-admin !text-[11px] !py-1.5 flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeVideo(idx)}
+                      title="Hapus video"
+                      className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-600 shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+
+                  {v.source === 'file' && (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setVideoUploadIdx(idx);
+                          videoInputRef.current?.click();
+                        }}
+                        disabled={uploading}
+                        className="px-2 py-1 rounded-lg bg-forest-600 hover:bg-forest-700 disabled:opacity-50 text-white text-[10px] font-bold inline-flex items-center gap-1"
+                      >
+                        {uploading && videoUploadIdx === idx ? (
+                          <RefreshCw className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Upload className="w-3 h-3" />
+                        )}
+                        {v.url ? 'Ganti file' : 'Unggah MP4/WebM'}
+                      </button>
+                      <input
+                        value={v.poster || ''}
+                        onChange={(e) => updateVideo(idx, 'poster', e.target.value)}
+                        placeholder="URL poster (wajib agar tidak kotak hitam)"
+                        className="input-admin !text-[10.5px] !py-1 flex-1"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      value={v.title || ''}
+                      onChange={(e) => updateVideo(idx, 'title', e.target.value)}
+                      placeholder="Judul video (opsional)"
+                      className="input-admin !text-[10.5px] !py-1 flex-1"
+                    />
+                    {v.source === 'embed' && (
+                      <input
+                        type="number"
+                        min={0}
+                        value={v.startAt ?? 0}
+                        onChange={(e) => updateVideo(idx, 'startAt', Number(e.target.value))}
+                        placeholder="Mulai (detik)"
+                        title="Detik mulai pemutaran"
+                        className="input-admin !text-[10.5px] !py-1 w-24"
+                      />
+                    )}
+                  </div>
+
+                  {v.url && (
+                    <div className="text-[9.5px] text-slate-400 break-all">
+                      {v.source === 'file' && !v.poster && (
+                        <span className="text-amber-600 font-bold">Poster belum diisi. </span>
+                      )}
+                      {v.url}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {videos.length < 3 && (
+                <button
+                  type="button"
+                  onClick={addVideoLink}
+                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-[10.5px] font-bold text-slate-700 inline-flex items-center gap-1"
+                >
+                  <Plus className="w-3 h-3" /> Tambah slot video
+                </button>
+              )}
+
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/webm"
+                className="hidden"
+                onChange={(e) => uploadVideoFile(e.target.files, videoUploadIdx)}
+              />
+            </div>
+          </SectionCard>
+
           <SectionCard step="5" title="Spesifikasi & Isi Paket">
             <div className="space-y-1.5">
               {specs.map((sp, idx) => (

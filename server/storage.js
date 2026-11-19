@@ -17,6 +17,12 @@
 
 const MAX_UPLOAD_BYTES = 3 * 1024 * 1024; // foto produk / QRIS / aset toko
 const MAX_PROOF_BYTES = 2 * 1024 * 1024; // bukti transfer (sudah dikompres klien)
+/**
+ * Video produk: 5 MB. Kuota Supabase gratis hanya 1 GB, dan video adalah
+ * barang yang paling cepat menghabiskannya. 5 MB cukup untuk ~30 detik
+ * H.264 720p — durasi yang wajar untuk memperlihatkan produk berputar.
+ */
+const MAX_VIDEO_BYTES = 5 * 1024 * 1024;
 
 /** Hanya format raster yang aman dirender di <img>. SVG sengaja tidak ada. */
 const MIME_BY_SIGNATURE = [
@@ -36,6 +42,35 @@ const MIME_BY_SIGNATURE = [
   },
   { ext: 'gif', mime: 'image/gif', test: (b) => b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x38 }
 ];
+
+/**
+ * Format video yang diterima. Sama seperti gambar, tipe ditentukan dari isi
+ * file (magic bytes), bukan dari label data URL yang bisa dipalsukan.
+ *
+ * MP4: kotak `ftyp` di offset 4 (mis. ....ftypisom / ftypmp42 / ftypavc1)
+ * WebM: header EBML 1A 45 DF A3
+ * Format lain (AVI, MKV ber-DRM, dll) ditolak karena tidak diputar konsisten
+ * di browser HP.
+ */
+const VIDEO_BY_SIGNATURE = [
+  {
+    ext: 'mp4',
+    mime: 'video/mp4',
+    test: (b) =>
+      b.length > 12 &&
+      b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70 // 'ftyp'
+  },
+  {
+    ext: 'webm',
+    mime: 'video/webm',
+    test: (b) => b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3
+  }
+];
+
+const sniffVideo = (buffer) => {
+  if (!buffer || buffer.length < 16) return null;
+  return VIDEO_BY_SIGNATURE.find((s) => s.test(buffer)) || null;
+};
 
 const EXT_BY_MIME = MIME_BY_SIGNATURE.reduce((acc, s) => {
   acc[s.mime] = s.ext;
@@ -179,4 +214,98 @@ export const saveImage = async ({ dataUrl, filename, bucket, maxBytes = MAX_UPLO
   throw new Error('Penyimpanan gambar belum dikonfigurasi (SUPABASE_URL + kunci belum diisi).');
 };
 
-export { MAX_UPLOAD_BYTES, MAX_PROOF_BYTES, EXT_BY_MIME };
+/**
+ * Simpan video produk (data URL base64).
+ *
+ * Berbeda dari saveImage: tidak memakai kompresi karena video tidak bisa
+ * dikompres di browser tanpa membebani CPU ponsel. Karena itu batas ukuran
+ * ditegakkan ketat (5 MB) dan admin diberi pesan jelas bila melebihi.
+ *
+ * @returns {Promise<{url:string, filename:string, storage:string, bucket?:string, bytes:number, mime:string}>}
+ */
+export const saveVideo = async ({ dataUrl, filename, bucket }) => {
+  const raw = String(dataUrl || '').trim();
+  if (!raw) throw new Error('Video tidak dikirim.');
+
+  const match = /^data:([a-zA-Z0-9.+\/-]+)?(?:;charset=[^;,]+)?;base64,([A-Za-z0-9+/=\s]+)$/.exec(raw);
+  if (!match) {
+    throw new Error('Format video tidak dikenali. Gunakan file MP4 atau WebM.');
+  }
+
+  const buffer = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+  if (!buffer.length) throw new Error('Video kosong atau rusak.');
+
+  if (buffer.length > MAX_VIDEO_BYTES) {
+    throw new Error(
+      `Ukuran video ${(buffer.length / (1024 * 1024)).toFixed(1)} MB melebihi batas 5 MB. ` +
+        'Pendekkan durasi (anjuran 30 detik) atau kecilkan resolusi ke 720p.'
+    );
+  }
+
+  // Tipe ditentukan dari isi file, bukan dari label data URL.
+  const sniffed = sniffVideo(buffer);
+  if (!sniffed) {
+    throw new Error('Isi file bukan video MP4/WebM yang valid. Format lain tidak diputar di semua browser HP.');
+  }
+
+  const safeBase = slugifyName(filename) || 'video-produk';
+  const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const finalName = `${safeBase}-${unique}.${sniffed.ext}`;
+
+  const { url: sbUrl, key: sbKey } = supabaseStorageConfig();
+
+  if (sbUrl && sbKey) {
+    const authHeaders = { apikey: sbKey, 'Content-Type': sniffed.mime, 'x-upsert': 'true' };
+    if (!sbKey.startsWith('sb_')) authHeaders.Authorization = `Bearer ${sbKey}`;
+
+    let uploadRes;
+    try {
+      uploadRes = await fetch(
+        `${sbUrl}/storage/v1/object/${bucket}/${encodeURIComponent(finalName)}`,
+        { method: 'POST', headers: authHeaders, body: buffer }
+      );
+    } catch (err) {
+      throw new Error(`Upload video ke Supabase Storage gagal: ${err.message}`);
+    }
+
+    if (uploadRes.ok) {
+      return {
+        url: `${sbUrl}/storage/v1/object/public/${bucket}/${encodeURIComponent(finalName)}`,
+        filename: finalName,
+        storage: 'supabase',
+        bucket,
+        bytes: buffer.length,
+        mime: sniffed.mime
+      };
+    }
+
+    const detail = await uploadRes.text().catch(() => '');
+    console.error('[upload] Supabase video gagal:', uploadRes.status, detail.slice(0, 200));
+    throw new Error(
+      `Upload video gagal (${uploadRes.status}). Pastikan bucket "${bucket}" sudah dibuat dan bersifat Public.`
+    );
+  }
+
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
+      const dir = path.join(process.cwd(), 'public', 'uploads');
+      await fs.mkdir(dir, { recursive: true });
+      await fs.writeFile(path.join(dir, finalName), buffer);
+      return {
+        url: `/uploads/${finalName}`,
+        filename: finalName,
+        storage: 'local',
+        bytes: buffer.length,
+        mime: sniffed.mime
+      };
+    } catch (err) {
+      throw new Error(`Gagal menyimpan video: ${err.message}`);
+    }
+  }
+
+  throw new Error('Penyimpanan video belum dikonfigurasi (SUPABASE_URL + kunci belum diisi).');
+};
+
+export { MAX_UPLOAD_BYTES, MAX_PROOF_BYTES, MAX_VIDEO_BYTES, EXT_BY_MIME };

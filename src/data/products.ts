@@ -12,6 +12,18 @@ export interface ProductVariant {
   price: number;
   originalPrice?: number;
   stock: number;
+  /**
+   * Foto utama khusus varian ini.
+   *
+   * KENAPA ADA: sebelumnya memilih varian hanya mengubah harga & stok,
+   * sementara gambar tetap sama. Pembeli yang memilih "Navy" masih melihat
+   * foto "Cream" — membingungkan dan sering berujung komplain.
+   *
+   * Kosong = pakai galeri produk (perilaku lama, tidak pernah rusak).
+   */
+  image?: string;
+  /** Foto tambahan varian (maks 4). Ditampilkan setelah foto utama varian. */
+  images?: string[];
 }
 
 export interface ProductSpec {
@@ -27,6 +39,25 @@ export interface ProductReview {
   date: string;
   variant?: string;
   comment: string;
+}
+
+/**
+ * Video produk.
+ *
+ * Dua sumber sengaja dibedakan:
+ *  - 'file'  : diunggah ke Supabase Storage (bucket product-video, maks 5 MB).
+ *              Wajib punya poster agar tidak ada kotak hitam sebelum diputar.
+ *  - 'embed' : tautan YouTube/Instagram. Tidak memakai kuota Supabase.
+ */
+export interface ProductVideo {
+  id: string;
+  url: string;
+  source: 'file' | 'embed';
+  /** Gambar poster. Wajib untuk source='file'. */
+  poster?: string;
+  title?: string;
+  /** Detik mulai pemutaran (untuk video panjang). */
+  startAt?: number;
 }
 
 export interface Product {
@@ -57,6 +88,8 @@ export interface Product {
   preOrderNote?: string;
   /** Stok dikelola manual walau ada varian. */
   stockManual?: boolean;
+  /** Video produk. Ditampilkan di halaman detail bila ada. */
+  videos?: ProductVideo[];
   badges: string[];
   description: string;
   specs: ProductSpec[];

@@ -409,6 +409,26 @@ export const adminUploadImage = (payload: {
     { method: 'POST', body: payload, admin: true }
   );
 
+/**
+ * Unggah video produk (maks 5 MB, MP4/WebM).
+ *
+ * Dipisah dari adminUploadImage karena server memakai validasi berbeda:
+ * video diperiksa lewat magic bytes MP4/WebM, bukan magic bytes gambar.
+ */
+export const adminUploadVideo = (payload: { dataUrl: string; filename?: string }) =>
+  apiRequest<{
+    url: string;
+    filename: string;
+    storage: string;
+    bytes: number;
+    mime: string;
+    bucket?: string;
+  }>('/api/admin/upload', {
+    method: 'POST',
+    body: { ...payload, kind: 'video' },
+    admin: true
+  });
+
 export const adminSettingsFull = () =>
   apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
 
