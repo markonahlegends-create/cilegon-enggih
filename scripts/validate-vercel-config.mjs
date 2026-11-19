@@ -189,6 +189,79 @@ const main = () => {
     }
   });
 
+  /*
+   * --- CSP: domain yang dipakai browser harus diizinkan ---
+   *
+   * INSIDEN NYATA (19 Nov 2026): unggah video gagal dengan "Failed to fetch".
+   * Penyebabnya `connect-src 'self'` — browser memblokir PUT langsung ke
+   * Supabase Storage SEBELUM request terkirim, tanpa kode status. Semua
+   * pemeriksaan lain lolos, jadi gejalanya menyesatkan.
+   *
+   * Pemeriksaan ini memastikan: begitu aplikasi memakai Supabase (unggah
+   * video langsung dari browser, foto, video produk), CSP mengizinkan
+   * domainnya — kalau tidak, build memberi PERINGATAN.
+   */
+  const cspHeader = headers
+    .flatMap((rule) => (Array.isArray(rule.headers) ? rule.headers : []))
+    .find((h) => String(h.key || '').toLowerCase() === 'content-security-policy');
+
+  // Apakah aplikasi ini memang memakai Supabase?
+  const usesSupabase = Boolean(
+    process.env.SUPABASE_URL ||
+      process.env.VITE_SUPABASE_URL ||
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      // Fallback: cari jejak Supabase di kode, karena build lokal biasanya
+      // tidak menyetel env produksi.
+      fs.existsSync(path.join(ROOT, 'server', 'storage.js'))
+  );
+
+  if (cspHeader && usesSupabase) {
+    const value = String(cspHeader.value || '');
+
+    // Ambil isi satu direktif CSP, mis. "connect-src 'self' https://x".
+    const directive = (name) => {
+      const re = new RegExp('(?:^|;)\\s*' + name + '\\s+([^;]*)', 'i');
+      const m = re.exec(value);
+      return m ? m[1].trim() : null;
+    };
+
+    // Apakah daftar sumber mengizinkan Supabase (wildcard, host persis, atau https:)?
+    const allowsSupabase = (list) =>
+      list
+        .split(/\s+/)
+        .filter(Boolean)
+        .some((tok) => {
+          if (tok === 'https:') return true;
+          if (!tok.startsWith('https://')) return false;
+          const host = tok.slice('https://'.length);
+          return host === '*.supabase.co' || host.endsWith('.supabase.co');
+        });
+
+    const connectSrc = directive('connect-src');
+    if (connectSrc !== null && !allowsSupabase(connectSrc)) {
+      warn(
+        'CSP connect-src ("' +
+          connectSrc +
+          '") belum mengizinkan Supabase. Unggah video langsung ke Supabase Storage ' +
+          'akan DIBLOKIR browser dengan "Failed to fetch" tanpa kode status. ' +
+          'Tambahkan https://*.supabase.co pada connect-src.'
+      );
+    }
+
+    const mediaSrc = directive('media-src');
+    if (mediaSrc === null) {
+      warn(
+        'CSP tidak punya media-src, sehingga default-src berlaku dan video produk ' +
+          'dari Supabase tidak bisa diputar di halaman detail. ' +
+          "Tambahkan: media-src 'self' blob: https://*.supabase.co"
+      );
+    } else if (!allowsSupabase(mediaSrc)) {
+      warn(
+        'CSP media-src ("' + mediaSrc + '") belum mengizinkan Supabase — video produk tidak bisa diputar.'
+      );
+    }
+  }
+
   /* --- redirects --- */
   const redirects = Array.isArray(cfg.redirects) ? cfg.redirects : [];
   redirects.forEach((rule, i) => {
