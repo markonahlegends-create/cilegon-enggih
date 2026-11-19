@@ -731,7 +731,11 @@ export const SEED_PRODUCTS = [
     "galleryImages": [
       "/products/tote-bag-kanvas.jpg",
       "/products/galeri/tote-bag-2.jpg",
-      "/products/galeri/tote-bag-3.jpg"
+      "/products/galeri/tote-bag-3.jpg",
+      "/products/galeri/tote-bag-4.jpg",
+      "/products/galeri/tote-bag-5.jpg",
+      "/products/galeri/tote-bag-6.jpg",
+      "/products/galeri/tote-bag-7.jpg"
     ],
     "price": 68000,
     "priceRangeText": "Rp 55.000 – Rp 80.000",
