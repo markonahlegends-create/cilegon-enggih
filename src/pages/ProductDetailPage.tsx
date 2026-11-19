@@ -17,13 +17,15 @@ import {
   Layers,
   Building2,
   CreditCard,
+  ArrowLeft,
   X
 } from 'lucide-react';
 import {
   KAOS_SIZE_CHART,
   formatRupiah,
   buildWhatsAppUrl,
-  ProductVariant
+  ProductVariant,
+  Product
 } from '../data/products';
 import { useStore } from '../context/StoreContext';
 import { ShippingCalculator } from '../components/ShippingCalculator';
@@ -31,7 +33,11 @@ import ProductVideoPlayer from '../components/ProductVideoPlayer';
 import { ProductCard } from '../components/ProductCard';
 import { useBackClose } from '../hooks/useBackClose';
 
-export const ProductDetailPage: React.FC = () => {
+/**
+ * Isi halaman detail produk. Hanya dirender kalau produknya SUDAH pasti ada,
+ * sehingga seluruh hook di dalamnya selalu dijalankan dalam urutan yang sama.
+ */
+const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
   const { slug } = useParams<{ slug: string }>();
   const {
     addToCart,
@@ -42,7 +48,6 @@ export const ProductDetailPage: React.FC = () => {
     products
   } = useStore();
 
-  const product = products.find((p) => p.slug === slug) || products[0];
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(
     product?.variants?.[0]
   );
@@ -457,7 +462,7 @@ export const ProductDetailPage: React.FC = () => {
             <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-extrabold text-navy-800 uppercase tracking-wider flex items-center gap-1.5">
-                  <Ruler className="w-4 h-4 text-forest-600" /> Tabel Size Chart Kaos Regular Fit Unisex
+                  <Ruler className="w-4 h-4 text-forest-600" /> Panduan Ukuran Kaos
                 </h4>
                 <span className="text-[11px] text-slate-400">Toleransi jahit ±1 cm</span>
               </div>
@@ -466,9 +471,8 @@ export const ProductDetailPage: React.FC = () => {
                   <thead>
                     <tr className="bg-slate-50 text-slate-600 border-b border-slate-200">
                       <th className="py-2 px-2.5 font-bold">Ukuran</th>
-                      <th className="py-2 px-2.5 font-bold">Lebar Dada</th>
-                      <th className="py-2 px-2.5 font-bold">Panjang Badan</th>
-                      <th className="py-2 px-2.5 font-bold">Estimasi BB</th>
+                      <th className="py-2 px-2.5 font-bold">Lebar</th>
+                      <th className="py-2 px-2.5 font-bold">Panjang</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -479,7 +483,6 @@ export const ProductDetailPage: React.FC = () => {
                         </td>
                         <td className="py-1.5 px-2.5 text-slate-700">{row.chest}</td>
                         <td className="py-1.5 px-2.5 text-slate-700">{row.length}</td>
-                        <td className="py-1.5 px-2.5 text-slate-500">{row.weightRec}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -823,16 +826,15 @@ export const ProductDetailPage: React.FC = () => {
             </div>
             <p className="text-xs text-slate-600">
               Potongan <strong>Regular Fit Unisex</strong> berbahan 100% Cotton Combed 24s yang sejuk dan tidak menyusut setelah dicuci.
+              Ukuran diukur dari pakaian yang dilipat rata, bukan lingkar badan.
             </p>
             <div className="-mx-1 overflow-x-auto">
-            <table className="w-full min-w-[520px] text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full min-w-[300px] text-xs text-left border border-slate-200 rounded-xl overflow-hidden">
               <thead className="bg-navy-800 text-white">
                 <tr>
                   <th className="py-2.5 px-3">Size</th>
-                  <th className="py-2.5 px-3">Lebar Dada</th>
+                  <th className="py-2.5 px-3">Lebar</th>
                   <th className="py-2.5 px-3">Panjang</th>
-                  <th className="py-2.5 px-3">Bahu</th>
-                  <th className="py-2.5 px-3">Rekomendasi BB</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -841,8 +843,6 @@ export const ProductDetailPage: React.FC = () => {
                     <td className="py-2 px-3 font-extrabold text-navy-800">{s.size}</td>
                     <td className="py-2 px-3">{s.chest}</td>
                     <td className="py-2 px-3">{s.length}</td>
-                    <td className="py-2 px-3">{s.shoulder}</td>
-                    <td className="py-2 px-3 text-slate-500">{s.weightRec}</td>
                   </tr>
                 ))}
               </tbody>
@@ -952,4 +952,59 @@ export const ProductDetailPage: React.FC = () => {
 
     </div>
   );
+};
+
+/**
+ * Halaman detail produk.
+ *
+ * KENAPA ADA PEMBUNGKUS TERPISAH:
+ * Dulu isi halaman memakai `products.find(...) || products[0]`. Saat katalog
+ * dari API belum selesai dimuat (atau slug tidak dikenal), yang dirender
+ * adalah PRODUK PERTAMA di katalog. Akibatnya, membuka halaman Kaos lalu
+ * menekan refresh sempat menampilkan halaman Gantungan Kunci sebelum berganti
+ * ke Kaos — kedipan yang membingungkan dan bisa membuat pembeli salah beli.
+ *
+ * Pembungkus ini memutuskan LEBIH DULU: katalog masih dimuat -> kerangka;
+ * slug tidak dikenal -> "produk tidak ditemukan"; baru kalau produknya pasti
+ * ada, isi halaman dirender. Dengan begitu tidak pernah ada produk yang salah
+ * tampil, sekaligus urutan hook di ProductDetailView tetap utuh.
+ */
+export const ProductDetailPage: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  const { products, storefrontLoading } = useStore();
+  const product = products.find((p) => p.slug === slug);
+
+  if (!product && storefrontLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 sm:py-8">
+        <div className="animate-pulse space-y-3" aria-busy="true" aria-label="Memuat produk">
+          <div className="h-3 w-40 bg-slate-200 rounded" />
+          <div className="aspect-square sm:aspect-[4/3] w-full bg-slate-200 rounded-2xl" />
+          <div className="h-3 w-24 bg-slate-200 rounded" />
+          <div className="h-5 w-3/4 bg-slate-200 rounded" />
+          <div className="h-8 w-40 bg-slate-200 rounded" />
+          <div className="h-11 w-full bg-slate-200 rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-3xl mx-auto px-4 py-16 text-center">
+        <h1 className="text-lg font-extrabold text-navy-800 mb-2">Produk tidak ditemukan</h1>
+        <p className="text-sm text-slate-600 mb-5">
+          Produk yang Anda cari mungkin sudah tidak dijual atau tautannya berubah.
+        </p>
+        <Link
+          to="/katalog"
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-sm font-bold"
+        >
+          <ArrowLeft className="w-4 h-4" /> Lihat semua produk
+        </Link>
+      </div>
+    );
+  }
+
+  return <ProductDetailView product={product} />;
 };

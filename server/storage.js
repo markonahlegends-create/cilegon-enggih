@@ -308,4 +308,95 @@ export const saveVideo = async ({ dataUrl, filename, bucket }) => {
   throw new Error('Penyimpanan video belum dikonfigurasi (SUPABASE_URL + kunci belum diisi).');
 };
 
+/**
+ * Buat "tiket" unggah langsung ke Supabase Storage.
+ *
+ * KENAPA PERLU, PADAHAL SUDAH ADA saveVideo():
+ * Vercel membatasi body request fungsi serverless **4.5 MB** dan batas itu
+ * tidak bisa dinaikkan. Video 5 MB diubah menjadi base64 (×1,37) = ±6,7 MB,
+ * jadi request-nya ditolak platform dengan 413 SEBELUM kode kita sempat jalan
+ * — makanya pesan errornya cuma "Permintaan gagal (HTTP 413)".
+ *
+ * Solusinya: file tidak pernah melewati server. Server hanya menerbitkan URL
+ * unggah bertanda tangan (signed upload URL), browser mengunggah langsung ke
+ * Supabase Storage, lalu URL publiknya dikirim balik sebagai field produk.
+ *
+ * @returns {Promise<{uploadUrl:string, path:string, publicUrl:string, bucket:string}>}
+ */
+export const createVideoUploadTicket = async ({ filename }) => {
+  const bucket = process.env.SUPABASE_VIDEO_BUCKET || 'product-video';
+  const { url: sbUrl, key: sbKey } = supabaseStorageConfig();
+
+  if (!sbUrl || !sbKey) {
+    throw new Error('SUPABASE_NOT_CONFIGURED');
+  }
+
+  /*
+   * Ekstensi HARUS mengikuti aslinya. Dulu selalu ".mp4", sehingga video WebM
+   * tersimpan sebagai .mp4 — browser menolak memutarnya dan Content-Type yang
+   * dilaporkan Supabase jadi salah.
+   */
+  const lower = String(filename || '').toLowerCase();
+  const ext = lower.endsWith('.webm') ? 'webm' : 'mp4';
+  const safeBase = slugifyName(lower.replace(/\.[^.]+$/, '')) || 'video-produk';
+  const unique = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const path = `${safeBase}-${unique}.${ext}`;
+
+  // x-upsert ditentukan SAAT MEMBUAT tiket (bukan saat PUT). Tanpa ini,
+  // mengunggah ulang nama file yang sama akan ditolak.
+  const authHeaders = {
+    apikey: sbKey,
+    'Content-Type': 'application/json',
+    'x-upsert': 'true'
+  };
+  if (!sbKey.startsWith('sb_')) authHeaders.Authorization = `Bearer ${sbKey}`;
+
+  let res;
+  try {
+    res = await fetch(`${sbUrl}/storage/v1/object/upload/sign/${bucket}/${encodeURIComponent(path)}`, {
+      method: 'POST',
+      headers: authHeaders
+    });
+  } catch (err) {
+    throw new Error(`Gagal menyiapkan unggahan video: ${err.message}`);
+  }
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    console.error('[upload] tiket video gagal:', res.status, detail.slice(0, 200));
+    throw new Error(
+      `Gagal menyiapkan unggahan video (${res.status}). Pastikan bucket "${bucket}" ada dan bersifat Public.`
+    );
+  }
+
+  const data = await res.json().catch(() => ({}));
+
+  /*
+   * Supabase mengembalikan token + URL relatif yang bentuknya bisa berbeda
+   * antar versi ("/object/upload/sign/<path>?token=..." — tanpa /storage/v1
+   * dan kadang tanpa nama bucket). Karena itu URL unggah DISUSUN SENDIRI dari
+   * bucket + path + token, bukan memakai string mentah dari respons.
+   * Kalau memakai string mentah, unggahan akan 404.
+   */
+  let token = data.token || '';
+  if (!token) {
+    const raw = String(data.url || data.signedUrl || '');
+    const match = /[?&]token=([^&]+)/.exec(raw);
+    if (match) token = decodeURIComponent(match[1]);
+  }
+  if (!token) throw new Error('Supabase tidak mengembalikan token unggahan.');
+
+  const uploadUrl =
+    `${sbUrl}/storage/v1/object/upload/sign/${bucket}/${encodeURIComponent(path)}` +
+    `?token=${encodeURIComponent(token)}`;
+
+  return {
+    uploadUrl,
+    path,
+    token,
+    publicUrl: `${sbUrl}/storage/v1/object/public/${bucket}/${encodeURIComponent(path)}`,
+    bucket
+  };
+};
+
 export { MAX_UPLOAD_BYTES, MAX_PROOF_BYTES, MAX_VIDEO_BYTES, EXT_BY_MIME };

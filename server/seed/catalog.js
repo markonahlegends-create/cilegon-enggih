@@ -332,35 +332,35 @@ export const SEED_PRODUCTS = [
     "variants": [
       {
         "id": "ts-s",
-        "label": "Ukuran S (48 x 68 cm)",
+        "label": "Ukuran S",
         "price": 110000,
         "originalPrice": 130000,
         "stock": 25
       },
       {
         "id": "ts-m",
-        "label": "Ukuran M (50 x 70 cm)",
+        "label": "Ukuran M",
         "price": 115000,
         "originalPrice": 135000,
         "stock": 40
       },
       {
         "id": "ts-l",
-        "label": "Ukuran L (52 x 72 cm)",
+        "label": "Ukuran L",
         "price": 115000,
         "originalPrice": 135000,
         "stock": 50
       },
       {
         "id": "ts-xl",
-        "label": "Ukuran XL (55 x 75 cm)",
+        "label": "Ukuran XL",
         "price": 120000,
         "originalPrice": 135000,
         "stock": 35
       },
       {
         "id": "ts-xxl",
-        "label": "Ukuran XXL (58 x 77 cm)",
+        "label": "Ukuran XXL",
         "price": 125000,
         "originalPrice": 145000,
         "stock": 15
@@ -1961,37 +1961,37 @@ export const SEED_CATEGORIES = [
 export const SEED_SIZE_CHART = [
   {
     "size": "S",
-    "chest": "48 cm",
-    "length": "68 cm",
-    "shoulder": "42 cm",
-    "weightRec": "45 – 55 kg"
+    "chest": "42 cm",
+    "length": "62 cm"
   },
   {
     "size": "M",
-    "chest": "50 cm",
-    "length": "70 cm",
-    "shoulder": "44 cm",
-    "weightRec": "55 – 65 kg"
+    "chest": "46 cm",
+    "length": "66 cm"
   },
   {
     "size": "L",
-    "chest": "52 cm",
-    "length": "72 cm",
-    "shoulder": "46 cm",
-    "weightRec": "65 – 75 kg"
+    "chest": "50 cm",
+    "length": "70 cm"
   },
   {
     "size": "XL",
-    "chest": "55 cm",
-    "length": "75 cm",
-    "shoulder": "49 cm",
-    "weightRec": "75 – 85 kg"
+    "chest": "52 cm",
+    "length": "72 cm"
   },
   {
-    "size": "XXL",
-    "chest": "58 cm",
-    "length": "77 cm",
-    "shoulder": "52 cm",
-    "weightRec": "85 – 100 kg"
+    "size": "2XL",
+    "chest": "56 cm",
+    "length": "74 cm"
+  },
+  {
+    "size": "3XL",
+    "chest": "60 cm",
+    "length": "76 cm"
+  },
+  {
+    "size": "4XL",
+    "chest": "64 cm",
+    "length": "77 cm"
   }
 ];

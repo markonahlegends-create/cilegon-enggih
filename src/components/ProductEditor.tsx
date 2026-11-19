@@ -16,7 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { formatRupiah } from '../data/products';
-import { adminUploadImage, adminUploadVideo, ApiError } from '../lib/api';
+import { adminUploadImage, adminRequestVideoTicket, ApiError } from '../lib/api';
 
 /* ------------------------------------------------------------------ */
 /* Helper kecil                                                        */
@@ -277,22 +277,51 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     setUploading(true);
     setVariantUploadIdx(null);
     try {
+      /*
+       * Batas 5 MB dicek di sini SEBELUM apa pun dikirim.
+       *
+       * KENAPA: Vercel menolak body request > 4.5 MB (HTTP 413) dan batas itu
+       * tidak bisa dinaikkan. Dulu video diubah jadi base64 lalu dikirim ke
+       * server — 5 MB menjadi ±6,7 MB, jadi unggahan gagal dengan pesan samar
+       * "Permintaan gagal (HTTP 413)". Sekarang file TIDAK melewati server:
+       * browser meminta tiket, lalu mengunggah langsung ke Supabase Storage.
+       */
       if (file.size > 5 * 1024 * 1024) {
         throw new Error(
           `${file.name} berukuran ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maksimal 5 MB — pendekkan durasi atau kecilkan resolusi ke 720p.`
         );
       }
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onerror = () => reject(new Error('Gagal membaca file video.'));
-        reader.onload = () => resolve(String(reader.result));
-        reader.readAsDataURL(file);
+
+      /*
+       * Ekstensi ikut dikirim: server memakainya untuk menentukan nama file
+       * (mp4/webm). Tanpa ekstensi, video WebM bisa tersimpan sebagai .mp4 dan
+       * tidak bisa diputar browser.
+       */
+      const ticket = await adminRequestVideoTicket({
+        filename: file.name,
+        sizeBytes: file.size
       });
-      const res = await adminUploadVideo({
-        dataUrl,
-        filename: file.name.replace(/\.[^.]+$/, '')
+
+      const putRes = await fetch(ticket.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type || 'video/mp4' },
+        body: file
       });
-      updateVideo(idx, 'url', res.url);
+
+      if (!putRes.ok) {
+        let detail = '';
+        try {
+          detail = (await putRes.text()).slice(0, 160);
+        } catch {
+          detail = '';
+        }
+        throw new Error(
+          `Unggah video ke penyimpanan gagal (${putRes.status}). ` +
+            `Pastikan bucket "${ticket.bucket}" bersifat Public. ${detail}`
+        );
+      }
+
+      updateVideo(idx, 'url', ticket.publicUrl);
       updateVideo(idx, 'source', 'file');
     } catch (err) {
       setUploadError(err instanceof ApiError || err instanceof Error ? err.message : 'Upload video gagal.');
