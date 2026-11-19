@@ -802,13 +802,20 @@ export const AdminDashboardPage: React.FC = () => {
                 label: 'Total Omzet (Lunas)',
                 value: formatRupiah(analytics?.totalRevenue || 0),
                 icon: Wallet,
-                hint: `${analytics?.paidOrders || 0} pesanan lunas`
+                hint: `${analytics?.paidOrders || 0} pesanan lunas · ${analytics?.itemsSold || 0} pcs`
               },
               {
                 label: 'Total Pesanan',
                 value: analytics?.totalOrders || 0,
                 icon: ShoppingBag,
-                hint: `${analytics?.awaitingVerification || 0} menunggu verifikasi`
+                /*
+                 * Rincian dibuat eksplisit supaya admin paham kenapa jumlah
+                 * pesanan bisa lebih banyak daripada pesanan lunas: ada yang
+                 * belum dibayar dan ada yang dibatalkan.
+                 */
+                hint: `${analytics?.unpaidOrders ?? analytics?.awaitingVerification ?? 0} belum lunas · ${
+                  analytics?.cancelledOrders || 0
+                } batal`
               },
               {
                 label: 'Perlu Input Resi',

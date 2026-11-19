@@ -54,6 +54,7 @@ import {
   revokeAllSessions
 } from './session.js';
 import { sendDailyDigest } from './digest.js';
+import { summarizeSales, salesOrders } from './reports.js';
 import {
   scoreVendorForDropship,
   computeMargin,
@@ -1251,6 +1252,13 @@ route('POST', '/api/orders', async ({ body, headers }) => {
 
     return {
       productId: product.id,
+      /*
+       * Simpan nama produk TANPA label pilihan. `name` di bawah memuat
+       * "(Oversize · XL · Navy)" sehingga satu produk pecah menjadi banyak
+       * baris bila dipakai sebagai kunci laporan. `productName` dipakai
+       * reports.js untuk mengelompokkan penjualan per produk.
+       */
+      productName: product.shortName || product.name,
       variantId: variant?.id || raw.variantId || null,
       variantLabel: groups.length ? optionLabel : variant?.label || raw.variantLabel || '',
       options: optionEntries,
@@ -2059,10 +2067,15 @@ route('GET', '/api/admin/analytics', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
   const [orders, products, b2b] = await Promise.all([readOrders(), readProducts(), readB2B()]);
 
-  const paidOrders = orders.filter((o) => o.paymentStatus === 'LUNAS');
-  const revenue = paidOrders.reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
+  /*
+   * Angka omzet memakai `summarizeSales` (reports.js) — definisi yang SAMA
+   * dengan halaman Keuangan, supaya Overview dan Keuangan tidak pernah
+   * berbeda. Lihat catatan di reports.js.
+   */
+  const salesSummary = summarizeSales(orders);
+  const revenue = salesSummary.revenue;
   const potentialRevenue = orders
-    .filter((o) => o.paymentStatus !== 'DIBATALKAN')
+    .filter((o) => o.status !== 'DIBATALKAN')
     .reduce((sum, o) => sum + Number(o.totalAmount || 0), 0);
 
   const byStatus = ORDER_STATUSES.reduce((acc, s) => {
@@ -2070,16 +2083,16 @@ route('GET', '/api/admin/analytics', async ({ headers }) => {
     return acc;
   }, {});
 
-  const productSales = new Map();
-  orders.forEach((o) => {
-    (o.items || []).forEach((it) => {
-      const key = it.name;
-      const prev = productSales.get(key) || { name: key, qty: 0, revenue: 0 };
-      prev.qty += Number(it.qty) || 0;
-      prev.revenue += Number(it.price) * Number(it.qty) || 0;
-      productSales.set(key, prev);
-    });
-  });
+  /*
+   * Penjualan per produk diambil dari PESANAN NYATA, bukan dari `soldCount`
+   * pada data produk. `soldCount` adalah angka isian tangan yang tidak pernah
+   * bertambah saat ada pesanan masuk, sehingga selama ini isinya tidak
+   * mencerminkan penjualan sebenarnya.
+   *
+   * Dikelompokkan per `productId` (bukan nama), agar produk yang punya
+   * beberapa pilihan tidak terpecah menjadi banyak baris.
+   */
+  const productRows = salesSummary.productRows;
 
   const lowStock = products
     .filter((p) => Number(p.stock) <= 20)
@@ -2089,13 +2102,16 @@ route('GET', '/api/admin/analytics', async ({ headers }) => {
     totalRevenue: revenue,
     potentialRevenue,
     totalOrders: orders.length,
-    paidOrders: paidOrders.length,
+    paidOrders: salesSummary.ordersCount,
+    itemsSold: salesSummary.units,
+    cancelledOrders: salesSummary.cancelledCount,
+    unpaidOrders: salesSummary.unpaidCount,
     awaitingVerification: orders.filter((o) => o.paymentStatus === 'MENUNGGU_VERIFIKASI').length,
     awaitingResi: orders.filter((o) => !o.resi && o.status !== 'DIBATALKAN' && o.status !== 'SELESAI')
       .length,
     b2bOpen: b2b.filter((b) => !/deal|selesai|done|batal/i.test(String(b.status))).length,
     byStatus,
-    topProducts: [...productSales.values()].sort((a, b) => b.qty - a.qty).slice(0, 5),
+    topProducts: [...productRows].sort((a, b) => b.qty - a.qty).slice(0, 5),
     lowStock,
     storage: store.mode
   });
@@ -2327,7 +2343,36 @@ const slugify = (text) =>
 
 route('GET', '/api/admin/products', async ({ headers }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
-  return ok({ products: await readProducts() });
+
+  /*
+   * `soldCount` dihitung ULANG dari pesanan nyata.
+   *
+   * Sebelumnya `soldCount` hanyalah angka isian tangan yang tidak pernah
+   * bertambah saat ada pesanan masuk — jadi admin melihat "145 terjual" di
+   * katalog padahal tidak ada pesanan yang mendukungnya, sementara laporan
+   * penjualan menunjukkan angka lain. Sekarang keduanya berasal dari sumber
+   * yang sama: pesanan yang LUNAS dan tidak dibatalkan.
+   *
+   * Angka yang tersimpan tidak diubah di database; ini hanya tampilan.
+   * `soldCountManual` (bila diisi admin) tetap disertakan sebagai rujukan.
+   */
+  const [products, orders] = await Promise.all([readProducts(), readOrders()]);
+  const sold = new Map();
+  salesOrders(orders).forEach((order) => {
+    (order.items || []).forEach((item) => {
+      const id = item.productId;
+      if (!id) return;
+      sold.set(id, (sold.get(id) || 0) + (Number(item.qty) || 0));
+    });
+  });
+
+  const withSold = products.map((product) => ({
+    ...product,
+    soldCountManual: Number(product.soldCount) || 0,
+    soldCount: sold.get(product.id) ?? 0
+  }));
+
+  return ok({ products: withSold });
 });
 
 /**

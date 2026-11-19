@@ -19,7 +19,8 @@
     "og:pages": "node scripts/generate-og-pages.mjs",
     "seed:catalog": "node scripts/generate-seed.mjs",
     "validate:vercel": "node scripts/validate-vercel-config.mjs",
-    "audit:bundles": "node scripts/audit-bundles.mjs"
+    "audit:bundles": "node scripts/audit-bundles.mjs",
+    "test:reports": "node scripts/test-report-consistency.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

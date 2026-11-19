@@ -12,6 +12,8 @@
  *  berubah bulan depan, laporan bulan lalu tidak ikut berubah.
  */
 
+import { countsAsSale, inPeriod, salesOrders } from './reports.js';
+
 export const EXPENSE_CATEGORIES = [
   { id: 'bahan-baku', label: 'Bahan Baku / Produksi' },
   { id: 'packing', label: 'Packing & Kemasan' },
@@ -53,13 +55,8 @@ export const dateKey = (input) => {
 
 export const monthKey = (input) => dateKey(input).slice(0, 7);
 
-const inRange = (iso, from, to) => {
-  const key = dateKey(iso);
-  if (!key) return false;
-  if (from && key < from) return false;
-  if (to && key > to) return false;
-  return true;
-};
+/** Rentang tanggal — definisi tunggalnya ada di reports.js. */
+const inRange = inPeriod;
 
 /** HPP efektif suatu item order (dibekukan saat checkout). */
 const itemCost = (item) =>
@@ -67,8 +64,13 @@ const itemCost = (item) =>
 
 const itemRevenue = (item) => num(item.price) * num(item.qty);
 
-/** Order dianggap pendapatan hanya bila sudah LUNAS. */
-const isRevenue = (order) => order.paymentStatus === 'LUNAS';
+/**
+ * Order dianggap pendapatan hanya bila LUNAS **dan** tidak dibatalkan.
+ *
+ * Memakai `countsAsSale` dari reports.js supaya definisinya sama persis
+ * dengan yang dipakai dashboard & laporan lain.
+ */
+const isRevenue = (order) => countsAsSale(order);
 
 /* ------------------------------------------------------------------ */
 /* Laba rugi                                                           */
@@ -88,15 +90,12 @@ export const buildProfitLoss = (data, range = {}) => {
 
   // Produk tanpa HPP terdeteksi supaya laporan tidak menyesatkan.
   const missingCost = [];
-  let productRevenue = 0;
   let productCost = 0;
   let itemCount = 0;
 
   paidOrders.forEach((order) => {
     (order.items || []).forEach((item) => {
-      productRevenue += itemRevenue(item);
-      const cost = itemCost(item);
-      productCost += cost;
+      productCost += itemCost(item);
       itemCount += num(item.qty);
       if (!num(item.costPrice) && !num(item.extraCost)) {
         missingCost.push({
@@ -109,6 +108,25 @@ export const buildProfitLoss = (data, range = {}) => {
     });
   });
 
+  /*
+   * PENTING — pakai `subtotal` pesanan, JANGAN hitung ulang dari item.
+   *
+   * `item.price × qty` bukan jumlah yang benar-benar ditagih bila berlaku
+   * harga grosir: server menagih `subtotal` yang sudah memperhitungkan
+   * diskon grosir, sedangkan `item.price` masih harga satuan.
+   *
+   * Contoh nyata (order uji CE-20261116-102): subtotal 295.000, tetapi
+   * penjumlahan item = 298.000 karena harga grosir. Laporan laba rugi
+   * memakai angka item sehingga omzetnya 3.000 lebih besar daripada
+   * totalAmount yang dibayar pembeli — dan berbeda dari halaman lain.
+   *
+   * Sekarang seluruh laporan memakai angka yang sama dengan yang ditagih:
+   * totalAmount = subtotal + ongkir − diskon + kode unik.
+   */
+  const productRevenue = paidOrders.reduce(
+    (sum, o) => sum + (o.subtotal != null ? num(o.subtotal) : (o.items || []).reduce((s, it) => s + itemRevenue(it), 0)),
+    0
+  );
   const shippingCharged = paidOrders.reduce((sum, o) => sum + num(o.shippingCost), 0);
   const discounts = paidOrders.reduce((sum, o) => sum + num(o.voucherDiscount), 0);
   const uniqueCodes = paidOrders.reduce((sum, o) => sum + num(o.uniqueCode), 0);
@@ -158,6 +176,20 @@ export const buildProfitLoss = (data, range = {}) => {
     netMarginPercent: pct(netProfit, totalRevenue),
     missingCostCount: missingCost.length,
     missingCostSamples: missingCost.slice(0, 10),
+    /*
+     * PERINGATAN PENTING.
+     *
+     * Bila HPP belum diisi admin, `productCost` bernilai 0 sehingga laba
+     * kotor tampil sebesar omzet penuh. Angka itu terlihat menggembirakan
+     * padahal menyesatkan. Dashboard menampilkan peringatan ini agar admin
+     * tahu laporan belum bisa dipercaya — bukan mengira untungnya besar.
+     */
+    profitIsReliable: missingCost.length === 0 && productCost > 0,
+    cogsIncomplete: missingCost.length > 0,
+    cogsWarning:
+      missingCost.length > 0
+        ? `${missingCost.length} item terjual belum punya HPP. Laba kotor dan laba bersih di atas BELUM akurat — isi HPP di data produk agar laporan benar.`
+        : '',
     productsWithoutCost: products
       .filter((p) => !num(p.costPrice) && !num(p.extraCost))
       .map((p) => ({ id: p.id, name: p.shortName || p.name }))
@@ -282,8 +314,25 @@ export const buildCashReport = (orders = [], expenses = [], range = {}) => {
   };
 
   paid.forEach((order) => {
-    const bank = order.bankAccount?.bank || (String(order.paymentMethod || '').toLowerCase().includes('qris') ? 'QRIS' : 'Lainnya');
-    bump(bank, 'inflow', num(order.totalAmount));
+    /*
+     * Uang masuk harus masuk ke rekening yang BENAR.
+     *
+     * Dulu QRIS hanya dikenali dari `paymentMethod` yang memuat kata "qris".
+     * Padahal metode pembayaran sering ditulis "Transfer BCA", "QRIS BCA",
+     * dsb., sehingga uang QRIS bisa tercatat ke rekening bank atau ke
+     * "Lainnya". Sekarang diperiksa berlapis:
+     *   1. rekening yang tercatat di pesanan (bankAccount.bank / name)
+     *   2. penanda QRIS pada metode pembayaran
+     *   3. baru "Lainnya"
+     */
+    const bankName = String(
+      order.bankAccount?.bank || order.bankAccount?.name || order.bankAccount?.label || ''
+    ).trim();
+    const method = String(order.paymentMethod || '');
+    const isQris = /qris/i.test(method) || /qris/i.test(bankName);
+
+    const label = bankName || (isQris ? 'QRIS' : 'Lainnya');
+    bump(isQris && !bankName ? 'QRIS' : label, 'inflow', num(order.totalAmount));
   });
 
   spent.forEach((expense) => {
