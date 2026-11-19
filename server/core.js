@@ -48,6 +48,14 @@ import {
 } from './session.js';
 import { sendDailyDigest } from './digest.js';
 import {
+  scoreVendorForDropship,
+  computeMargin,
+  buildDropshipReadiness,
+  REQUIRED_CHECKS,
+  BONUS_CHECKS,
+  DEFAULT_RETURN_RESERVE_PERCENT
+} from './dropship.js';
+import {
   runBackup,
   listBackups,
   readBackup,
@@ -2750,6 +2758,19 @@ const normalizeVendor = (payload, existing) => {
       dueDate: String(payload?.dueDate ?? base.dueDate ?? '').trim(),
       notes: String(payload?.notes ?? base.notes ?? '').trim(),
       active: (payload?.active ?? base.active) !== false,
+
+      /* --- Data khusus dropship (dipakai /api/admin/dropship) --- */
+      shopUrl: String(payload?.shopUrl ?? base.shopUrl ?? '').trim(),
+      platform: String(payload?.platform ?? base.platform ?? 'Shopee').trim(),
+      rating: Math.max(0, Math.min(5, Number(payload?.rating ?? base.rating ?? 0) || 0)),
+      ratingCount: Math.max(0, Number(payload?.ratingCount ?? base.ratingCount ?? 0) || 0),
+      leadTimeDays: Math.max(0, Number(payload?.leadTimeDays ?? base.leadTimeDays ?? 0) || 0),
+      acceptsDropship: (payload?.acceptsDropship ?? base.acceptsDropship) === true,
+      neutralPackaging: (payload?.neutralPackaging ?? base.neutralPackaging) === true,
+      noInvoice: (payload?.noInvoice ?? base.noInvoice) === true,
+      supportsCustomLogo: (payload?.supportsCustomLogo ?? base.supportsCustomLogo) === true,
+      hasRealPhotos: (payload?.hasRealPhotos ?? base.hasRealPhotos) === true,
+      responsiveChat: (payload?.responsiveChat ?? base.responsiveChat) === true,
       createdAt: base.createdAt || nowIso(),
       updatedAt: nowIso()
     }
@@ -3243,7 +3264,82 @@ route('POST', '/api/admin/digest', async ({ headers }) => {
   return ok({ ok: true, sent: true });
 });
 
+/* ------------------------------------------------------------------ */
+/* Dropship                                                            */
+/* ------------------------------------------------------------------ */
+
+/**
+ * GET /api/admin/dropship — kesiapan dropship seluruh vendor + produk.
+ *
+ * Memakai data `vendors` dan `costPrice`/`vendorId` pada produk yang sudah
+ * diisi lewat tab Keuangan. Tidak ada koleksi baru; ini murni analisis.
+ */
+route('GET', '/api/admin/dropship', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const [vendors, products] = await Promise.all([readVendors(), readProducts()]);
+  const settings = await readSettings();
+  const adminFeePercent = Number(settings?.finance?.adminFeePercent) || 0;
+
+  return ok({
+    ...buildDropshipReadiness({ vendors, products, adminFeePercent }),
+    requiredChecks: REQUIRED_CHECKS,
+    bonusChecks: BONUS_CHECKS,
+    returnReservePercent: DEFAULT_RETURN_RESERVE_PERCENT,
+    adminFeePercent
+  });
+});
+
+/**
+ * GET /api/admin/dropship/checklist — prosedur operasional harian.
+ * Disimpan di server supaya bisa diperbarui tanpa mengubah UI.
+ */
+route('GET', '/api/admin/dropship/checklist', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  return ok({
+    steps: [
+      {
+        title: '1. Sebelum jualan — pilih & uji vendor',
+        items: [
+          'Tanyakan lewat chat: "Bisa dropship? Kirim ke alamat pembeli, packing netral, tanpa invoice?" Simpan jawabannya.',
+          'Beli 1 unit sebagai sampel. Periksa: ada nama toko lain di box? ada nota harga di dalam?',
+          'Foto produk sampel sendiri untuk katalog — jangan pakai foto milik vendor lain.',
+          'Isi data vendor di tab Keuangan → Vendor, lalu centang 3 syarat wajib dropship.',
+          'Isi HPP per produk di tab Produk supaya margin terhitung otomatis.'
+        ]
+      },
+      {
+        title: '2. Saat ada pesanan masuk',
+        items: [
+          'Pastikan status pembayaran LUNAS sebelum memesan ke vendor.',
+          'Pesan dengan alamat pembeli sebagai alamat pengiriman.',
+          'Tulis di catatan pesanan vendor: "DROPSHIP — packing netral, tanpa invoice/harga di dalam paket."',
+          'Simpan nomor pesanan vendor di catatan internal pesanan kita.',
+          'Input nomor resi di dashboard agar pembeli bisa melacak sendiri.'
+        ]
+      },
+      {
+        title: '3. Kalau ada masalah',
+        items: [
+          'Barang rusak/salah kirim: klaim ke vendor DULU sebelum mengganti ke pembeli.',
+          'Kalau vendor menolak bertanggung jawab, ganti dulu ke pembeli, lalu hentikan pemakaian vendor itu.',
+          'Catat insiden di catatan vendor — ini dasar memutuskan pindah pemasok.'
+        ]
+      }
+    ],
+    restrictions: [
+      'JANGAN menjanjikan pengiriman instan 1–2 jam. Paket berangkat dari gudang vendor, bukan dari Cilegon.',
+      'JANGAN menjanjikan stok pasti. Stok ada di tangan vendor dan bisa habis kapan saja.',
+      'Sebutkan kota asal pengiriman yang sebenarnya di halaman produk, bukan "Dikirim dari Kota Cilegon".',
+      'JANGAN mengaku memproduksi sendiri kalau barang dipasok vendor.'
+    ]
+  });
+});
+
 /* ---------------- Audit log ---------------- */
+/* ---------------- Audit log ---------------- */
+
 
 route('GET', '/api/admin/audit', async ({ headers, query }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);

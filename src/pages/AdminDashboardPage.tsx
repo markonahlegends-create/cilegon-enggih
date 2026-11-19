@@ -40,6 +40,7 @@ import { InsightsPanel } from '../components/InsightsPanel';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 import { ProductEditor } from '../components/ProductEditor';
 import { FinancePanel } from '../components/FinancePanel';
+import DropshipPanel from '../components/DropshipPanel';
 import { QrisUploader } from '../components/QrisUploader';
 import { SecurityPanel } from '../components/SecurityPanel';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
@@ -87,7 +88,7 @@ import {
   ApiError
 } from '../lib/api';
 
-type Tab = 'overview' | 'insight' | 'orders' | 'products' | 'b2b' | 'finance' | 'security' | 'settings';
+type Tab = 'overview' | 'insight' | 'orders' | 'products' | 'b2b' | 'finance' | 'dropship' | 'security' | 'settings';
 
 const ORDER_STATUS_OPTIONS = [
   'MENUNGGU_KONFIRMASI',
@@ -769,6 +770,7 @@ export const AdminDashboardPage: React.FC = () => {
           { id: 'products', label: `Produk (${products.length})`, icon: Package },
           { id: 'b2b', label: `B2B (${inquiries.length})`, icon: Building2 },
           { id: 'finance', label: 'Keuangan', icon: Calculator },
+          { id: 'dropship', label: 'Dropship', icon: Truck },
           { id: 'security', label: 'Keamanan', icon: ShieldCheck },
           { id: 'settings', label: 'Pengaturan', icon: SettingsIcon }
         ].map((t) => {
@@ -1251,6 +1253,7 @@ export const AdminDashboardPage: React.FC = () => {
 
       {/* ------------------------------ SETTINGS ------------------------------ */}
       {tab === 'finance' && <FinancePanel pushToast={pushToast} />}
+      {tab === 'dropship' && <DropshipPanel pushToast={pushToast} />}
 
       {tab === 'security' && <SecurityPanel pushToast={pushToast} />}
 
