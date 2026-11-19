@@ -1070,10 +1070,11 @@ export const SEED_PRODUCTS = [
     "isBundle": true,
     "isBestSeller": false,
     "bundleItems": [
-      "1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga)",
-      "3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain)",
+      "1x Mug Keramik Souvenir 11 oz SNI (motif Menara Simpang Tiga) — Rp 38.000",
+      "3x Stiker Vinyl Die-Cut Landmark Cilegon (bebas pilih desain) — Rp 24.000",
+      "1x Hardbox Navy Gold Foil + Tissue Krem + Pita Emas — senilai Rp 10.000",
       "1x Kartu Ucapan Custom (tulis pesan saat checkout)",
-      "Hardbox Navy Gold Foil + Tissue Krem + Pita Emas",
+      "Kartu Logo Instansi + Rp 10.000 (opsional, varian korporat min. 10 set)",
       "Bonus Sprocket Pinus & Ornamen Emas (dekorasi meja)"
     ],
     "badges": [
@@ -1097,6 +1098,10 @@ export const SEED_PRODUCTS = [
       {
         "label": "Kartu Ucapan",
         "value": "Kertas art carton 260 gsm, dicetak sesuai pesan yang Anda tulis di kolom catatan checkout"
+      },
+      {
+        "label": "Rincian Nilai Paket",
+        "value": "Mug Rp 38.000 + 3 Stiker Rp 24.000 = Rp 62.000 untuk produk, ditambah Hardbox, tissue, pita & kartu senilai Rp 10.000 — total Rp 72.000 tanpa markup. Varian Korporat Rp 82.000 = nilai yang sama ditambah cetak Kartu Logo Instansi Rp 10.000."
       },
       {
         "label": "Rekomendasi Harga Retail",

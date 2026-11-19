@@ -151,6 +151,42 @@ di invoice — yang dihapus hanya klaim bahwa paket berangkat dari sana.
 
 ---
 
+## 5b. Aturan harga paket (dijaga otomatis)
+
+Harga paket **tidak boleh melebihi nilai isinya**. Kalau pembeli bisa membeli
+komponennya terpisah dengan harga lebih murah, paket itu tidak masuk akal.
+
+**Cara menghitung yang dipakai:**
+
+```
+Nilai paket = harga satuan komponen + nilai kemasan (kalau ada)
+Harga jual  ≤ nilai paket
+```
+
+Kemasan (hardbox, tissue, pita, kartu) boleh dihitung sebagai komponen **hanya jika**
+nilainya dinyatakan terbuka di halaman produk — lewat rincian isi paket atau
+spesifikasi "Rincian Nilai Paket". Kalau disembunyikan, itu sama saja markup.
+
+**Contoh Paket Nataru:**
+
+| Komponen | Nilai |
+|---|---|
+| Mug Keramik | Rp 38.000 |
+| 3 Stiker Vinyl | Rp 24.000 |
+| Hardbox + tissue + pita + kartu | Rp 10.000 |
+| **Total nilai** | **Rp 72.000** |
+| **Harga jual** | **Rp 72.000** — tanpa markup |
+
+Varian Korporat Rp 82.000 = nilai yang sama + cetak Kartu Logo Instansi Rp 10.000.
+
+**Penjaga otomatis:** `npm run audit:bundles` menghitung seluruh paket dan
+menghentikan build bila ada yang melanggar. Skrip ini sudah terpasang sebagai
+langkah pertama `npm run build`, jadi pelanggaran tidak bisa lolos ke produksi.
+
+Paket baru **wajib** didaftarkan di `components` dan (bila memakai kemasan)
+`packagingValue` di `scripts/audit-bundles.mjs`. Kalau lupa mendaftar, audit
+akan menolak build.
+
 ## 6. Prosedur harian
 
 ### Sebelum jualan (sekali per vendor)
