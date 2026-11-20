@@ -241,11 +241,26 @@ const writeVercelRewrites = (routes) => {
    */
   cfg.headers = (cfg.headers || []).filter((h) => !String(h.source).startsWith('/og/'));
 
-  const shareRules = routes.map(({ route, dest }) => ({
-    source: route,
-    has: crawlerHas,
-    destination: dest
-  }));
+  /*
+   * HANYA halaman NON-PRODUK yang memakai kartu statis.
+   *
+   * Produk sengaja TIDAK lagi diarahkan ke `public/og/produk--<slug>.html`.
+   * Kartu itu dibuat saat build dari katalog statis, sehingga:
+   *   - produk baru dari dashboard tidak punya berkas → 404,
+   *   - produk lama yang fotonya diganti tetap memakai gambar LAMA.
+   * Semua produk kini ditangani satu jalur dinamis di bawah (`/produk/:slug`
+   * → `/api/share/produk/:slug`) yang membaca database.
+   *
+   * Ini juga menghapus 22 aturan rewrite `source` literal yang bertabrakan
+   * dengan penangkap `:slug`.
+   */
+  const shareRules = routes
+    .filter(({ route }) => !route.startsWith('/produk/'))
+    .map(({ route, dest }) => ({
+      source: route,
+      has: crawlerHas,
+      destination: dest
+    }));
 
   // Pertahankan rewrite non-halaman (API) dan catch-all SPA di posisi terakhir.
   const others = (cfg.rewrites || []).filter(
@@ -277,7 +292,23 @@ const writeVercelRewrites = (routes) => {
     destination: '/api/share/produk/:slug'
   };
 
-  cfg.rewrites = [...api, ...shareRules, penangkapProduk, ...spa];
+  /*
+   * CADANGAN THUMBNAIL PRODUK BARU.
+   *
+   * `public/bi/<slug>.jpg` dibuat saat build HANYA untuk produk katalog
+   * statis. Produk yang ditambahkan admin sesudahnya tidak punya berkas, jadi
+   * permintaan `/bi/<slug>.jpg` untuk produk itu diteruskan ke endpoint yang
+   * membangun gambarnya dari database.
+   *
+   * Bila slug benar-benar tidak ada, endpoint mengembalikan 404 dan crawler
+   * memakai kartu toko — tetap lebih baik daripada tautan tanpa gambar.
+   */
+  const penangkapBi = {
+    source: '/bi/:slug',
+    destination: '/api/og-image/:slug'
+  };
+
+  cfg.rewrites = [...api, ...shareRules, penangkapProduk, penangkapBi, ...spa];
 
   /*
    * Header aset OG — SENGAJA dikembalikan ke bentuk yang sudah terbukti valid.
@@ -315,6 +346,20 @@ const writeVercelRewrites = (routes) => {
       headers: [
         { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=300, must-revalidate' }
       ]
+    },
+    /*
+     * Thumbnail statis boleh di-cache lama. Berkas ini diberi nama menurut
+     * slug produk dan dihasilkan ulang saat build, jadi isinya tidak pernah
+     * "berubah di tempat" tanpa deploy baru. `s-maxage` panjang membuat
+     * crawler yang meminta berulang (WhatsApp biasanya 2-3 kali) selalu kena
+     * cache CDN — mempercepat dan menurunkan biaya.
+     */
+    {
+      source: '/bi/(.*)',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' }
+      ]
     }
   ];
 
@@ -338,7 +383,12 @@ const writeVercelRewrites = (routes) => {
 const gambarProduk = (pageMeta, site) => {
   const slug = pageMeta?.slug;
   if (!slug) return null;
-  return `${site.baseUrl}/api/og-image/${encodeURIComponent(slug)}.jpg`;
+  /*
+   * Jalur STATIS, bukan `/api/`. Lihat catatan di `server/og-share.js`:
+   * gambar lewat `/api/` berisiko ditolak (crawler menerima 404/500 → tanpa
+   * thumbnail), sedangkan `/bi/` dilayani CDN tanpa batas ukuran body.
+   */
+  return `${site.baseUrl}/bi/${encodeURIComponent(slug)}.jpg`;
 };
 
 const main = () => {
@@ -355,16 +405,18 @@ const main = () => {
   for (const [route, pageMeta] of entries) {
     // "/" tidak butuh file khusus: index.html sudah berisi OG beranda.
     if (route === '/') continue;
-    const slug = route.replace(/^\//, '').replace(/\//g, '--');
     /*
-     * Produk → thumbnail dari foto utama (dinamis, ikut database).
-     * Halaman lain (katalog, tentang-kami, ...) tetap memakai kartu toko.
+     * PRODUK: tidak dibuatkan halaman statis.
+     *
+     * Kartu produk dibangun saat diminta dari database
+     * (`/api/share/produk/:slug`), jadi foto/nama/harga selalu terbaru dan
+     * produk baru langsung punya kartu. Membuat berkas statis hanya
+     * menciptakan salinan yang cepat basi.
      */
-    const gambarKhusus = route.startsWith('/produk/') ? gambarProduk(pageMeta, meta) : null;
-    const isiHalaman = gambarKhusus
-      ? { ...pageMeta, image: gambarKhusus, imageType: 'image/jpeg', imageWidth: 1200, imageHeight: 630 }
-      : pageMeta;
-    fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), buildHtml(isiHalaman, meta), 'utf8');
+    if (route.startsWith('/produk/')) continue;
+
+    const slug = route.replace(/^\//, '').replace(/\//g, '--');
+    fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), buildHtml(pageMeta, meta), 'utf8');
     written.push(`${slug}.html`);
 
     // Catatan: tidak perlu aturan untuk "/produk/x/". Dengan trailingSlash

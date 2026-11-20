@@ -170,9 +170,9 @@ const jalankan = async () => {
      * utama produk di database.
      */
     benar(
-      'memakai endpoint thumbnail dari foto utama',
-      html.includes('/api/og-image/gantungan-kunci-karet-3d.jpg'),
-      'bukan /api/og-image/'
+      'memakai thumbnail dari foto utama (jalur statis /bi/)',
+      html.includes('/bi/gantungan-kunci-karet-3d.jpg'),
+      'bukan /bi/'
     );
     benar(
       'tidak lagi memakai kartu templat statis',

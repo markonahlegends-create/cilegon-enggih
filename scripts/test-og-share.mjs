@@ -118,7 +118,45 @@ for (const e of entri) {
     e.url
   );
 
-  // --- 2. Halaman share statis ---
+  /*
+   * --- 2. Halaman share ---
+   *
+   * PRODUK tidak lagi punya halaman statis. Kartunya dibangun saat diminta
+   * dari database (`/api/share/produk/:slug`) supaya foto/nama/harga selalu
+   * terbaru dan produk baru langsung punya pratinjau. Yang perlu dipastikan:
+   *   - `og:image` produk = `/bi/<slug>.jpg` dan berkasnya BENAR-BENAR ada,
+   *   - rewrite crawler `:slug` menangkap bot chat (bukan Googlebot).
+   */
+  if (e.jenis === 'produk') {
+    const slugProduk = e.route.replace(/^\/produk\//, '');
+    const berkasBi = path.join(ROOT, 'public', 'bi', `${slugProduk}.jpg`);
+    if (!fs.existsSync(berkasBi)) {
+      masalahHalaman.push(`${e.route} → tidak ada public/bi/${slugProduk}.jpg`);
+    } else {
+      const info = infoGambar(berkasBi);
+      if (info.lebar !== 1200 || info.tinggi !== 630) {
+        masalahHalaman.push(`${e.route} → thumbnail ${info.lebar}x${info.tinggi}, seharusnya 1200x630`);
+      }
+      if (info.bytes > 300 * 1024) {
+        masalahHalaman.push(`${e.route} → thumbnail ${info.bytes} byte (> 300 KB)`);
+      }
+    }
+    /* Rewrite dinamis harus ada dan tidak menangkap search engine. */
+    const dinamis = (vercel.rewrites || []).find((r) => r.source === '/produk/:slug');
+    if (!dinamis) {
+      masalahRouting.push(`${e.route} → tidak ada rewrite /produk/:slug`);
+    } else {
+      const re = new RegExp(dinamis.has?.[0]?.value?.re || '');
+      if (!re.test('facebookexternalhit/1.1')) masalahRouting.push(`${e.route} → Facebook tidak tertangkap`);
+      if (!re.test('WhatsApp/2.23')) masalahRouting.push(`${e.route} → WhatsApp tidak tertangkap`);
+      if (re.test('Mozilla/5.0 (compatible; Googlebot/2.1)'))
+        masalahRouting.push(`${e.route} → Googlebot ikut tertangkap (halaman hilang dari Google)`);
+      if (dinamis.destination !== '/api/share/produk/:slug')
+        masalahRouting.push(`${e.route} → tujuan rewrite salah (${dinamis.destination})`);
+    }
+    continue;
+  }
+
   const berkasHalaman = path.join(ROOT, 'public', 'og', namaHalamanShare(e.route));
   if (!punyaHalamanSendiri(e.route)) {
     // Beranda: meta OG dibaca dari index.html.
@@ -132,21 +170,7 @@ for (const e of entri) {
       const m = html.match(new RegExp(`<meta property="${prop}" content="([^"]*)"`));
       return m ? m[1] : '';
     };
-    /*
-     * Halaman PRODUK sengaja TIDAK memakai `e.image` (kartu templat statis).
-     * Sumber gambar produk adalah FOTO UTAMA di database, dilayani endpoint
-     * `/api/og-image/<slug>.jpg` yang menormalkan ke 1200x630. Kartu templat
-     * hanya cadangan bila produk tidak punya foto — dan kartu itu tidak pernah
-     * ikut berubah saat admin mengganti foto, itulah akar keluhan thumbnail.
-     */
-    const gambarEndpoint = /^https:\/\/[^/]+\/api\/og-image\/([^/]+)\.jpg$/.exec(og('og:image'));
-    if (gambarEndpoint) {
-      const slugHalaman = e.route.replace(/^\/produk\//, '');
-      const slugGambar = decodeURIComponent(gambarEndpoint[1]);
-      if (slugGambar !== slugHalaman) {
-        masalahHalaman.push(`${e.route} → og:image menunjuk produk lain (${slugGambar})`);
-      }
-    } else if (og('og:image') !== e.image) {
+    if (og('og:image') !== e.image) {
       masalahHalaman.push(`${e.route} → og:image halaman tidak sama dengan data`);
     }
     if (!html.includes('og:image:width') || !html.includes('og:image:height')) {
