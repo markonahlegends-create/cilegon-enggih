@@ -61,6 +61,81 @@ const jalankan = (cmd, args) =>
   });
 
 let magickSiap = null;
+let sharpSiap = null;
+
+/**
+ * Deteksi `sharp` (tersedia di runtime Vercel lewat dependency npm).
+ * Diutamakan SETELAH ImageMagick gagal — ImageMagick hanya ada di mesin
+ * pengembang, sedangkan di produksi `sharp` yang dipakai.
+ */
+const adaSharp = async () => {
+  if (sharpSiap !== null) return sharpSiap;
+  try {
+    const mod = await import('sharp');
+    sharpSiap = Boolean(mod?.default || mod);
+  } catch {
+    sharpSiap = false;
+  }
+  return sharpSiap;
+};
+
+/**
+ * Normalisasi memakai `sharp` — jalur yang dipakai DI PRODUKSI.
+ *
+ * Tanpa ini, produk yang ditambahkan admin setelah build menerima foto MENTAH
+ * (bisa 118-160 KB, rasio sembarang) sehingga crawler berisiko membuangnya.
+ * Tekniknya sama dengan jalur ImageMagick: latar blur + produk utuh di tengah.
+ */
+const normalisasiSharp = async (inputBuf) => {
+  const { default: sharp } = await import('sharp');
+
+  const latar = await sharp(inputBuf)
+    .rotate()
+    .resize(OG_W, OG_H, { fit: 'cover', position: 'center' })
+    .blur(28)
+    .modulate({ brightness: 0.72 })
+    .toColourspace('srgb')
+    .jpeg({ quality: 80, mozjpeg: true })
+    .toBuffer();
+
+  const depan = await sharp(inputBuf)
+    .rotate()
+    .resize(OG_W - 80, OG_H - 40, { fit: 'inside', withoutEnlargement: false })
+    .toColourspace('srgb')
+    .png()
+    .toBuffer();
+
+  const depanUkuran = await sharp(depan).metadata();
+
+  let buf = await sharp(latar)
+    .composite([
+      {
+        input: depan,
+        gravity: 'center',
+        left: Math.max(0, Math.round((OG_W - (depanUkuran.width || OG_W)) / 2)),
+        top: Math.max(0, Math.round((OG_H - (depanUkuran.height || OG_H)) / 2))
+      }
+    ])
+    .jpeg({ quality: 84, mozjpeg: true })
+    .toBuffer();
+
+  /* Turunkan kualitas bertahap bila masih di atas batas aman ~300 KB. */
+  for (const q of [72, 62, 52]) {
+    if (buf.length <= OG_MAX_BYTES) break;
+    buf = await sharp(latar)
+      .composite([
+        {
+          input: depan,
+          left: Math.max(0, Math.round((OG_W - (depanUkuran.width || OG_W)) / 2)),
+          top: Math.max(0, Math.round((OG_H - (depanUkuran.height || OG_H)) / 2))
+        }
+      ])
+      .jpeg({ quality: q, mozjpeg: true })
+      .toBuffer();
+  }
+
+  return { buf, type: 'image/jpeg', lebar: OG_W, tinggi: OG_H, dinormalisasi: true };
+};
 
 /**
  * Deteksi sekali apakah ImageMagick bisa dipakai.
@@ -240,13 +315,21 @@ export const thumbnailProduk = async (product, base) => {
    * Hanya JPEG/PNG/WebP yang bisa diproses ImageMagick di sini. Selain itu
    * (mis. AVIF) kirim apa adanya — crawler modern masih bisa membacanya.
    */
-  const bisaProses = await adaImageMagick();
   const tipeAsli = tipeDariByte(foto.buf);
+  const bisaTipe = tipeAsli === 'image/jpeg' || tipeAsli === 'image/png' || tipeAsli === 'image/webp';
 
-  const hasil =
-    bisaProses && (tipeAsli === 'image/jpeg' || tipeAsli === 'image/png' || tipeAsli === 'image/webp')
-      ? await normalisasi(foto.buf, foto.ext)
-      : { buf: foto.buf, type: tipeAsli, dinormalisasi: false };
+  /*
+   * Urutan jalur: ImageMagick (mesin pengembang) → `sharp` (runtime Vercel)
+   * → kirim apa adanya (jaring terakhir).
+   */
+  let hasil = { buf: foto.buf, type: tipeAsli, dinormalisasi: false };
+  if (bisaTipe) {
+    if (await adaImageMagick()) {
+      hasil = await normalisasi(foto.buf, foto.ext);
+    } else if (await adaSharp()) {
+      hasil = await normalisasiSharp(foto.buf);
+    }
+  }
 
   /* Jaga ukuran cache agar tidak tumbuh tanpa batas. */
   if (cache.size > 64) cache.clear();
@@ -256,3 +339,15 @@ export const thumbnailProduk = async (product, base) => {
 
 /** Hapus cache — dipakai uji dan saat foto produk diganti. */
 export const kosongkanCache = () => cache.clear();
+
+/**
+ * Lupakan hasil deteksi ImageMagick/sharp.
+ *
+ * Dipakai uji yang sengaja mengubah `PATH` untuk memaksa jalur `sharp`
+ * (meniru runtime Vercel yang tidak punya binary ImageMagick). Tanpa reset,
+ * hasil deteksi lama tetap terpakai dan uji menjadi tidak sah.
+ */
+export const resetDeteksi = () => {
+  magickSiap = null;
+  sharpSiap = null;
+};
