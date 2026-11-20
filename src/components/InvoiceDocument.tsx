@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Printer, X, Package, Receipt, Truck } from 'lucide-react';
 import { formatRupiah, STORE_DOMAIN } from '../data/products';
 import { useStore } from '../context/StoreContext';
@@ -37,6 +37,19 @@ interface InvoiceDocumentProps {
   order: InvoiceOrder;
   mode?: 'invoice' | 'label';
   onClose: () => void;
+  /**
+   * Apakah dokumen boleh berpindah ke LABEL PENGIRIMAN.
+   *
+   * Default `false` — sengaja. Label pengiriman adalah dokumen internal
+   * operasional (AWB, alamat penerima, instruksi penanganan paket) yang
+   * hanya dipakai admin saat menyerahkan paket ke kurir. Pembeli cukup
+   * menerima invoice.
+   *
+   * Sebelumnya tombol "Label Pengiriman" selalu tampil di toolbar, sehingga
+   * pembeli di halaman Lacak Pesanan & setelah checkout bisa membuka dan
+   * mencetaknya. Hanya pemanggil dari dashboard admin yang mengirim `true`.
+   */
+  allowShippingLabel?: boolean;
 }
 
 const formatDate = (iso?: string) => {
@@ -62,10 +75,18 @@ const formatDate = (iso?: string) => {
 export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
   order,
   mode: initialMode = 'invoice',
-  onClose
+  onClose,
+  allowShippingLabel = false
 }) => {
   const { settings } = useStore();
-  const [mode, setMode] = useState<'invoice' | 'label'>(initialMode);
+  /*
+   * Bila label tidak diizinkan, mode dipaksa 'invoice' — termasuk bila
+   * pemanggil keliru mengirim mode="label". Ini pengaman kedua di sisi
+   * tampilan, bukan hanya menyembunyikan tombolnya.
+   */
+  const safeMode: 'invoice' | 'label' =
+    allowShippingLabel && initialMode === 'label' ? 'label' : 'invoice';
+  const [mode, setMode] = useState<'invoice' | 'label'>(safeMode);
 
   const subtotal =
     order.subtotal ?? order.items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -75,6 +96,18 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
   const total = order.totalAmount;
 
   const handlePrint = () => window.print();
+
+  /*
+   * Ukuran kertas mengikuti dokumen: Label A6, Invoice A4.
+   * Kelas dipasang di <body> karena `@page` tidak bisa ditentukan dari
+   * sebuah elemen. Dibersihkan saat mode berganti maupun dokumen ditutup,
+   * supaya cetakan berikutnya tidak ikut menjadi A6.
+   */
+  useEffect(() => {
+    const active = mode === 'label';
+    document.body.classList.toggle('print-label-mode', active);
+    return () => document.body.classList.remove('print-label-mode');
+  }, [mode]);
 
   return (
     <div className="fixed inset-0 z-[60] overflow-y-auto print:static print:overflow-visible">
@@ -98,17 +131,19 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
             >
               <Receipt className="w-3.5 h-3.5" /> Invoice
             </button>
-            <button
-              type="button"
-              onClick={() => setMode('label')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${
-                mode === 'label'
-                  ? 'bg-forest-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" /> Label Pengiriman
-            </button>
+            {allowShippingLabel && (
+              <button
+                type="button"
+                onClick={() => setMode('label')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 ${
+                  mode === 'label'
+                    ? 'bg-forest-600 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                <Truck className="w-3.5 h-3.5" /> Label Pengiriman
+              </button>
+            )}
           </div>
 
           <div className="flex gap-1.5">
@@ -130,8 +165,12 @@ export const InvoiceDocument: React.FC<InvoiceDocumentProps> = ({
         </div>
 
         {/* Printable sheet */}
-        <div className="print-sheet bg-white rounded-2xl print:rounded-none shadow-xl print:shadow-none border border-slate-200 print:border-0 p-6 sm:p-10 text-slate-800">
-          {mode === 'invoice' ? (
+        <div
+          className={`print-sheet print-active bg-white rounded-2xl print:rounded-none shadow-xl print:shadow-none border border-slate-200 print:border-0 p-6 sm:p-10 text-slate-800 ${
+            mode === 'label' ? 'label-sheet' : ''
+          }`}
+        >
+          {mode === 'invoice' || !allowShippingLabel ? (
             <>
               {/* Header */}
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b-2 border-navy-800">

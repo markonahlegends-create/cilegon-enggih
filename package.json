@@ -20,7 +20,8 @@
     "seed:catalog": "node scripts/generate-seed.mjs",
     "validate:vercel": "node scripts/validate-vercel-config.mjs",
     "audit:bundles": "node scripts/audit-bundles.mjs",
-    "test:reports": "node scripts/test-report-consistency.mjs"
+    "test:reports": "node scripts/test-report-consistency.mjs",
+    "test:stock": "node scripts/test-stock.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

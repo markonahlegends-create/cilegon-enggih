@@ -1321,6 +1321,8 @@ export const AdminDashboardPage: React.FC = () => {
         <InvoiceDocument
           order={invoiceOrder}
           mode={invoiceMode}
+          // Hanya dashboard admin yang boleh membuka label pengiriman.
+          allowShippingLabel
           onClose={() => setInvoiceOrder(null)}
         />
       )}
