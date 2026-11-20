@@ -170,6 +170,59 @@ if (await adaImageMagick()) {
   console.log('  LEWAT  ImageMagick tidak tersedia (runtime tanpa binary) — jalur "kirim apa adanya"');
 }
 
+/*
+ * Jalur `sharp` — inilah yang dipakai DI PRODUKSI.
+ * ImageMagick hanya ada di mesin pengembang; runtime Vercel tidak punya
+ * binary itu. Tanpa jalur ini, produk yang ditambahkan admin setelah build
+ * menerima foto MENTAH (bisa 118-160 KB, rasio sembarang) dan crawler
+ * berisiko membuangnya.
+ */
+{
+  let sharpAda = false;
+  try {
+    await import('sharp');
+    sharpAda = true;
+  } catch {
+    sharpAda = false;
+  }
+  benar('sharp terpasang sebagai dependency', sharpAda, 'jalankan npm install sharp');
+
+  if (sharpAda) {
+    const { default: sharp } = await import('sharp');
+    const tmpSharp = path.join(ROOT, '.tmp-e2e-share');
+    fs.mkdirSync(tmpSharp, { recursive: true });
+    const sumber = path.join(tmpSharp, 'sumber-sharp.jpg');
+    await sharp({
+      create: { width: 1086, height: 1448, channels: 3, background: '#1B365D' }
+    })
+      .jpeg()
+      .toFile(sumber);
+
+    /* Paksa jalur sharp: sembunyikan ImageMagick dari PATH + reset cache deteksi. */
+    const pathAsli = process.env.PATH;
+    process.env.PATH = '/tmp/tidak-ada';
+    const og = await import('../server/og-image.js');
+    const { thumbnailProduk, kosongkanCache } = og;
+    if (typeof og.resetDeteksi === 'function') og.resetDeteksi();
+    kosongkanCache();
+    const hasil = await thumbnailProduk(
+      { slug: 'uji-sharp', image: '/products/kaos-distro.jpg', updatedAt: `t${Date.now()}` },
+      BASE
+    );
+    process.env.PATH = pathAsli;
+
+    benar('sharp menghasilkan gambar ternormalisasi', hasil.dinormalisasi === true, 'tidak ternormalisasi');
+    check('sharp → tipe JPEG', hasil.type, 'image/jpeg');
+    benar('sharp → < 300 KB', hasil.buf.length <= OG_MAX_BYTES, `${hasil.buf.length} byte`);
+
+    const meta = await sharp(hasil.buf).metadata();
+    check('sharp → dimensi 1200x630', `${meta.width}x${meta.height}`, `${OG_W}x${OG_H}`);
+    check('sharp → format jpeg', meta.format, 'jpeg');
+
+    fs.rmSync(tmpSharp, { recursive: true, force: true });
+  }
+}
+
 check('tipeDariByte: JPEG', tipeDariByte(Buffer.from([0xff, 0xd8, 0xff, 0xe0])), 'image/jpeg');
 check('tipeDariByte: PNG', tipeDariByte(Buffer.from([0x89, 0x50, 0x4e, 0x47])), 'image/png');
 check('tipeDariByte: tidak dikenal', tipeDariByte(Buffer.from([0x00, 0x01, 0x02, 0x03])), 'application/octet-stream');
