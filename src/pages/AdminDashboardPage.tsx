@@ -34,7 +34,8 @@ import {
   Calculator,
   ShieldCheck,
   BarChart3,
-  Zap
+  Zap,
+  Stethoscope
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { vendorLinks } from '../lib/vendorLinks';
@@ -58,6 +59,7 @@ import {
   adminTestTelegram,
   adminRegisterTelegramWebhook,
   adminTelegramWebhookStatus,
+  adminTelegramDiagnosa,
   adminSendDigest,
   adminSettingsFull,
   adminVerifyOtp,
@@ -1777,6 +1779,27 @@ const SettingsPanel: React.FC<{
 }) => {
   const [copied, setCopied] = useState('');
   const [webhook, setWebhook] = useState<{ configured: boolean; lastError?: string } | null>(null);
+  const [diagnosa, setDiagnosa] = useState<{
+    sehat: boolean;
+    saran: string;
+    langkah: { nama: string; ok: boolean; pesan: string }[];
+  } | null>(null);
+  const [mendiagnosa, setMendiagnosa] = useState(false);
+
+  const periksaNotifikasi = async () => {
+    setMendiagnosa(true);
+    try {
+      setDiagnosa(await adminTelegramDiagnosa());
+    } catch {
+      setDiagnosa({
+        sehat: false,
+        saran: 'Gagal memeriksa. Pastikan Anda masih login sebagai admin.',
+        langkah: []
+      });
+    } finally {
+      setMendiagnosa(false);
+    }
+  };
   const set = (key: string, val: any) => onChange({ ...value, [key]: val });
 
   // Status webhook hanya informatif; kegagalan cek tidak mengganggu panel.
@@ -2228,6 +2251,20 @@ const SettingsPanel: React.FC<{
               Webhook belum aktif
             </span>
           ) : null}
+          <button
+            type="button"
+            onClick={periksaNotifikasi}
+            disabled={mendiagnosa}
+            className="px-3 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-60 text-slate-700 text-[11px] font-extrabold inline-flex items-center gap-1.5"
+            title="Periksa kenapa notifikasi Telegram tidak masuk"
+          >
+            {mendiagnosa ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Stethoscope className="w-3.5 h-3.5" />
+            )}
+            {mendiagnosa ? 'Memeriksa…' : 'Periksa Notifikasi'}
+          </button>
           <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
             <input
               type="checkbox"
@@ -2243,6 +2280,37 @@ const SettingsPanel: React.FC<{
             </span>
           )}
         </div>
+
+        {diagnosa && (
+          <div
+            className={`rounded-xl border p-2.5 space-y-1.5 ${
+              diagnosa.sehat
+                ? 'bg-forest-50 border-forest-200'
+                : 'bg-amberbrand-50 border-amberbrand-300'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 text-[11.5px] font-extrabold text-navy-900">
+              {diagnosa.sehat ? (
+                <CheckCircle2 className="w-3.5 h-3.5 text-forest-700" />
+              ) : (
+                <AlertTriangle className="w-3.5 h-3.5 text-amberbrand-700" />
+              )}
+              {diagnosa.sehat ? 'Notifikasi Telegram sehat' : 'Ada yang perlu diperbaiki'}
+            </div>
+            <ul className="space-y-1">
+              {diagnosa.langkah.map((l) => (
+                <li key={l.nama} className="text-[10.5px] leading-snug text-slate-700">
+                  <span className="font-bold">{l.ok ? '✓' : '✗'} {l.nama}:</span> {l.pesan}
+                </li>
+              ))}
+            </ul>
+            {diagnosa.saran && (
+              <div className="text-[10.5px] font-semibold text-navy-900 bg-white/70 rounded-lg px-2 py-1.5">
+                {diagnosa.saran}
+              </div>
+            )}
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
           {[
             ['notifyNewOrder', 'Pesanan baru masuk'],

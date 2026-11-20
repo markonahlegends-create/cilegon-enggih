@@ -48,3 +48,6 @@ server/data/
 
 # Unggahan lokal (mode dev) — file bukti transfer & video produk
 /public/uploads/
+
+# Data sementara uji E2E notifikasi (dibuat & dihapus otomatis)
+.tmp-e2e-notify/

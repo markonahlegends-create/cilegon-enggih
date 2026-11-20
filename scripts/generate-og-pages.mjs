@@ -35,31 +35,79 @@ const VERCEL_JSON = path.join(ROOT, 'vercel.json');
  * `(?i)`) agar kompatibel dengan mesin regex Vercel (PCRE/RE2). Harus exactly
  * match dengan `CRAWLER_RE_TEST` di scripts/preflight.mjs.
  */
-const CRAWLER_RE = [
-  '[Ww]hatsapp',
-  '[Ff]acebookexternalhit',
-  '[Ff]acebot',
-  '[Tt]witterbot',
-  '[Tt]elegram[Bb]ot',
-  '[Ll]inked[Ii]n[Bb]ot',
-  '[Ss]lackbot',
-  '[Dd]iscordbot',
-  '[Ee]mbedly',
-  '[Pp]interest',
-  '[Rr]edditbot',
-  '[Ss]kype[Uu]ri[Pp]review',
-  // Googlebot/Bingbot SENGAJA tidak ada di daftar: halaman share diberi
-  // header noindex, sehingga bila search engine diarahkan ke sini, halaman
-  // produk bisa hilang dari hasil pencarian. Search engine tetap menerima
-  // SPA (yang tetap punya canonical, sitemap, dan JSON-LD).
-  '[Aa]pplebot',
-  '[Vv][Kk]share',
-  '[Nn]uzzel',
-  '[Bb]itlybot',
-  '[Mm]astodon',
-  '[Bb]luesky',
-  '[Cc]ardyb'
-].join('|');
+/**
+ * Daftar crawler, ditulis sebagai huruf KECIL tanpa pola regex.
+ *
+ * KENAPA BUKAN POLA MANUAL
+ * Versi sebelumnya memakai `[Ww]hatsapp` dan `[Vv][Kk]share`. Pola itu GAGAL
+ * cocok dengan User-Agent asli WhatsApp — `WhatsApp/2.23.20.0 A` — karena
+ * huruf A pada "WhatsApp" kapital, dan `[Ww]hatsapp` menuntut "hatsapp" huruf
+ * kecil semua. Akibatnya WhatsApp selalu menerima index.html (kartu beranda),
+ * sehingga link produk yang dibagikan menampilkan gambar toko — bukan foto
+ * produk. Gejalanya persis seperti laporan "thumbnail tidak sesuai".
+ *
+ * `caseInsensitive()` di bawah mengubah tiap huruf menjadi kelas `[aA]`,
+ * sehingga `whatsapp` menjadi `[wW][hH][aA][tT][sS][aA][pP][pP]`. Ini tetap
+ * kompatibel dengan mesin regex Vercel (tanpa flag `(?i)`), tetapi kebal
+ * terhadap perbedaan kapitalisasi.
+ */
+const caseInsensitive = (literal) =>
+  literal
+    .split('')
+    .map((ch) => (/[a-z]/i.test(ch) ? `[${ch.toLowerCase()}${ch.toUpperCase()}]` : ch))
+    .join('');
+
+const CRAWLER_NAMES = [
+  'whatsapp',
+  'facebookexternalhit',
+  'facebookcatalog',
+  'facebook',
+  'facebot',
+  'meta-externalagent',
+  'instagram',
+  'threads',
+  'twitterbot',
+  'telegrambot',
+  'linkedinbot',
+  'slackbot',
+  'discordbot',
+  'embedly',
+  'pinterest',
+  'redditbot',
+  'skypeuripreview',
+  'applebot',
+  'vkshare',
+  'nuzzel',
+  'mastodon',
+  'bluesky',
+  'cardyb',
+  'line/',
+  'viber',
+  'kakaotalk',
+  'tumblr',
+  'quora link preview',
+  'pocketparser',
+  'buffer',
+  'hootsuite',
+  'snapchat',
+  'iframely',
+  'slurp',
+  'qwantify',
+  'yandexbot',
+  'duckduckbot',
+  'semrushbot',
+  'ahrefsbot',
+  'baiduspider',
+  'notif'
+  /*
+   * Googlebot/Bingbot SENGAJA tidak ada di daftar: halaman share diberi
+   * header noindex. Bila search engine diarahkan ke sini, halaman produk bisa
+   * hilang dari hasil pencarian. Search engine tetap menerima SPA yang sudah
+   * punya canonical, sitemap, dan JSON-LD.
+   */
+];
+
+const CRAWLER_RE = CRAWLER_NAMES.map(caseInsensitive).join('|');
 
 const readMeta = () => {
   const file = path.join(ROOT, 'src', 'data', 'og-meta.json');
@@ -182,6 +230,17 @@ const writeVercelRewrites = (routes) => {
   const cfg = JSON.parse(fs.readFileSync(VERCEL_JSON, 'utf8'));
   const crawlerHas = [{ type: 'header', key: 'user-agent', value: { re: CRAWLER_RE } }];
 
+  /*
+   * Content-Type eksplisit untuk halaman share.
+   *
+   * Tanpa ini Vercel menyajikan berkas .html yang di-rewrite dengan
+   * `Cache-Control` default untuk halaman statis, sehingga pratinjau yang
+   * sudah terlanjur di-cache WhatsApp/Facebook bisa bertahan lama walau kartu
+   * OG-nya sudah diperbaiki. Dengan `must-revalidate` + tipe yang tegas,
+   * crawler selalu membaca versi terbaru.
+   */
+  cfg.headers = (cfg.headers || []).filter((h) => !String(h.source).startsWith('/og/'));
+
   const shareRules = routes.map(({ route, dest }) => ({
     source: route,
     has: crawlerHas,
@@ -196,6 +255,30 @@ const writeVercelRewrites = (routes) => {
   const api = others.filter((r) => r.source.startsWith('/api/'));
 
   cfg.rewrites = [...api, ...shareRules, ...spa];
+
+  // Header untuk gambar OG (boleh panjang di-cache: isinya jarang berubah)
+  // dan untuk halaman share (harus selalu segar agar preview ikut terkoreksi).
+  cfg.headers = [
+    ...cfg.headers,
+    /*
+     * Catatan: Vercel MENOLAK backslash di `source` ("\."). Karena itu
+     * penyaringan ekstensi dilakukan di dalam kurung, bukan dengan escape.
+     * `[.]` aman dan diterima validator.
+     */
+    {
+      source: '/og/((.*)[.]html)',
+      headers: [
+        { key: 'Content-Type', value: 'text/html; charset=utf-8' },
+        { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+        { key: 'X-Robots-Tag', value: 'noindex, follow' }
+      ]
+    },
+    {
+      source: '/og/((.*)[.](jpg|jpeg|png))',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }]
+    }
+  ];
+
   fs.writeFileSync(VERCEL_JSON, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
   console.log(`[og-pages] vercel.json: ${shareRules.length} aturan share untuk crawler`);
 };

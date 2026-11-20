@@ -22,7 +22,12 @@
     "audit:bundles": "node scripts/audit-bundles.mjs",
     "test:reports": "node scripts/test-report-consistency.mjs",
     "test:stock": "node scripts/test-stock.mjs",
-    "test:payments": "node scripts/test-payments.mjs"
+    "test:payments": "node scripts/test-payments.mjs",
+    "test:notify": "node scripts/test-notify.mjs",
+    "test:notify:e2e": "node scripts/test-notify-e2e.mjs",
+    "test:og": "node scripts/test-og-share.mjs",
+    "test:crawler": "node scripts/test-crawler-ua.mjs",
+    "test:all": "npm run test:payments && npm run test:stock && npm run test:reports && npm run test:notify && npm run test:og && npm run test:crawler && npm run test:notify:e2e"
   },
   "dependencies": {
     "express": "^4.21.2",

@@ -453,6 +453,16 @@ export const adminRegisterTelegramWebhook = (publicUrl?: string) =>
     { method: 'POST', body: publicUrl ? { publicUrl } : {}, admin: true }
   );
 
+export interface TelegramDiagnosa {
+  sehat: boolean;
+  saran: string;
+  langkah: { nama: string; ok: boolean; pesan: string }[];
+}
+
+/** Periksa kenapa notifikasi Telegram diam (token, chat id, webhook, kirim terakhir). */
+export const adminTelegramDiagnosa = () =>
+  apiRequest<TelegramDiagnosa>('/api/admin/telegram/diagnosa', { admin: true });
+
 /** Status webhook Telegram yang sedang aktif (tanpa membocorkan secret). */
 export const adminTelegramWebhookStatus = () =>
   apiRequest<{

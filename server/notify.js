@@ -14,7 +14,12 @@
  * { sent: false, reason } tanpa melempar error ke pemanggil.
  */
 
-const TG_API = 'https://api.telegram.org';
+/*
+ * Dasar URL Bot API. Bisa diarahkan ke server tiruan lewat env hanya untuk
+ * keperluan pengujian otomatis (scripts/test-notify-e2e.mjs). Di produksi
+ * nilainya selalu https://api.telegram.org.
+ */
+const TG_API = String(process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
 
 export const esc = (input) =>
   String(input ?? '')
@@ -23,6 +28,29 @@ export const esc = (input) =>
     .replace(/>/g, '&gt;');
 
 const rupiah = (value) => `Rp ${(Number(value) || 0).toLocaleString('id-ID')}`;
+
+/**
+ * Nominal akhir pesanan.
+ *
+ * KENAPA PERLU HELPER
+ * Pesanan yang BARU dibuat (endpoint POST /api/orders) menyimpan `totalAmount`,
+ * sedangkan pesanan yang dibaca ulang dari database memakai `total`. Template
+ * yang hanya membaca `order.total` menampilkan "Total: Rp 0" untuk pesanan
+ * baru — admin melihat angka nol padahal pembeli harus transfer ratusan ribu.
+ * Helper ini menerima kedua bentuk, plus menghitung ulang dari komponennya
+ * bila keduanya kosong.
+ */
+export const orderTotal = (order) => {
+  if (!order) return 0;
+  const direct = Number(order.total ?? order.totalAmount);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  const recomputed =
+    (Number(order.subtotal) || 0) +
+    (Number(order.shippingCost) || 0) +
+    (Number(order.uniqueCode) || 0) -
+    (Number(order.voucherDiscount) || 0);
+  return Math.max(0, recomputed);
+};
 
 const DEFAULTS = {
   enabled: false,
@@ -81,7 +109,12 @@ export const sendTelegramMessage = async (settings, html, options = {}) => {
       const text = await res.text().catch(() => '');
       return { sent: false, reason: `telegram-${res.status}: ${text.slice(0, 160)}` };
     }
-    return { sent: true };
+    const data = await res.json().catch(() => ({}));
+    if (data && data.ok === false) {
+      // Telegram bisa membalas HTTP 200 dengan ok:false (mis. chat tidak ditemukan).
+      return { sent: false, reason: `telegram: ${data.description || 'ditolak'}` };
+    }
+    return { sent: true, messageId: data?.result?.message_id };
   } catch (err) {
     return { sent: false, reason: `network: ${err.message}` };
   }
@@ -146,14 +179,28 @@ export const notifySafe = async (settings, html, options) => {
 /* Template pesan                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Baris item pesanan.
+ *
+ * KENAPA TIDAK MENEMPELKAN LABEL LAGI
+ * `item.name` sudah memuat label pilihan, mis.
+ * "Gantungan Kunci Karet 3D (CEGAN-01 · LARGE)". Menambahkan
+ * `item.variantLabel` membuatnya tercetak dua kali — persis yang dikeluhkan
+ * dari tangkapan layar bot:
+ *   "Gantungan Kunci Karet 3D (CEGAN-01 · LARGE) (CEGAN-01 · LARGE) × 1".
+ * Label hanya ditempel bila belum ada di dalam nama.
+ */
 const orderLines = (order) =>
   (order.items || [])
-    .map(
-      (item) =>
-        `  • ${esc(item.name)}${item.variantLabel ? ` (${esc(item.variantLabel)})` : ''} × ${item.qty} — ${rupiah(
-          Number(item.price) * Number(item.qty)
-        )}`
-    )
+    .map((item) => {
+      const nama = String(item.name || '');
+      const label = String(item.variantLabel || '').trim();
+      const labelSudahAda = label && nama.toLowerCase().includes(label.toLowerCase());
+      const namaLengkap = label && !labelSudahAda ? `${nama} (${label})` : nama;
+      return `  • ${esc(namaLengkap)} × ${item.qty} — ${rupiah(
+        Number(item.price) * Number(item.qty)
+      )}`;
+    })
     .join('\n');
 
 const preOrderLine = (order) =>
@@ -176,7 +223,7 @@ export const templateNewOrder = (order) =>
     `Ongkir: ${rupiah(order.shippingCost)}`,
     order.voucherDiscount ? `Voucher: -${rupiah(order.voucherDiscount)}` : '',
     order.uniqueCode ? `Kode unik: ${rupiah(order.uniqueCode)}` : '',
-    `💵 <b>Total: ${rupiah(order.total)}</b>`,
+    `💵 <b>Total: ${rupiah(orderTotal(order))}</b>`,
     `💳 ${esc(order.paymentMethod)}`,
     preOrderLine(order),
     '',
@@ -191,7 +238,7 @@ export const templatePaymentProof = (order) =>
     '',
     `<b>${esc(order.orderId)}</b>`,
     `👤 ${esc(order.customerName)}`,
-    `💵 ${rupiah(order.total)}`,
+    `💵 ${rupiah(orderTotal(order))}`,
     order.paymentProofNote ? `📝 ${esc(order.paymentProofNote)}` : '',
     '',
     '<i>Tekan tombol di bawah untuk memverifikasi tanpa membuka dashboard.</i>'
@@ -225,7 +272,7 @@ export const templatePaid = (order) =>
     '',
     `<b>${esc(order.orderId)}</b>`,
     `👤 ${esc(order.customerName)}`,
-    `💵 ${rupiah(order.total)}`,
+    `💵 ${rupiah(orderTotal(order))}`,
     preOrderLine(order),
     '',
     '<i>Pesanan siap diproses / diproduksi.</i>'
