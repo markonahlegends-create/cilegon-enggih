@@ -352,6 +352,40 @@ const normalizeBanks = (banks) => {
   });
 };
 
+/**
+ * CATATAN STATUS NOTIFIKASI
+ *
+ * KENAPA: notifikasi Telegram sengaja tidak pernah menggagalkan alur pesanan.
+ * Efek sampingnya, kegagalan kirim jadi SENYAP — seperti yang dilaporkan:
+ * pembeli mengunggah bukti, tetapi chat bot tidak menerima apa pun, dan tidak
+ * ada satu pun tanda bahwa ada yang salah.
+ *
+ * Sekarang setiap percobaan kirim menyimpan hasil terakhirnya. Dashboard
+ * menampilkannya, jadi penyebabnya (token salah, bot belum di-/start, webhook
+ * belum didaftarkan, chat id keliru) bisa diketahui tanpa membaca log server.
+ */
+const catatStatusNotifikasi = async (hasil, jenis) => {
+  try {
+    const docs = await store.list('settings');
+    const saved = docs[0] || {};
+    await store.put('settings', {
+      ...saved,
+      id: saved.id || 'store-settings',
+      telegramHealth: {
+        ...(saved.telegramHealth || {}),
+        [jenis]: {
+          sent: Boolean(hasil && hasil.sent),
+          reason: (hasil && hasil.reason) || '',
+          at: nowIso()
+        }
+      }
+    });
+  } catch (err) {
+    // Kegagalan mencatat status tidak boleh mengganggu alur pesanan.
+    console.error('[telegram] gagal mencatat status notifikasi:', err.message);
+  }
+};
+
 const readSettings = async () => {
   const docs = await store.list('settings');
   const saved = docs[0] || {};
@@ -361,6 +395,7 @@ const readSettings = async () => {
     qris: { ...DEFAULT_SETTINGS.qris, ...(saved.qris || {}) },
     payment: { ...DEFAULT_SETTINGS.payment, ...(saved.payment || {}) },
     invoice: { ...DEFAULT_SETTINGS.invoice, ...(saved.invoice || {}) },
+    telegramHealth: { ...(saved.telegramHealth || {}) },
     telegram: {
       ...DEFAULT_SETTINGS.telegram,
       // Fallback env (kalau diisi dari dashboard, nilai database yang dipakai).
@@ -1413,7 +1448,10 @@ route('POST', '/api/orders', async ({ body, headers }) => {
 
   // Notifikasi Telegram ke admin (tidak pernah menggagalkan pembuatan order).
   if (telegramConfig(settings).notifyNewOrder !== false) {
-    await notifySafe(settings, templateNewOrder(newOrder));
+    const hasil = await notifySafe(settings, templateNewOrder(newOrder));
+    // Dicatat supaya kegagalan kirim tidak lagi senyap: admin bisa melihatnya
+    // di Dashboard → Pengaturan → Notifikasi Telegram.
+    await catatStatusNotifikasi(hasil, 'pesanan-baru');
   }
 
   return ok(
@@ -1488,9 +1526,15 @@ route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {
      * langsung dari Telegram, tanpa membuka dashboard — inilah yang memangkas
      * penantian pembeli saat admin sedang di luar.
      */
-    await notifySafe(proofSettings, templatePaymentProof(updated), {
+    const hasil = await notifySafe(proofSettings, templatePaymentProof(updated), {
       replyMarkup: paymentProofKeyboard(updated)
     });
+    await catatStatusNotifikasi(hasil, 'bukti-transfer');
+    if (!hasil.sent) {
+      console.error(
+        `[telegram] notifikasi bukti transfer GAGAL untuk ${updated.orderId}: ${hasil.reason}`
+      );
+    }
   }
 
   return ok({ order: decorateOrder(updated) });
@@ -3140,6 +3184,13 @@ route('PUT', '/api/admin/settings', async ({ headers, body }) => {
     preOrder: { ...current.preOrder, ...(payload.preOrder || {}) },
     banks: normalizeBanks(Array.isArray(payload.banks) ? payload.banks : current.banks),
     vouchers: Array.isArray(payload.vouchers) ? payload.vouchers : current.vouchers,
+    /*
+     * Status kirim terakhir adalah catatan SISTEM, bukan pengaturan toko.
+     * Tanpa baris ini, setiap kali admin menekan Simpan Pengaturan, riwayat
+     * "notifikasi terakhir gagal/berhasil" ikut terhapus — persis informasi
+     * yang dibutuhkan saat mendiagnosis bot yang diam.
+     */
+    telegramHealth: current.telegramHealth,
     updatedAt: nowIso()
   };
   await store.put('settings', { ...merged, id: 'store-settings' });
@@ -3276,6 +3327,126 @@ route('POST', '/api/admin/telegram/webhook', async ({ headers, body }) => {
   } catch (err) {
     return bad(`Gagal menghubungi Telegram: ${err.message}`, 502);
   }
+});
+
+/**
+ * DIAGNOSA NOTIFIKASI TELEGRAM.
+ *
+ * Menjawab satu pertanyaan: "kenapa chat bot saya diam?". Pemeriksaannya
+ * berurutan dari yang paling sering salah:
+ *   1. token & chat id terisi?
+ *   2. bot bisa dihubungi (getMe)?
+ *   3. chat id benar & bot sudah pernah di-/start (getChat)?
+ *   4. webhook terdaftar (supaya tombol berfungsi)?
+ *   5. hasil kirim terakhir berhasil atau tidak?
+ *
+ * Token tidak pernah dikirim balik ke browser.
+ */
+route('GET', '/api/admin/telegram/diagnosa', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const settings = await readSettings();
+  const cfg = telegramConfig(settings);
+  const secret = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+  const langkah = [];
+
+  if (!cfg.botToken || !cfg.chatId) {
+    return ok({
+      sehat: false,
+      langkah: [
+        {
+          nama: 'Konfigurasi tersimpan',
+          ok: false,
+          pesan: 'Bot Token dan Chat ID Admin belum diisi di Pengaturan.'
+        }
+      ],
+      saran: 'Isi Bot Token (dari @BotFather) dan Chat ID Admin, lalu klik Tes Koneksi.'
+    });
+  }
+
+  const panggil = async (metode) => {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/${metode}`);
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok && data.ok !== false, data, description: data.description || '' };
+    } catch (err) {
+      return {
+        ok: false,
+        data: {},
+        description: `tidak bisa menghubungi Telegram: ${err.message}`
+      };
+    }
+  };
+
+  const me = await panggil('getMe');
+  langkah.push({
+    nama: 'Token bot sah',
+    ok: me.ok,
+    pesan: me.ok
+      ? `Bot @${me.data?.result?.username || 'tak bernama'} dapat dihubungi.`
+      : `Telegram menolak token: ${me.description}`
+  });
+
+  if (me.ok) {
+    const chat = await panggil('getChat');
+    langkah.push({
+      nama: 'Chat ID dapat dijangkau',
+      ok: chat.ok,
+      pesan: chat.ok
+        ? `Chat "${chat.data?.result?.title || chat.data?.result?.first_name || cfg.chatId}" ditemukan.`
+        : `Chat ID ${cfg.chatId} tidak ditemukan (${chat.description}). Pastikan Anda sudah menekan Start di bot, dan chat id disalin dari chat tersebut.`
+    });
+  }
+
+  const info = me.ok ? await panggil('getWebhookInfo') : { ok: false, data: {} };
+  const webhookUrl = info.data?.result?.url || '';
+  langkah.push({
+    nama: 'Webhook terdaftar (tombol verifikasi)',
+    ok: Boolean(webhookUrl),
+    pesan: webhookUrl
+      ? `Webhook aktif di ${webhookUrl}. Tombol Verifikasi LUNAS akan berfungsi.`
+      : 'Webhook belum terdaftar. Notifikasi tetap masuk, tetapi tombol verifikasi belum bisa ditekan. Klik "Aktifkan Verifikasi Sekali-Klik".'
+  });
+
+  langkah.push({
+    nama: 'Kunci webhook tersedia',
+    ok: Boolean(secret),
+    pesan: secret
+      ? 'TELEGRAM_WEBHOOK_SECRET sudah diset di server.'
+      : 'TELEGRAM_WEBHOOK_SECRET belum diset — webhook akan menolak semua permintaan. Isi env ini di Vercel lalu redeploy.'
+  });
+
+  const health = settings.telegramHealth || {};
+  const terakhir = health['bukti-transfer'];
+  if (terakhir) {
+    langkah.push({
+      nama: 'Pengiriman terakhir (bukti transfer)',
+      ok: Boolean(terakhir.sent),
+      pesan: terakhir.sent
+        ? `Berhasil dikirim${terakhir.at ? ` pada ${terakhir.at}` : ''}.`
+        : `GAGAL${terakhir.at ? ` pada ${terakhir.at}` : ''}: ${terakhir.reason || 'tanpa keterangan'}`
+    });
+  }
+
+  const masalah = langkah.filter((l) => !l.ok);
+  const urutanSaran = {
+    'Token bot sah': 'Periksa Bot Token di Pengaturan — salin ulang dari BotFather, tanpa spasi.',
+    'Chat ID dapat dijangkau':
+      'Buka bot di Telegram, tekan Start, lalu salin chat id dari chat tersebut.',
+    'Kunci webhook tersedia': 'Tambahkan env TELEGRAM_WEBHOOK_SECRET di Vercel lalu redeploy.',
+    'Webhook terdaftar (tombol verifikasi)':
+      'Klik "Aktifkan Verifikasi Sekali-Klik" di kartu Notifikasi Telegram.',
+    'Pengiriman terakhir (bukti transfer)':
+      'Baca alasan gagal di atas, perbaiki, lalu uji dengan Tes Koneksi.'
+  };
+
+  return ok({
+    sehat: masalah.length === 0,
+    langkah,
+    saran: masalah.length
+      ? urutanSaran[masalah[0].nama] || 'Periksa langkah yang belum berhasil di atas.'
+      : 'Semua pemeriksaan lulus. Notifikasi dan tombol verifikasi siap dipakai.'
+  });
 });
 
 /** Lihat status webhook yang sedang aktif (tanpa membocorkan secret). */

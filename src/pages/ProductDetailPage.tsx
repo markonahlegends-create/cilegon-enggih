@@ -1,12 +1,13 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { trackProductView, trackShare } from '../lib/tracker';
+import { ShareMenu } from '../components/ShareMenu';
+import { productShareUrl } from '../lib/share';
 import {
   Star,
   ShoppingCart,
   MessageCircle,
   Heart,
-  Share2,
   ShieldCheck,
   Ruler,
   Plus,
@@ -205,41 +206,14 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
     .slice(0, 4);
 
   /**
-   * Bagikan produk.
+   * URL yang dibagikan HARUS canonical dan bersih.
    *
-   * Di Android (termasuk Chrome di HP) pakai Web Share API supaya pembeli bisa
-   * langsung kirim ke WhatsApp/Instagram tanpa menyalin apa pun. Kalau tidak
-   * tersedia (desktop lama, browser in-app), jatuh ke salin tautan.
-   * Pembatalan oleh pengguna bukan kegagalan — jangan tampilkan galat.
+   * `window.location.href` sering membawa `?utm=…`, `#galeri`, atau domain
+   * preview. Crawler WhatsApp tidak menemukan kartu OG untuk URL seperti itu dan
+   * menampilkan gambar default toko — keluhan "thumbnail tidak sesuai".
+   * `productShareUrl()` menormalkannya menjadi <domain-toko>/produk/<slug>.
    */
-  const handleShare = async () => {
-    const url = window.location.href;
-    const shareData = {
-      title: product.name,
-      text: `${product.name} — Cilegon Enggih`,
-      url
-    };
-
-    try {
-      if (typeof navigator.share === 'function') {
-        await navigator.share(shareData);
-        trackShare(product.id, product.name);
-        return;
-      }
-    } catch (err) {
-      // Pengguna menutup dialog share — bukan kesalahan.
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      // Kalau Web Share gagal karena alasan lain, lanjut ke salin tautan.
-    }
-
-    try {
-      await navigator.clipboard?.writeText(url);
-      pushToast('Tautan Produk Disalin!', product.name, 'info');
-      trackShare(product.id, product.name);
-    } catch {
-      pushToast('Tautan gagal disalin', 'Salin manual dari address bar.', 'error');
-    }
-  };
+  const shareUrl = useMemo(() => productShareUrl(product.slug), [product.slug]);
 
   const handleOrderWhatsApp = () => {
     const msg = `Halo Admin Cilegon Enggih! Saya tertarik memesan:\n\n• Produk: *${
@@ -397,9 +371,25 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             <div className="text-xs font-bold text-forest-700 uppercase tracking-wider mb-1">
               {product.englishSubtitle}
             </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold text-navy-800 leading-snug">
-              {product.name}
-            </h1>
+            <div className="flex items-start justify-between gap-2">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-navy-800 leading-snug">
+                {product.name}
+              </h1>
+              {/*
+                Tombol bagikan tepat di samping judul: inilah tempat yang dicari
+                pembeli saat ingin menyebarkan produk. Sebelumnya hanya ada di
+                baris paling bawah, sehingga dianggap "tidak ada tombol share".
+              */}
+              <ShareMenu
+                url={shareUrl}
+                title={product.name}
+                productName={product.name}
+                productId={product.id}
+                onToast={pushToast}
+                triggerLabel=""
+                triggerClassName="shrink-0 w-9 h-9 rounded-full border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600"
+              />
+            </div>
 
             {product.isPreOrder && (
               <div className="mt-2 flex items-start gap-2 rounded-xl bg-forest-50 border border-forest-200 px-3 py-2">
@@ -885,14 +875,15 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                 />
                 <span>Wishlist</span>
               </button>
-              <button
-                type="button"
-                onClick={handleShare}
-                className="py-1.5 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-1.5"
-              >
-                <Share2 className="w-4 h-4" />
-                <span>Bagikan</span>
-              </button>
+              <ShareMenu
+                url={shareUrl}
+                title={product.name}
+                productName={product.name}
+                productId={product.id}
+                onToast={pushToast}
+                compact
+                triggerClassName="py-1.5 rounded-lg hover:bg-slate-50 flex items-center justify-center gap-1.5"
+              />
             </div>
           </div>
         </div>

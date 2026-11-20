@@ -4,8 +4,12 @@
  * LATAR BELAKANG (insiden nyata)
  * Dua kali deployment produksi gagal total karena pola `source` yang tidak sah:
  *
- *   1. "source": "/og/*.jpg"      → Vercel: invalid source pattern
- *   2. "source": "/og/(.*)\\.jpg" → Vercel: invalid source pattern
+ *   1. "source": "/og/*.jpg"       → Vercel: invalid source pattern
+ *   2. "source": "/og/(.*)\\.jpg"  → Vercel: invalid source pattern
+ *   3. "source": "/og/((.*)[.]html)" → Vercel: invalid source pattern
+ *      (meloloskan validator versi pertama, karena bentuknya "grup bersarang
+ *      yang seimbang" — padahal Vercel menolak character class & grup
+ *      terpisah di `source` header. Deploy produksi ikut gagal.)
  *
  * Keduanya lolos dari pengujian saya karena yang diuji hanya *logika
  * pencocokan path* di Node, bukan *validasi skema* milik Vercel. Skrip ini
@@ -89,8 +93,38 @@ const validateSource = (source, where) => {
   if (open !== close) {
     err(`${where}: tanda kurung pada "source" tidak seimbang ("${source}").`);
   }
-};
 
+  /*
+   * Konstruksi yang DITOLAK Vercel pada `source` (terbukti dari 3 insiden):
+   *   - backslash escape        "/(.*)\\.jpg"
+   *   - character class         "/og/((.*)[.]html)"
+   *   - kurung bertumpuk       "/og/((.*).html)"   (nested group)
+   *   - grup pilihan            "/og/(.*)(jpg|png)"
+   *
+   * Pendekatan di sini adalah DAFTAR BLOKIR, bukan allowlist: pola sah yang
+   * sudah terbukti jalan di produksi (literal "/produk/slug", ":param",
+   * "(.*)", dan catch-all SPA "/((?!api/).*)") tidak boleh ikut tertandai.
+   */
+  if (/\[/.test(source)) {
+    err(
+      `${where}: "source" memakai character class "[" ("${source}"). ` +
+        `Vercel menolak "[.]" dan sejenisnya — saring ekstensi di luar konfigurasi.`
+    );
+  }
+  if (/\([^()]*\|/.test(source)) {
+    err(
+      `${where}: "source" memakai grup pilihan "(a|b)" ("${source}"). ` +
+        `Vercel menolak bentuk itu.`
+    );
+  }
+  // Kurung bertumpuk: "((" yang bukan bagian dari catch-all negatif "(?!)".
+  if (/\(\(/.test(source) && !source.includes('(?!')) {
+    err(
+      `${where}: "source" memakai kurung bertumpuk "((" ("${source}"). ` +
+        `Gunakan satu grup "(.*)" saja.`
+    );
+  }
+};
 /** Regex pada `has`/`missing` harus bisa dikompilasi. */
 const validateHas = (has, where) => {
   if (has === undefined) return;
