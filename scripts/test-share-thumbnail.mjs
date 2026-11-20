@@ -272,12 +272,20 @@ console.log('\n9. Rewrite Vercel lolos lewat __path (bug 404 produksi)');
   );
 
   /* Handler harus benar-benar memulihkan __path. */
-  const srcHandler = fs.readFileSync(path.join(ROOT, 'api', '[...route].js'), 'utf8');
+  const srcHandler = fs.readFileSync(path.join(ROOT, 'server', 'vercel-handler.js'), 'utf8');
   benar('handler membaca __path', srcHandler.includes('__path'), 'tidak ditemukan');
   benar('handler menolak path di luar /api/', srcHandler.includes("startsWith('/api/')"), 'tidak ada penjagaan');
 
+  /*
+   * Tujuan `/api?__path=` hanya dilayani berkas `api/index.js`. Tanpa berkas
+   * itu Vercel tidak menemukan fungsi untuk tujuan tersebut dan permintaan
+   * jatuh ke aturan SPA — crawler menerima kartu beranda. Ini yang membuat
+   * perbaikan sebelumnya (tujuan `/api?__path=`) belum bekerja di produksi.
+   */
+  benar('ada api/index.js (tujuan rewrite /api)', fs.existsSync(path.join(ROOT, 'api', 'index.js')));
+
   /* Uji langsung: __path harus menghasilkan kartu produk yang benar. */
-  const { default: handler } = await import('../api/[...route].js');
+  const { default: handler } = await import('../api/index.js');
   const panggil = async (query) => {
     const headers = {};
     let status = 200;
