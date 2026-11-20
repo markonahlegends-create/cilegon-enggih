@@ -435,28 +435,11 @@
       ]
     },
     {
-      "source": "/og/((.*)[.]html)",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/html; charset=utf-8"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        },
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
-      "source": "/og/((.*)[.](jpg|jpeg|png))",
+      "source": "/og/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800"
+          "value": "public, max-age=31536000, immutable"
         }
       ]
     }

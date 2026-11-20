@@ -256,26 +256,26 @@ const writeVercelRewrites = (routes) => {
 
   cfg.rewrites = [...api, ...shareRules, ...spa];
 
-  // Header untuk gambar OG (boleh panjang di-cache: isinya jarang berubah)
-  // dan untuk halaman share (harus selalu segar agar preview ikut terkoreksi).
+  /*
+   * Header aset OG — SENGAJA dikembalikan ke bentuk yang sudah terbukti valid.
+   *
+   * RIWAYAT (jangan diulang)
+   * Percobaan menambah aturan header per-ekstensi gagal di Vercel:
+   *   "/og/(.*)\\.html"        → invalid route source pattern (backslash)
+   *   "/og/((.*)[.]html)"     → invalid route source pattern juga (char class)
+   * Vercel hanya menerima pola sederhana seperti "/og/(.*)" untuk `source`.
+   * Karena itu penyaringan ekstensi TIDAK dilakukan di vercel.json.
+   *
+   * Konsekuensinya HTML halaman share ikut ter-cache panjang. Bila kartu OG
+   * berubah (mis. ganti foto produk), pratinjau lama perlu dibersihkan manual:
+   * kirim ulang tautan di chat baru (WhatsApp/Telegram) atau Scrape Again di
+   * Facebook Sharing Debugger. Ini keterbatasan platform, bukan bug aplikasi.
+   */
   cfg.headers = [
-    ...cfg.headers,
-    /*
-     * Catatan: Vercel MENOLAK backslash di `source` ("\."). Karena itu
-     * penyaringan ekstensi dilakukan di dalam kurung, bukan dengan escape.
-     * `[.]` aman dan diterima validator.
-     */
+    ...cfg.headers.filter((h) => !String(h.source).startsWith('/og/')),
     {
-      source: '/og/((.*)[.]html)',
-      headers: [
-        { key: 'Content-Type', value: 'text/html; charset=utf-8' },
-        { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
-        { key: 'X-Robots-Tag', value: 'noindex, follow' }
-      ]
-    },
-    {
-      source: '/og/((.*)[.](jpg|jpeg|png))',
-      headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }]
+      source: '/og/(.*)',
+      headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }]
     }
   ];
 
