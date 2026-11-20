@@ -367,18 +367,21 @@ export const adminResetOrders = () =>
   );
 
 export const adminCreateProduct = (payload: Record<string, unknown>) =>
-  apiRequest<{ product: any; products: any[] }>('/api/admin/products', {
+  apiRequest<{ product: any; products: any[]; warnings?: string[] }>('/api/admin/products', {
     method: 'POST',
     body: payload,
     admin: true
   });
 
 export const adminUpdateProduct = (id: string, payload: Record<string, unknown>) =>
-  apiRequest<{ product: any; products: any[] }>(`/api/admin/products/${encodeURIComponent(id)}`, {
-    method: 'PUT',
-    body: payload,
-    admin: true
-  });
+  apiRequest<{ product: any; products: any[]; warnings?: string[] }>(
+    `/api/admin/products/${encodeURIComponent(id)}`,
+    {
+      method: 'PUT',
+      body: payload,
+      admin: true
+    }
+  );
 
 export const adminDeleteProduct = (id: string) =>
   apiRequest<{ deleted: string; products: any[] }>(

@@ -70,9 +70,17 @@ export const createApp = () => {
     }
     // 204 tanpa body, CSV dikirim sebagai teks (ekspor insight).
     if (result.status === 204 || result.body === undefined) return res.status(result.status).end();
-    const ctype = res.getHeader('Content-Type');
-    if (typeof ctype === 'string' && ctype.startsWith('text/csv')) {
+    const ctype = String(res.getHeader('Content-Type') || '');
+    if (ctype.startsWith('text/csv')) {
       return res.status(result.status).send(result.body.csv ?? result.body);
+    }
+    /*
+     * Respons NON-JSON (mis. kartu share `text/html`) harus dikirim apa adanya.
+     * Tanpa cabang ini, HTML di-`json()` sehingga keluar sebagai string
+     * ber-escape dan crawler tidak menemukan satu pun tag <meta>.
+     */
+    if (typeof result.body === 'string' && ctype && !ctype.includes('json')) {
+      return res.status(result.status).send(result.body);
     }
     res.status(result.status).json(result.body);
   });

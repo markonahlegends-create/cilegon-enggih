@@ -38,9 +38,18 @@ export default async function handler(req, res) {
     res.status(result.status).end();
     return;
   }
-  const ctype = res.getHeader('Content-Type');
-  if (typeof ctype === 'string' && ctype.startsWith('text/csv')) {
+  const ctype = String(res.getHeader('Content-Type') || '');
+  if (ctype.startsWith('text/csv')) {
     res.status(result.status).send(result.body.csv ?? result.body);
+    return;
+  }
+  /*
+   * Respons NON-JSON (mis. kartu share `text/html`) harus dikirim apa adanya.
+   * Tanpa cabang ini, HTML di-`json()` sehingga keluar sebagai string
+   * ber-escape dan crawler tidak menemukan satu pun tag <meta>.
+   */
+  if (typeof result.body === 'string' && ctype && !ctype.includes('json')) {
+    res.status(result.status).send(result.body);
     return;
   }
   res.status(result.status).json(result.body);

@@ -254,7 +254,30 @@ const writeVercelRewrites = (routes) => {
   const spa = others.filter((r) => r.source.startsWith('/((?!'));
   const api = others.filter((r) => r.source.startsWith('/api/'));
 
-  cfg.rewrites = [...api, ...shareRules, ...spa];
+  /*
+   * PENANGKAP PRODUK BARU.
+   *
+   * Halaman statis hanya ada untuk produk yang terdaftar saat build. Produk
+   * yang ditambahkan admin sesudahnya (mis. `kaos-edisi-cilegon-enggih`) tidak
+   * punya berkas, sehingga crawler jatuh ke index.html dan menampilkan kartu
+   * beranda. Aturan di bawah mengarahkan crawler untuk SEMUA produk ke endpoint
+   * dinamis — tetapi hanya sebagai CADANGAN, karena posisinya SETELAH aturan
+   * statis di atas. Vercel mengevaluasi rewrite dari atas ke bawah, jadi
+   * produk yang punya kartu statis tetap memakai berkas (nol invocation).
+   */
+  /*
+   * Catatan pola: `source` memakai `:slug` (path-to-regexp), BUKAN
+   * `([^/]+)`. Vercel menolak character class di `source`, dan insiden
+   * sebelumnya membuktikan penolakan itu menggagalkan SELURUH deploy.
+   * Placeholder diteruskan ke destination sebagai `:slug`.
+   */
+  const penangkapProduk = {
+    source: '/produk/:slug',
+    has: crawlerHas,
+    destination: '/api/share/produk/:slug'
+  };
+
+  cfg.rewrites = [...api, ...shareRules, penangkapProduk, ...spa];
 
   /*
    * Header aset OG — SENGAJA dikembalikan ke bentuk yang sudah terbukti valid.

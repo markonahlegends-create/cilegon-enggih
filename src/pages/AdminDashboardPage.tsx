@@ -383,7 +383,18 @@ export const AdminDashboardPage: React.FC = () => {
       setProductQuery('');
       setProductFilter('');
       await refreshStorefront();
-      pushToast('Produk Tersimpan', payload.name, 'success');
+      /*
+       * Server bisa mengoreksi nilai yang di luar batas (mis. selisih harga
+       * ukuran yang melebihi 50% harga dasar). Dulu koreksi itu SENYAP,
+       * sehingga admin melihat angka berbeda dari yang diketik tanpa tahu
+       * sebabnya. Sekarang ditampilkan apa adanya.
+       */
+      const catatan: string[] = Array.isArray(res.warnings) ? res.warnings : [];
+      if (catatan.length) {
+        pushToast('Produk Tersimpan dengan Koreksi', catatan.join(' '), 'warning');
+      } else {
+        pushToast('Produk Tersimpan', payload.name, 'success');
+      }
     } catch (err) {
       pushToast('Gagal Simpan Produk', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
     } finally {
@@ -1371,6 +1382,30 @@ export const AdminDashboardPage: React.FC = () => {
 /* Order card                                                           */
 /* ==================================================================== */
 
+/**
+ * Sumber gambar bukti transfer.
+ *
+ * Bukti disimpan dalam dua bentuk tergantung kondisi saat unggah:
+ *   `paymentProofUrl`   → URL Supabase Storage (normal, hemat database)
+ *   `paymentProofImage` → base64 di dalam dokumen order (fallback bila Storage
+ *                          belum dikonfigurasi; sengaja dipertahankan agar
+ *                          bukti tidak hilang)
+ *
+ * Dashboard dulu hanya membaca yang kedua, sehingga bukti yang berhasil
+ * diunggah ke Storage muncul sebagai teks tanpa gambar.
+ */
+const proofImageSrc = (order: any): string => {
+  const url = String(order?.paymentProofUrl || '').trim();
+  if (url) return url;
+  const inline = String(order?.paymentProofImage || '').trim();
+  if (inline.startsWith('data:image/')) return inline;
+  // Sebagian data lama menyimpan base64 tanpa awalan data-URL.
+  if (inline.length > 200 && /^[A-Za-z0-9+/=\s]+$/.test(inline.slice(0, 120))) {
+    return `data:image/jpeg;base64,${inline.replace(/\s/g, '')}`;
+  }
+  return '';
+};
+
 const OrderCard: React.FC<{
   order: any;
   /** Daftar vendor aktif — dipakai untuk membuat tautan pesanan ke vendor. */
@@ -1532,7 +1567,7 @@ const OrderCard: React.FC<{
             {order.bankAccount ? ` (${order.bankAccount.bank} ${order.bankAccount.accountNumber})` : ''}
           </div>
 
-          {(order.paymentProofNote || order.paymentProofImage) && (
+          {(order.paymentProofNote || proofImageSrc(order)) && (
             <div className="rounded-lg border border-forest-200 bg-forest-50 p-2 space-y-1">
               <button
                 type="button"
@@ -1547,12 +1582,50 @@ const OrderCard: React.FC<{
                   {order.paymentProofNote && (
                     <p className="text-[11px] text-slate-700">{order.paymentProofNote}</p>
                   )}
-                  {order.paymentProofImage && (
-                    <img
-                      src={order.paymentProofImage}
-                      alt="Bukti transfer"
-                      className="max-h-44 rounded-lg border border-forest-200"
-                    />
+                  {/*
+                    Bukti bisa tersimpan dalam DUA bentuk:
+                      - `paymentProofImage` : base64 (fallback saat Storage gagal)
+                      - `paymentProofUrl`   : URL Supabase Storage (bentuk normal)
+                    Dulu hanya `paymentProofImage` yang dibaca, sehingga bukti
+                    yang berhasil diunggah ke Storage tampil sebagai teks saja
+                    tanpa gambar — persis keluhan di dashboard Pesanan.
+                  */}
+                  {proofImageSrc(order) && (
+                    <a
+                      href={proofImageSrc(order)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Buka gambar ukuran penuh"
+                      className="block"
+                    >
+                      <img
+                        src={proofImageSrc(order)}
+                        alt="Bukti transfer"
+                        className="max-h-44 rounded-lg border border-forest-200 hover:opacity-90"
+                        onError={(e) => {
+                          // Tautan Storage bisa kedaluwarsa/dihapus; beri tahu
+                          // admin alih-alih menampilkan kotak rusak.
+                          const el = e.currentTarget;
+                          el.style.display = 'none';
+                          el.parentElement?.setAttribute('data-gagal', '1');
+                        }}
+                      />
+                    </a>
+                  )}
+                  {proofImageSrc(order) && (
+                    <a
+                      href={proofImageSrc(order)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[10px] font-bold text-forest-700 hover:underline inline-flex items-center gap-1"
+                    >
+                      <ExternalLink className="w-3 h-3" /> Buka gambar di tab baru
+                    </a>
+                  )}
+                  {!proofImageSrc(order) && order.paymentProofNote && (
+                    <p className="text-[10px] text-amberbrand-700 font-semibold">
+                      Pembeli hanya mengirim catatan (tanpa foto).
+                    </p>
                   )}
                 </div>
               )}
@@ -1802,12 +1875,25 @@ const SettingsPanel: React.FC<{
   };
   const set = (key: string, val: any) => onChange({ ...value, [key]: val });
 
-  // Status webhook hanya informatif; kegagalan cek tidak mengganggu panel.
+  /*
+   * Status webhook DAN diagnosa dimuat otomatis saat panel dibuka.
+   *
+   * KENAPA OTOMATIS: keluhan "tombol muncul tapi tidak berfungsi" tidak akan
+   * pernah terjawab kalau admin harus menekan tombol tambahan lebih dulu.
+   * Dengan memuatnya di awal, penyebab (token salah, chat id salah, webhook
+   * belum terdaftar, secret belum diset) langsung terlihat di tempat yang
+   * sedang dibuka.
+   */
   useEffect(() => {
     let alive = true;
     adminTelegramWebhookStatus()
       .then((res) => {
         if (alive) setWebhook(res);
+      })
+      .catch(() => {});
+    adminTelegramDiagnosa()
+      .then((res) => {
+        if (alive) setDiagnosa(res);
       })
       .catch(() => {});
     return () => {

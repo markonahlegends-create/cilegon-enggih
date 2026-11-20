@@ -32,8 +32,23 @@ const CATEGORIES: [string, string][] = [
 
 const KAOS_SIZES = ['S', 'M', 'L', 'XL', 'XXL'];
 
+/**
+ * ID unik untuk baris dinamis (varian, nilai pilihan, video).
+ *
+ * KENAPA BUKAN `Date.now()` SAJA
+ * Dua baris yang ditambahkan dalam milidetik yang sama mendapat ID IDENTIK.
+ * React lalu memakai ulang elemen DOM yang salah, sehingga angka yang diketik
+ * pada satu baris bisa "melompat" ke baris lain — inilah penyebab laporan
+ * "input selisih 19.000 pada LARGE, tersimpan 8.000" (nilai MEDIUM).
+ *
+ * Penghitung naik memastikan ID berbeda walau dipanggil pada milidetik sama.
+ */
+let urutanBaru = 0;
+const idBaru = (awalan: string) =>
+  `${awalan}-${Date.now().toString(36)}-${(urutanBaru += 1).toString(36)}`;
+
 const newVariant = (idx: number) => ({
-  id: `var-new-${Date.now().toString(36)}-${idx}`,
+  id: idBaru(`var-new-${idx}`),
   label: '',
   price: 0,
   originalPrice: 0,
@@ -177,7 +192,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
   const duplicateVariant = (idx: number) => {
     const copy = {
       ...variants[idx],
-      id: `var-${Date.now().toString(36)}-${idx}`,
+      id: idBaru(`var-${idx}`),
       label: `${variants[idx].label} (Salinan)`
     };
     const next = [...variants];
@@ -189,7 +204,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     const basePrice = Number(value.price) || 0;
     const baseOriginal = Number(value.originalPrice) || basePrice;
     const created = KAOS_SIZES.map((size, idx) => ({
-      id: `var-${size.toLowerCase()}-${Date.now().toString(36)}-${idx}`,
+      id: idBaru(`var-${size.toLowerCase()}-${idx}`),
       label: size,
       price: basePrice,
       originalPrice: baseOriginal,
@@ -264,7 +279,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
 
   const addGroup = () => {
     if (optionGroups.length >= 3) return;
-    const id = `grup-${Date.now().toString(36)}`;
+    const id = idBaru('grup');
     patchGroups([
       ...optionGroups,
       {
@@ -289,7 +304,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     updateGroup(gi, {
       values: [
         ...g.values,
-        { id: `${g.id}-v${Date.now().toString(36)}`, label: '', priceDelta: 0 }
+        { id: idBaru(`${g.id}-v`), label: '', priceDelta: 0 }
       ]
     });
   };
@@ -365,7 +380,7 @@ export const ProductEditor: React.FC<ProductEditorProps> = ({
     if (videos.length >= 3) return;
     patchVideos([
       ...videos,
-      { id: `vid-${Date.now().toString(36)}`, url: '', source: 'embed', poster: '', title: '', startAt: 0 }
+      { id: idBaru('vid'), url: '', source: 'embed', poster: '', title: '', startAt: 0 }
     ]);
   };
 

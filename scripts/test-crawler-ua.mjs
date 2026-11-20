@@ -23,6 +23,11 @@ const ROOT = process.cwd();
 const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
 
 let gagal = 0;
+const benar = (nama, kondisi, detail = '') => {
+  if (!kondisi) gagal += 1;
+  console.log(`${kondisi ? '  OK  ' : '  SALAH'} ${nama}${kondisi ? '' : ` — ${detail}`}`);
+};
+
 const check = (nama, dapat, harap) => {
   const ok = JSON.stringify(dapat) === JSON.stringify(harap);
   if (!ok) gagal += 1;
@@ -99,6 +104,33 @@ for (const [nama, ua] of harusDitolak) {
   check(nama, re.test(ua), false);
 }
 
+console.log('\n— Kartu dinamis untuk produk yang ditambahkan admin —');
+{
+  const penangkap = (vercel.rewrites || []).find(
+    (r) => String(r.destination || '').startsWith('/api/share/produk') && Array.isArray(r.has)
+  );
+  benar('ada aturan cadangan /produk/:slug → /api/share/produk', Boolean(penangkap));
+  benar(
+    'aturan cadangan memakai pola crawler yang sama',
+    penangkap ? penangkap.has[0].value.re === pola : false,
+    'pola berbeda → sebagian crawler akan menerima SPA'
+  );
+
+  /*
+   * Urutan penting: Vercel mengevaluasi rewrite dari atas ke bawah. Aturan
+   * statis (destination /og/*.html) harus lebih dulu agar produk katalog tetap
+   * dilayani berkas (nol invocation), dan penangkap dinamis setelahnya.
+   */
+  const idx = (pred) => vercel.rewrites.findIndex(pred);
+  const idxStatis = idx((r) => String(r.destination || '').startsWith('/og/'));
+  const idxDinamis = idx((r) => String(r.destination || '').startsWith('/api/share/produk'));
+  benar(
+    'aturan statis dievaluasi sebelum cadangan dinamis',
+    idxStatis >= 0 && idxDinamis > idxStatis,
+    `statis=${idxStatis}, dinamis=${idxDinamis}`
+  );
+}
+
 console.log('\n— Konsistensi dengan generator —');
 {
   // Semua aturan harus memakai pola yang sama (kalau tidak, sebagian halaman
@@ -106,8 +138,13 @@ console.log('\n— Konsistensi dengan generator —');
   const unik = new Set(aturanCrawler.map((r) => r.has[0].value.re));
   check('semua aturan memakai pola identik', unik.size, 1);
 
-  // Destination harus benar-benar ada sebagai berkas.
+  /*
+   * Destination HARUS ada sebagai berkas — kecuali endpoint dinamis
+   * (/api/share/produk/:slug), yang memang tidak berupa berkas; keberadaannya
+   * diuji terpisah di scripts/test-share-dynamic.mjs.
+   */
   const hilang = aturanCrawler.filter((r) => {
+    if (String(r.destination || '').startsWith('/api/')) return false;
     const f = path.join(ROOT, 'public', r.destination.replace(/^\//, ''));
     return !fs.existsSync(f);
   });
