@@ -64,10 +64,15 @@ const produkLokal = {
   price: 35000
 };
 
-check('URL thumbnail menunjuk endpoint normalisasi', ogImageUrl(BASE, produkLokal), `${BASE}/api/og-image/tumbler-bpa-500ml.jpg`);
+check('URL thumbnail memakai jalur STATIS /bi/', ogImageUrl(BASE, produkLokal), `${BASE}/bi/tumbler-bpa-500ml.jpg`);
 
 const metaSinkron = await metaProduk(produkLokal, BASE, ({ normal }) => normal);
-check('og:image memakai endpoint normalisasi', metaSinkron.image, `${BASE}/api/og-image/tumbler-bpa-500ml.jpg`);
+check('og:image memakai /bi/ (bukan /api/)', metaSinkron.image, `${BASE}/bi/tumbler-bpa-500ml.jpg`);
+benar(
+  'og:image TIDAK lewat /api/ (batas body fungsi Vercel)',
+  !metaSinkron.image.includes('/api/'),
+  metaSinkron.image
+);
 benar(
   'og:image TIDAK memakai kartu templat /og/<slug>.jpg',
   !/\/og\/[a-z0-9-]+\.jpg$/.test(metaSinkron.image),
@@ -87,7 +92,7 @@ const metaBaru = await metaProduk(produkBaru, BASE, ({ normal }) => normal);
 check(
   'produk BARU (tanpa kartu statis) tetap dapat og:image',
   metaBaru.image,
-  `${BASE}/api/og-image/kaos-edisi-cilegon-enggih.jpg`
+  `${BASE}/bi/kaos-edisi-cilegon-enggih.jpg`
 );
 benar('produk baru tidak 404 di og:image', !metaBaru.image.includes('/og/'), metaBaru.image);
 
@@ -99,9 +104,16 @@ const htmlAsync = await buildShareHtml(metaAsync, { siteName: 'Cilegon Enggih Of
 benar('buildShareHtml menunggu metaProduk async', typeof htmlAsync === 'string' && htmlAsync.includes('<meta property="og:image"'));
 benar('HTML tidak memuat [object Promise]', !htmlAsync.includes('[object Promise]'), 'masih bocor');
 benar(
-  'og:image di HTML = endpoint normalisasi',
-  htmlAsync.includes(`og:image" content="${BASE}/api/og-image/tumbler-bpa-500ml.jpg"`)
+  'og:image di HTML = jalur statis /bi/',
+  htmlAsync.includes(`og:image" content="${BASE}/bi/tumbler-bpa-500ml.jpg"`),
+  'tidak ditemukan'
 );
+benar(
+  'ada <noscript> redirect agar crawler tidak tertahan di halaman kartu',
+  htmlAsync.includes('<noscript><meta http-equiv="refresh"'),
+  'tidak ada'
+);
+benar('tanpa tautan feed rusak (stray "L")', !/[\u0000-\u0008]/.test(htmlAsync), 'ada karakter kontrol');
 
 /* buildShareHtml dengan meta sinkron tetap jalan (dipakai generator statis). */
 const htmlSinkron = buildShareHtml(metaSinkron);
@@ -174,32 +186,36 @@ benar('memakai must-revalidate', nilaiCache.includes('must-revalidate'), nilaiCa
 benar('max-age pendek (<= 600 detik)', /max-age=(\d+)/.test(nilaiCache) && Number(nilaiCache.match(/max-age=(\d+)/)[1]) <= 600, nilaiCache);
 
 /* ------------------------------------------------------------------ */
-console.log('\n6. Setiap halaman share produk menunjuk endpoint thumbnail');
+console.log('\n6. Halaman NON-produk tetap memakai kartu toko + dimensi benar');
 
 const ogDir = path.join(ROOT, 'public', 'og');
-const halamanProduk = fs.readdirSync(ogDir).filter((f) => f.startsWith('produk--') && f.endsWith('.html'));
-benar('ada halaman share produk', halamanProduk.length > 0, '0 berkas');
+const halamanNonProduk = fs.readdirSync(ogDir).filter((f) => f.endsWith('.html'));
+benar('ada halaman share non-produk', halamanNonProduk.length > 0, '0 berkas');
 
-let salahGambar = 0;
-for (const berkas of halamanProduk) {
+/*
+ * Halaman produk statis SENGAJA tidak dibuat lagi (`produk--*.html`).
+ * Kartu produk dibangun saat diminta dari database. Kalau berkas lama muncul
+ * kembali, itu tanda generator belum diperbaiki — dan salinan basi itulah yang
+ * dulu membuat foto produk tidak pernah terlihat berubah.
+ */
+const halamanProdukBasi = fs.readdirSync(ogDir).filter((f) => f.startsWith('produk--'));
+benar('tidak ada halaman produk statis (sumber basi)', halamanProdukBasi.length === 0, `${halamanProdukBasi.length} masih ada`);
+
+for (const berkas of halamanNonProduk) {
   const isi = fs.readFileSync(path.join(ogDir, berkas), 'utf8');
-  const img = isi.match(/property="og:image" content="([^"]+)"/)?.[1] || '';
-  if (!img.includes('/api/og-image/')) {
-    salahGambar += 1;
-    console.log(`         ${berkas} → ${img || '(kosong)'}`);
-  }
+  benar(`${berkas} mendeklarasikan dimensi 1200x630`, isi.includes('og:image:width" content="1200"') && isi.includes('og:image:height" content="630"'));
 }
-benar(`semua ${halamanProduk.length} halaman produk memakai /api/og-image/`, salahGambar === 0, `${salahGambar} masih kartu templat`);
-
-/* Dimensi di HTML statis harus cocok dengan yang dijanjikan endpoint. */
-const contoh = fs.readFileSync(path.join(ogDir, halamanProduk[0]), 'utf8');
-benar('halaman statis mendeklarasikan 1200x630', contoh.includes('og:image:width" content="1200"') && contoh.includes('og:image:height" content="630"'));
 
 /* ------------------------------------------------------------------ */
 console.log('\n7. vercel.json mengarahkan crawler dengan pola yang diterima Vercel');
 
 const rewrites = vercel.rewrites || [];
-benar('ada rewrite /api/og-image', rewrites.some((r) => String(r.destination).includes('/api/og-image') || String(r.source).startsWith('/api/')));
+benar('ada rewrite /api/* (fungsi)', rewrites.some((r) => String(r.source) === '/api/(.*)'));
+benar(
+  'ada cadangan /bi/:slug → endpoint dinamis (produk baru)',
+  rewrites.some((r) => r.source === '/bi/:slug' && r.destination === '/api/og-image/:slug'),
+  'tidak ada'
+);
 const cadangan = rewrites.find((r) => r.source === '/produk/:slug');
 benar('cadangan crawler pakai pola :slug (bukan character class)', Boolean(cadangan), 'tidak ada');
 benar(
@@ -213,6 +229,83 @@ for (const r of rewrites) {
     !/\[[^\]]/.test(String(r.source))
   );
 }
+
+/* ------------------------------------------------------------------ */
+console.log('\n8. Thumbnail statis /bi/ untuk SEMUA produk katalog');
+
+const biDir = path.join(ROOT, 'public', 'bi');
+benar('folder public/bi ada', fs.existsSync(biDir), 'belum dibuat — jalankan npm run og:thumbs');
+
+const produkKatalog = (() => {
+  const src = fs.readFileSync(path.join(ROOT, 'src', 'data', 'products.ts'), 'utf8');
+  const body = src.slice(src.indexOf('export const PRODUCTS'));
+  return body
+    .split(/\n  \{\n/)
+    .slice(1)
+    .map((c) => c.match(/slug: '([^']+)'/)?.[1])
+    .filter(Boolean);
+})();
+
+let biHilang = 0;
+let biGemuk = 0;
+if (fs.existsSync(biDir)) {
+  for (const slug of produkKatalog) {
+    const berkas = path.join(biDir, `${slug}.jpg`);
+    if (!fs.existsSync(berkas)) {
+      biHilang += 1;
+      console.log(`         hilang: ${slug}.jpg`);
+      continue;
+    }
+    if (fs.statSync(berkas).size > OG_MAX_BYTES) {
+      biGemuk += 1;
+      console.log(`         kegemukan: ${slug}.jpg (${fs.statSync(berkas).size} byte)`);
+    }
+  }
+}
+benar(`semua ${produkKatalog.length} produk katalog punya /bi/<slug>.jpg`, biHilang === 0, `${biHilang} hilang`);
+benar('semua thumbnail < 300 KB', biGemuk === 0, `${biGemuk} kegemukan`);
+
+/*
+ * REGRESI: crawler menerima 404 sehingga Facebook menampilkan
+ * "The page could not be found" — bukan kartu produk.
+ * Penyebabnya: `source: '/produk/:slug'` + `has` user-agent menangkap SEMUA
+ * bot, termasuk Googlebot, padahal tujuannya `/api/share/produk/:slug`.
+ */
+for (const r of vercel.rewrites || []) {
+  if (r.source === '/produk/:slug') {
+    const re = new RegExp(r.has?.[0]?.value?.re || '');
+    benar(
+      'rewrite /produk/:slug TIDAK menangkap Googlebot',
+      !re.test('Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'),
+      'Googlebot ikut tertangkap → halaman produk hilang dari Google'
+    );
+    benar(
+      'rewrite /produk/:slug TIDAK menangkap Bingbot',
+      !re.test('Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'),
+      'Bingbot ikut tertangkap'
+    );
+    benar(
+      'rewrite /produk/:slug TETAP menangkap facebookexternalhit',
+      re.test('facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)'),
+      'Facebook tidak tertangkap'
+    );
+    benar(
+      'rewrite /produk/:slug TETAP menangkap WhatsApp',
+      re.test('WhatsApp/2.23.20.0 A'),
+      'WhatsApp tidak tertangkap'
+    );
+  }
+}
+
+/* Halaman produk statis tidak boleh lagi dipakai lewat rewrite crawler. */
+const aturanProdukStatis = (vercel.rewrites || []).filter(
+  (r) => String(r.source).startsWith('/produk/') && r.source !== '/produk/:slug'
+);
+benar(
+  'tidak ada rewrite crawler per-produk yang bertabrakan',
+  aturanProdukStatis.length === 0,
+  `${aturanProdukStatis.length} aturan masih ada`
+);
 
 /* ------------------------------------------------------------------ */
 console.log(`\n${gagal === 0 ? 'SEMUA UJI THUMBNAIL LULUS' : `${gagal} UJI GAGAL`}\n`);

@@ -69,7 +69,18 @@ export const escapeHtml = (value) =>
 export const ogImageUrl = (base, product) => {
   const slug = String(product?.slug || '').trim();
   if (!slug) return '';
-  return `${base}/api/og-image/${encodeURIComponent(slug)}.jpg`;
+  /*
+   * JANGAN lewat `/api/`.
+   *
+   * Jalur `/api/*` adalah Serverless Function. Di paket Hobby, Vercel membatasi
+   * ukuran body respons fungsi, dan gambar lewat jalur ini berisiko ditolak
+   * (crawler menerima 404/500 → tanpa thumbnail). Jalur statis `/bi/` selalu
+   * dilayani CDN tanpa batas itu, jadi `og:image` menunjuk ke sana.
+   *
+   * Endpoint `/api/og-image/<slug>.jpg` tetap ada sebagai cadangan untuk
+   * pemasangan yang tidak memakai CDN.
+   */
+  return `${base}/bi/${encodeURIComponent(slug)}.jpg`;
 };
 
 /** Kartu toko bawaan — dipakai halaman non-produk dan sebagai cadangan terakhir. */
@@ -254,6 +265,7 @@ ${
         window.location.replace(${JSON.stringify(route)});
       }
     </script>
+    <noscript><meta http-equiv="refresh" content="0;url=${url}" /></noscript>
     <style>
       body { margin: 0; min-height: 100vh; display: grid; place-items: center;
         background: #1b365d; color: #f8faf8; text-align: center; padding: 24px;

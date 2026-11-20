@@ -87,292 +87,6 @@
       "destination": "/og/legalitas.html"
     },
     {
-      "source": "/produk/gantungan-kunci-karet-3d",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--gantungan-kunci-karet-3d.html"
-    },
-    {
-      "source": "/produk/lampu-tidur-3d-arsitektur",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--lampu-tidur-3d-arsitektur.html"
-    },
-    {
-      "source": "/produk/kalender-dinding-eksklusif-a3",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--kalender-dinding-eksklusif-a3.html"
-    },
-    {
-      "source": "/produk/kaos-distro-cilegon-enggih",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--kaos-distro-cilegon-enggih.html"
-    },
-    {
-      "source": "/produk/mug-keramik-souvenir",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--mug-keramik-souvenir.html"
-    },
-    {
-      "source": "/produk/stiker-vinyl-die-cut",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--stiker-vinyl-die-cut.html"
-    },
-    {
-      "source": "/produk/tumbler-stainless-steel-sporty",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-stainless-steel-sporty.html"
-    },
-    {
-      "source": "/produk/payung-desain-geometris",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--payung-desain-geometris.html"
-    },
-    {
-      "source": "/produk/tote-bag-kanvas-premium",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tote-bag-kanvas-premium.html"
-    },
-    {
-      "source": "/produk/paket-hemat-wisatawan",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-hemat-wisatawan.html"
-    },
-    {
-      "source": "/produk/paket-eksekutif-korporat",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-eksekutif-korporat.html"
-    },
-    {
-      "source": "/produk/paket-meja-kerja-inspiratif",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-meja-kerja-inspiratif.html"
-    },
-    {
-      "source": "/produk/paket-nataru-mug-stiker",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-nataru-mug-stiker.html"
-    },
-    {
-      "source": "/produk/tumbler-bpa-500ml",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-bpa-500ml.html"
-    },
-    {
-      "source": "/produk/tumbler-keramik-500ml",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-keramik-500ml.html"
-    },
-    {
-      "source": "/produk/tumbler-sus316-780ml",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-sus316-780ml.html"
-    },
-    {
-      "source": "/produk/tumbler-1200ml-family",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--tumbler-1200ml-family.html"
-    },
-    {
-      "source": "/produk/ornamen-natal-menara-cilegon",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--ornamen-natal-menara-cilegon.html"
-    },
-    {
-      "source": "/produk/paket-nataru-tumbler-tote",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-nataru-tumbler-tote.html"
-    },
-    {
-      "source": "/produk/paket-bukber-hemat",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-bukber-hemat.html"
-    },
-    {
-      "source": "/produk/paket-bukber-keluarga",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-bukber-keluarga.html"
-    },
-    {
-      "source": "/produk/paket-bukber-korporat",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/produk--paket-bukber-korporat.html"
-    },
-    {
       "source": "/produk/:slug",
       "has": [
         {
@@ -384,6 +98,10 @@
         }
       ],
       "destination": "/api/share/produk/:slug"
+    },
+    {
+      "source": "/bi/:slug",
+      "destination": "/api/og-image/:slug"
     },
     {
       "source": "/((?!api/).*)",
@@ -448,11 +166,50 @@
       ]
     },
     {
+      "source": "/bi/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
+      "source": "/bi/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
+    {
       "source": "/og/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
           "value": "public, max-age=300, s-maxage=300, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/bi/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
         }
       ]
     }
