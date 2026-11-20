@@ -386,8 +386,13 @@ export const TrackOrderPage: React.FC = () => {
                   onClick={() => setShowInvoice(true)}
                   className="w-full py-2.5 rounded-xl bg-navy-800 hover:bg-navy-900 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5"
                 >
-                  <Printer className="w-4 h-4" /> Cetak Invoice / Label Pengiriman
+                  <Printer className="w-4 h-4" /> Cetak Invoice
                 </button>
+                {/*
+                  Label pengiriman sengaja TIDAK ditawarkan di sini.
+                  Itu dokumen internal operasional (AWB + instruksi kurir)
+                  yang hanya dipakai admin saat menyerahkan paket.
+                */}
                 <a
                   href={buildWhatsAppUrlFor(
                     settings.whatsapp,

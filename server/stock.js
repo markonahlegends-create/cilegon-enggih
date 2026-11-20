@@ -72,12 +72,31 @@ export const checkStock = (items, catalog) => {
         stock = Number(product.stock) || 0;
       }
     } else {
-      stock =
-        variants.length > 0
-          ? Number(variant?.stock) || 0
-          : product.stockManual === true
-            ? Number(product.stock) || 0
-            : variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      /*
+       * BUG YANG PERNAH TERJADI (audit 20 Nov 2026)
+       *
+       * Bila produk punya varian TAPI pesanan tidak menyebut `variantId`,
+       * `variant` bernilai undefined dan stok dianggap 0 — sehingga pesanan
+       * yang sah ditolak dengan "Stok tidak mencukupi: tersedia 0" padahal
+       * stok totalnya puluhan.
+       *
+       * Kondisi ini nyata dijumpai pada produk bundling: pembeli tidak
+       * memilih varian, sedangkan `vitur` tetap menuntut salah satu.
+       *
+       * Sekarang: tanpa `variantId`, yang dipakai adalah TOTAL stok varian
+       * (stok produk yang sebenarnya), bukan 0. Bila `variantId` memang
+       * disebut tetapi tidak ditemukan, tetap dianggap 0 supaya varian yang
+       * salah tidak lolos.
+       */
+      if (product.stockManual === true) {
+        stock = Number(product.stock) || 0;
+      } else if (variants.length === 0) {
+        stock = Number(product.stock) || 0;
+      } else if (item.variantId) {
+        stock = Number(variant?.stock) || 0;
+      } else {
+        stock = variants.reduce((sum, v) => sum + (Number(v.stock) || 0), 0);
+      }
     }
 
     if (wanted > stock) {

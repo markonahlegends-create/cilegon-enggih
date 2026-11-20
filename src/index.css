@@ -91,6 +91,25 @@
     margin: 10mm;
   }
 
+  /*
+   * Label pengiriman dicetak pada kertas A6 (label kurir standar).
+   * Tanpa aturan ini, label A6 tercetak di tengah kertas A4 dan memboroskan
+   * kertas. `.print-label` dipasang pada wadah dokumen saat mode = label.
+   */
+  body.print-label-mode @page {
+    size: A6;
+    margin: 4mm;
+  }
+
+  /*
+   * Hanya SATU dokumen yang boleh tercetak. Bila halaman sempat memuat lebih
+   * dari satu `.print-sheet` (mis. modal invoice pembeli + label admin),
+   * semuanya akan tercetak bertumpuk. `.print-active` menandai yang aktif.
+   */
+  .print-sheet:not(.print-active) {
+    display: none !important;
+  }
+
   body {
     background: #ffffff !important;
   }
