@@ -132,7 +132,21 @@ for (const e of entri) {
       const m = html.match(new RegExp(`<meta property="${prop}" content="([^"]*)"`));
       return m ? m[1] : '';
     };
-    if (og('og:image') !== e.image) {
+    /*
+     * Halaman PRODUK sengaja TIDAK memakai `e.image` (kartu templat statis).
+     * Sumber gambar produk adalah FOTO UTAMA di database, dilayani endpoint
+     * `/api/og-image/<slug>.jpg` yang menormalkan ke 1200x630. Kartu templat
+     * hanya cadangan bila produk tidak punya foto — dan kartu itu tidak pernah
+     * ikut berubah saat admin mengganti foto, itulah akar keluhan thumbnail.
+     */
+    const gambarEndpoint = /^https:\/\/[^/]+\/api\/og-image\/([^/]+)\.jpg$/.exec(og('og:image'));
+    if (gambarEndpoint) {
+      const slugHalaman = e.route.replace(/^\/produk\//, '');
+      const slugGambar = decodeURIComponent(gambarEndpoint[1]);
+      if (slugGambar !== slugHalaman) {
+        masalahHalaman.push(`${e.route} → og:image menunjuk produk lain (${slugGambar})`);
+      }
+    } else if (og('og:image') !== e.image) {
       masalahHalaman.push(`${e.route} → og:image halaman tidak sama dengan data`);
     }
     if (!html.includes('og:image:width') || !html.includes('og:image:height')) {

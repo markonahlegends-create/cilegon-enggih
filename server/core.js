@@ -56,7 +56,8 @@ import {
 import { sendDailyDigest } from './digest.js';
 import { summarizeSales, salesOrders } from './reports.js';
 import { markOrderPaid } from './payments.js';
-import { metaProduk, buildShareHtml } from './og-share.js';
+import { metaProduk, buildShareHtml, TOKO_IMAGE } from './og-share.js';
+import { thumbnailProduk } from './og-image.js';
 import {
   scoreVendorForDropship,
   computeMargin,
@@ -1732,17 +1733,24 @@ route('GET', '/api/share/produk/:slug', async ({ params }) => {
    */
   const fs = await import('node:fs/promises');
   const path = await import('node:path');
-  const pilihGambar = async ({ kartu, foto, toko }) => {
+  /*
+   * PRIORITAS GAMBAR (diperbaiki): foto utama → endpoint normalisasi.
+   *
+   * Versi lama mendahulukan kartu templat `/og/<slug>.jpg`, sehingga produk
+   * yang fotonya diganti admin tetap tampil dengan gambar LAMA. Sekarang foto
+   * utama produk yang menentukan; kartu templat hanya cadangan bila produk
+   * tidak punya foto sama sekali. Endpoint `/api/og-image/<slug>.jpg`
+   * menormalkan foto ke 1200x630 + <300 KB supaya crawler mau menampilkannya.
+   */
+  const adaFoto = Boolean(String(product.image || '').trim());
+  const pilihGambar = async ({ kartu, foto, toko, normal }) => {
+    if (adaFoto && normal) return normal;
+    // Tanpa foto: pakai kartu templat yang benar-benar ada, lalu kartu toko.
     const adaKartu = await fs
       .stat(path.join(process.cwd(), 'public', 'og', `${slug}.jpg`))
       .then((st) => st.size > 0)
       .catch(() => false);
     if (adaKartu) return kartu;
-    /*
-     * Foto produk dipakai apa adanya. WhatsApp membuang gambar > ~300 KB atau
-     * yang tidak bisa diakses; kalau itu terjadi, yang tampil adalah kartu toko
-     * bawaan aplikasi — tetap lebih baik daripada tidak ada pratinjau.
-     */
     return foto || toko;
   };
 
@@ -1758,6 +1766,64 @@ route('GET', '/api/share/produk/:slug', async ({ params }) => {
      */
     'Cache-Control': 'public, max-age=0, must-revalidate',
     'X-Robots-Tag': 'noindex, follow'
+  });
+});
+
+/**
+ * THUMBNAIL LINK SHARE — gambar pratinjau dari FOTO UTAMA PRODUK.
+ *
+ * Kenapa endpoint terpisah: `og:image` harus menunjuk ke berkas nyata dengan
+ * dimensi & tipe yang pasti. Foto yang diunggah admin bentuknya bermacam-macam
+ * (portrait 1086x1448, 1920x1280, > 400 KB), dan crawler membuang gambar yang
+ * tidak sesuai. Endpoint ini menormalkan semuanya ke 1200x630 JPEG < 300 KB.
+ *
+ * URL: /api/og-image/<slug>.jpg
+ */
+route('GET', '/api/og-image/:slug', async ({ params }) => {
+  const slug = String(params.slug || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\.(jpe?g|png|webp)$/i, '');
+  if (!slug) return bad('Slug produk wajib diisi.', 400);
+
+  const products = await readProducts();
+  const product = products.find(
+    (p) => String(p.slug || '').toLowerCase() === slug && p.active !== false
+  );
+  if (!product) return bad('Produk tidak ditemukan.', 404);
+
+  const base = String(process.env.PUBLIC_BASE_URL || 'https://cilegon-enggih.vercel.app').replace(
+    /\/+$/,
+    ''
+  );
+
+  let gambar;
+  try {
+    gambar = await thumbnailProduk(product, base);
+  } catch (err) {
+    /*
+     * Foto gagal diambil. Jangan 404 — crawler hanya akan menampilkan tautan
+     * tanpa gambar. Arahkan ke kartu toko yang pasti ada supaya pratinjau tetap
+     * tampil, dan catat alasannya di header agar mudah didiagnosa.
+     */
+    return ok(Buffer.alloc(0), 302, {
+      Location: `${base}${TOKO_IMAGE}`,
+      'Cache-Control': 'no-store',
+      'X-Og-Fallback': String(err?.message || 'gagal').slice(0, 120)
+    });
+  }
+
+  return ok(gambar.buf, 200, {
+    'Content-Type': gambar.type || 'image/jpeg',
+    'Content-Length': String(gambar.buf.length),
+    /*
+     * `immutable` SALAH di sini: admin bisa mengganti foto produk kapan saja,
+     * dan pratinjau yang terkunci membuat perbaikan terlihat gagal. Cache
+     * pendek + revalidate memastikan crawler mengambil versi terbaru.
+     */
+    'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=86400',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Og-Normalized': gambar.dinormalisasi ? '1' : '0'
   });
 });
 

@@ -155,15 +155,29 @@ const jalankan = async () => {
     benar('canonical mengarah ke halaman asli', html.includes(`<link rel="canonical" href="https://cilegon-enggih.vercel.app/produk/${slugBaru}"`));
   }
 
-  console.log('\n— Produk katalog lama tetap dilayani berkas statis —');
+  console.log('\n— Produk katalog lama: thumbnail dari FOTO UTAMA, bukan kartu templat —');
   {
     const kartu = await fetch(`http://127.0.0.1:${port}/api/share/produk/gantungan-kunci-karet-3d`);
     const html = await kartu.text();
     check('endpoint tetap melayani produk lama', kartu.status, 200);
+    /*
+     * PERUBAHAN PERILAKU (perbaikan 20 Nov 2026, laporan kedua).
+     *
+     * Dulu uji ini menuntut `/og/<slug>.jpg` (kartu templat). Justru itu
+     * akarnya: kartu dibuat saat build dan tidak ikut berubah ketika admin
+     * mengganti foto, sehingga pembeli melihat gambar lama. Sekarang kartu
+     * produk menunjuk `/api/og-image/<slug>.jpg` yang dibangun dari foto
+     * utama produk di database.
+     */
     benar(
-      'memakai kartu OG yang sudah jadi',
-      html.includes('/og/gantungan-kunci-karet-3d.jpg'),
-      'kartu OG tidak dipakai'
+      'memakai endpoint thumbnail dari foto utama',
+      html.includes('/api/og-image/gantungan-kunci-karet-3d.jpg'),
+      'bukan /api/og-image/'
+    );
+    benar(
+      'tidak lagi memakai kartu templat statis',
+      !/og:image" content="[^"]*\/og\/gantungan-kunci-karet-3d\.jpg"/.test(html),
+      'masih kartu templat'
     );
   }
 
