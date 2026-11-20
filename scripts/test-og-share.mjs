@@ -151,7 +151,13 @@ for (const e of entri) {
       if (!re.test('WhatsApp/2.23')) masalahRouting.push(`${e.route} → WhatsApp tidak tertangkap`);
       if (re.test('Mozilla/5.0 (compatible; Googlebot/2.1)'))
         masalahRouting.push(`${e.route} → Googlebot ikut tertangkap (halaman hilang dari Google)`);
-      if (dinamis.destination !== '/api/share/produk/:slug')
+      /*
+       * Tujuan WAJIB berbentuk satu segmen `/api?__path=...`.
+       * Vercel mencocokkan rewrite berdasarkan path tujuan, dan
+       * `api/[...route].js` hanya satu segmen — tujuan
+       * `/api/share/produk/:slug` menghasilkan 404 produksi.
+       */
+      if (dinamis.destination !== '/api?__path=/api/share/produk/:slug')
         masalahRouting.push(`${e.route} → tujuan rewrite salah (${dinamis.destination})`);
     }
     continue;

@@ -106,8 +106,15 @@ for (const [nama, ua] of harusDitolak) {
 
 console.log('\n— Kartu dinamis untuk produk yang ditambahkan admin —');
 {
+  /*
+   * Tujuan kini berbentuk SATU SEGMEN `/api?__path=/api/share/produk/:slug`.
+   * Vercel mencocokkan rewrite berdasarkan path tujuan, dan `api/[...route].js`
+   * dikompilasi menjadi satu segmen — tujuan multi-segmen menghasilkan 404
+   * (terbukti di produksi: kartu share produk dinamis tidak pernah muncul).
+   */
   const penangkap = (vercel.rewrites || []).find(
-    (r) => String(r.destination || '').startsWith('/api/share/produk') && Array.isArray(r.has)
+    (r) =>
+      String(r.destination || '').includes('/api/share/produk') && Array.isArray(r.has)
   );
   benar('ada aturan cadangan /produk/:slug → /api/share/produk', Boolean(penangkap));
   benar(
@@ -117,17 +124,19 @@ console.log('\n— Kartu dinamis untuk produk yang ditambahkan admin —');
   );
 
   /*
-   * Urutan penting: Vercel mengevaluasi rewrite dari atas ke bawah. Aturan
-   * statis (destination /og/*.html) harus lebih dulu agar produk katalog tetap
-   * dilayani berkas (nol invocation), dan penangkap dinamis setelahnya.
+   * URUTAN & CAKUPAN.
+   *
+   * Produk TIDAK lagi punya aturan statis per-slug: semuanya lewat satu
+   * penangkap dinamis. Aturan statis per-produk adalah sumber gambar basi
+   * (dibuat saat build) sekaligus penyebab tabrakan rewrite.
    */
-  const idx = (pred) => vercel.rewrites.findIndex(pred);
-  const idxStatis = idx((r) => String(r.destination || '').startsWith('/og/'));
-  const idxDinamis = idx((r) => String(r.destination || '').startsWith('/api/share/produk'));
+  const aturanProdukStatis = vercel.rewrites.filter(
+    (r) => String(r.source).startsWith('/produk/') && r.source !== '/produk/:slug'
+  );
+  check('tidak ada aturan statis per-produk', aturanProdukStatis.map((r) => r.source), []);
   benar(
-    'aturan statis dievaluasi sebelum cadangan dinamis',
-    idxStatis >= 0 && idxDinamis > idxStatis,
-    `statis=${idxStatis}, dinamis=${idxDinamis}`
+    'penangkap dinamis ada dan memakai pola crawler yang sama',
+    Boolean(penangkap) && penangkap.has[0].value.re === pola
   );
 }
 
@@ -144,7 +153,7 @@ console.log('\n— Konsistensi dengan generator —');
    * diuji terpisah di scripts/test-share-dynamic.mjs.
    */
   const hilang = aturanCrawler.filter((r) => {
-    if (String(r.destination || '').startsWith('/api/')) return false;
+    if (String(r.destination || '').startsWith('/api')) return false;
     const f = path.join(ROOT, 'public', r.destination.replace(/^\//, ''));
     return !fs.existsSync(f);
   });
