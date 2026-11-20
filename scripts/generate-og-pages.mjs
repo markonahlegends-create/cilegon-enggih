@@ -254,6 +254,27 @@ const writeVercelRewrites = (routes) => {
    * Ini juga menghapus 22 aturan rewrite `source` literal yang bertabrakan
    * dengan penangkap `:slug`.
    */
+  /*
+   * PENTING — BENTUK `destination`.
+   *
+   * Vercel mencocokkan rewrite berdasarkan PATH TUJUAN. `api/[...route].js`
+   * di luar Next.js dikompilasi menjadi satu segmen dinamis, sehingga tujuan
+   * multi-segmen seperti `/og/katalog.html` atau `/api/share/produk/:slug`
+   * TIDAK cocok dengan fungsi/berkas mana pun dan berakhir 404.
+   *
+   * Karena itu path asli dikirim lewat query `__path` ke tujuan satu segmen
+   * `/api`. Fungsi `api/[...route].js` memulihkannya sebelum routing.
+   * Terbukti dari produksi: `/api/share/produk/<slug>` langsung = 200,
+   * tetapi rewrite ke path yang sama = 404.
+   */
+  const keApi = (path) => `/api?__path=${path}`;
+
+  /*
+   * Halaman NON-produk tetap memakai berkas statis sebagai tujuan.
+   * Terbukti dari produksi: rewrite ke `/og/<nama>.html` dibalas 200, jadi
+   * bentuk ini aman. Yang GAGAL adalah tujuan multi-segmen di bawah `/api/`
+   * (lihat catatan `keApi` di bawah).
+   */
   const shareRules = routes
     .filter(({ route }) => !route.startsWith('/produk/'))
     .map(({ route, dest }) => ({
@@ -289,7 +310,7 @@ const writeVercelRewrites = (routes) => {
   const penangkapProduk = {
     source: '/produk/:slug',
     has: crawlerHas,
-    destination: '/api/share/produk/:slug'
+    destination: keApi('/api/share/produk/:slug')
   };
 
   /*
@@ -305,7 +326,7 @@ const writeVercelRewrites = (routes) => {
    */
   const penangkapBi = {
     source: '/bi/:slug',
-    destination: '/api/og-image/:slug'
+    destination: keApi('/api/og-image/:slug')
   };
 
   cfg.rewrites = [...api, ...shareRules, penangkapProduk, penangkapBi, ...spa];

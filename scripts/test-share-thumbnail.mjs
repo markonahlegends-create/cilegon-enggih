@@ -213,14 +213,14 @@ const rewrites = vercel.rewrites || [];
 benar('ada rewrite /api/* (fungsi)', rewrites.some((r) => String(r.source) === '/api/(.*)'));
 benar(
   'ada cadangan /bi/:slug → endpoint dinamis (produk baru)',
-  rewrites.some((r) => r.source === '/bi/:slug' && r.destination === '/api/og-image/:slug'),
+  rewrites.some((r) => r.source === '/bi/:slug' && r.destination === '/api?__path=/api/og-image/:slug'),
   'tidak ada'
 );
 const cadangan = rewrites.find((r) => r.source === '/produk/:slug');
 benar('cadangan crawler pakai pola :slug (bukan character class)', Boolean(cadangan), 'tidak ada');
 benar(
   'cadangan → endpoint share dinamis',
-  cadangan?.destination === '/api/share/produk/:slug',
+  cadangan?.destination === '/api?__path=/api/share/produk/:slug',
   cadangan?.destination
 );
 for (const r of rewrites) {
@@ -228,6 +228,106 @@ for (const r of rewrites) {
     `source "${r.source}" tidak memakai character class [ ] (ditolak Vercel)`,
     !/\[[^\]]/.test(String(r.source))
   );
+}
+
+/* ------------------------------------------------------------------ */
+console.log('\n9. Rewrite Vercel lolos lewat __path (bug 404 produksi)');
+
+/*
+ * REGRESI PALING MAHAL.
+ *
+ * Diukur dari produksi: `/api/share/produk/<slug>` LANGSUNG = 200, tetapi
+ * rewrite `/produk/:slug -> /api/share/produk/:slug` = 404. Penyebabnya:
+ * Vercel mencocokkan rewrite berdasarkan PATH TUJUAN, dan `api/[...route].js`
+ * di luar Next.js dikompilasi menjadi SATU segmen (`^/api/([^/]+)$`).
+ * Tujuan multi-segmen karena itu tidak cocok dengan fungsi mana pun dan
+ * Vercel membalas 404-nya sendiri.
+ *
+ * Perbaikan: semua tujuan dinamis memakai bentuk satu segmen
+ * `/api?__path=<path asli>`, dan handler memulihkan path asli dari `__path`.
+ */
+{
+  const rewritesDinamis = (vercel.rewrites || []).filter((r) =>
+    String(r.destination).startsWith('/api?__path=')
+  );
+  benar('ada rewrite dinamis berbentuk /api?__path=', rewritesDinamis.length > 0, 'tidak ada');
+
+  for (const r of rewritesDinamis) {
+    const tujuan = String(r.destination);
+    benar(
+      `${r.source} → tujuan satu segmen (cocok dengan api/[...route])`,
+      /^\/api\?__path=\/api\/[^?]+$/.test(tujuan),
+      tujuan
+    );
+  }
+
+  /* Tujuan multi-segmen di bawah /api/ TIDAK boleh dipakai lagi. */
+  const tujuanTerlarang = (vercel.rewrites || []).filter(
+    (r) => String(r.destination).startsWith('/api/') && !String(r.destination).startsWith('/api/[...route]')
+  );
+  benar(
+    'tidak ada rewrite ke path multi-segmen /api/ (pasti 404)',
+    tujuanTerlarang.length === 0,
+    tujuanTerlarang.map((r) => `${r.source}→${r.destination}`).join(', ')
+  );
+
+  /* Handler harus benar-benar memulihkan __path. */
+  const srcHandler = fs.readFileSync(path.join(ROOT, 'api', '[...route].js'), 'utf8');
+  benar('handler membaca __path', srcHandler.includes('__path'), 'tidak ditemukan');
+  benar('handler menolak path di luar /api/', srcHandler.includes("startsWith('/api/')"), 'tidak ada penjagaan');
+
+  /* Uji langsung: __path harus menghasilkan kartu produk yang benar. */
+  const { default: handler } = await import('../api/[...route].js');
+  const panggil = async (query) => {
+    const headers = {};
+    let status = 200;
+    let body = null;
+    const res = {
+      setHeader: (k, v) => {
+        headers[k.toLowerCase()] = v;
+      },
+      getHeader: (k) => headers[k.toLowerCase()],
+      status(c) {
+        status = c;
+        return this;
+      },
+      json(b) {
+        body = b;
+        return this;
+      },
+      send(b) {
+        body = b;
+        return this;
+      },
+      end() {
+        return this;
+      }
+    };
+    await handler(
+      { method: 'GET', url: '/api', query, body: undefined, headers: { host: 'x' } },
+      res
+    );
+    return { status, body, headers };
+  };
+
+  const hasilShare = await panggil({ __path: '/api/share/produk/tumbler-bpa-500ml' });
+  check('__path → kartu share 200', hasilShare.status, 200);
+  benar(
+    '__path → HTML kartu dengan og:image /bi/',
+    String(hasilShare.body).includes('og:image" content="https://cilegon-enggih.vercel.app/bi/tumbler-bpa-500ml.jpg"'),
+    'og:image tidak sesuai'
+  );
+
+  const hasilGambar = await panggil({ __path: '/api/og-image/tumbler-bpa-500ml.jpg' });
+  check('__path → thumbnail 200', hasilGambar.status, 200);
+  check('__path → thumbnail bertipe JPEG', hasilGambar.headers['content-type'], 'image/jpeg');
+  benar('__path → thumbnail berupa Buffer', Buffer.isBuffer(hasilGambar.body), 'bukan Buffer');
+
+  /* Penjagaan keamanan: __path tidak boleh keluar dari /api/. */
+  for (const jahat of ['/etc/passwd', '/api/../secret', '//evil/path']) {
+    const r = await panggil({ __path: jahat });
+    benar(`__path "${jahat}" ditolak`, r.status === 404 || r.status === 400, `status ${r.status}`);
+  }
 }
 
 /* ------------------------------------------------------------------ */
