@@ -50,6 +50,32 @@ export const escapeHtml = (value) =>
     .replace(/"/g, '&quot;');
 
 /**
+ * URL gambar lewat PROXY NORMALISASI.
+ *
+ * KENAPA PERLU
+ * Foto produk asli bentuknya bermacam-macam: 1086x1448 (portrait),
+ * 1920x1280, 1000x667, bahkan > 400 KB. WhatsApp dan Facebook sangat rewel
+ * soal gambar pratinjau — berkas portrait ekstrem, dimensi yang tidak sama
+ * dengan yang dideklarasikan di `og:image:width/height`, atau berkas gemuk
+ * sering dibuang tanpa pesan error, sehingga tautan tampil tanpa thumbnail.
+ *
+ * Endpoint `/api/og-image` merapikan semuanya ke satu bentuk yang sudah
+ * terbukti diterima crawler: JPEG sRGB 1200x630 (rasio 1,91:1), di bawah
+ * ~300 KB, dengan `Content-Length` yang pasti.
+ *
+ * Sumber gambar SELALU foto utama produk (`product.image`); kartu templat
+ * hanya dipakai bila produk benar-benar tidak punya foto.
+ */
+export const ogImageUrl = (base, product) => {
+  const slug = String(product?.slug || '').trim();
+  if (!slug) return '';
+  return `${base}/api/og-image/${encodeURIComponent(slug)}.jpg`;
+};
+
+/** Kartu toko bawaan — dipakai halaman non-produk dan sebagai cadangan terakhir. */
+export const TOKO_IMAGE = '/og/toko-cilegon-enggih.jpg';
+
+/**
  * Susun metadata kartu untuk satu produk.
  *
  * @param {object} product  dokumen produk dari database
@@ -81,31 +107,46 @@ export const metaProduk = (product, base, pickImage = null) => {
   const deskripsi = `${deskripsiDasar}.${rentang ? ` ${rentang}.` : ''}`;
 
   /*
-   * Gambar kartu.
+   * GAMBAR KARTU — SUMBERNYA FOTO UTAMA PRODUK.
    *
-   * Kartu OG 1200x630 (`/og/<slug>.jpg`) hanya dibuat saat build untuk produk
-   * katalog. Produk baru dari admin belum punya kartu, jadi dipakai foto
-   * produknya sendiri — asalkan ukurannya wajar. `pickImage` di bawah
-   * memutuskan berdasarkan informasi yang diberikan pemanggil; bila tidak ada
-   * yang layak, jatuh ke kartu toko supaya pratinjau tidak kosong.
+   * Riwayat (jangan diulang): versi sebelumnya mendahulukan kartu templat
+   * `/og/<slug>.jpg`, sehingga produk lama yang kartunya sudah usang tetap
+   * menampilkan gambar lama, dan produk baru (tanpa kartu) memakai foto
+   * mentah yang dimensinya tidak cocok dengan `og:image:width/height`.
+   * Keduanya bikin crawler membuang pratinjau tanpa pesan error.
+   *
+   * Sekarang: foto utama → `/api/og-image/<slug>.jpg` (dinormalisasi
+   * 1200x630). `pickImage` hanya menentukan apakah endpoint itu bisa
+   * melayani produk ini (mis. foto belum ada).
    */
   const kartu = `${base}/og/${slug}.jpg`;
   const foto = String(product.image || '').trim();
   const fotoAbsolut = foto.startsWith('http') ? foto : foto ? `${base}${foto}` : '';
-  const toko = `${base}/og/toko-cilegon-enggih.jpg`;
+  const toko = `${base}${TOKO_IMAGE}`;
+  const normal = slug ? ogImageUrl(base, product) : '';
 
   /*
-   * `pickImage` boleh diisi pemanggil yang sudah memeriksa ketersediaan berkas.
+   * `pickImage` boleh diisi pemanggil yang sudah memeriksa ketersediaan foto.
    * Boleh mengembalikan Promise — hasilnya diselesaikan di bawah.
    */
   const pilihanGambar =
-    typeof pickImage === 'function' ? pickImage({ kartu, foto: fotoAbsolut, toko }) : kartu;
+    typeof pickImage === 'function'
+      ? pickImage({ kartu, foto: fotoAbsolut, toko, normal, slug, product })
+      : normal || fotoAbsolut || toko;
 
   const hasil = {
     slug,
     title: judul.length > 70 ? `${nama.slice(0, 55)}… | Cilegon Enggih` : judul,
     description: deskripsi,
     image: pilihanGambar,
+    /*
+     * Dimensi WAJIB cocok dengan berkas yang benar-benar dikirim. Endpoint
+     * normalisasi selalu menghasilkan 1200x630; bila yang dipakai foto mentah
+     * atau kartu toko, dimensinya tidak diketahui dengan pasti sehingga
+     * dibiarkan kosong (lebih aman daripada salah).
+     */
+    imageWidth: 0,
+    imageHeight: 0,
     imageFallback: fotoAbsolut || toko,
     url: `${base}/produk/${slug}`,
     priceRange: rentang,
@@ -114,9 +155,31 @@ export const metaProduk = (product, base, pickImage = null) => {
 
   // pickImage async → kembalikan Promise dengan objek yang sudah final.
   if (pilihanGambar && typeof pilihanGambar.then === 'function') {
-    return pilihanGambar.then((gambar) => ({ ...hasil, image: gambar }));
+    /*
+     * `image` WAJIB ditimpa dengan hasil Promise-nya. Tanpa `image: gambar`,
+     * objek hasil masih menyimpan Promise di bidang `image`, dan HTML kartu
+     * mencetaknya sebagai "[object Promise]" — crawler tidak menemukan gambar.
+     */
+    return pilihanGambar.then((gambar) => ({
+      ...hasil,
+      image: gambar,
+      ...ukuranGambar(gambar, base, normal)
+    }));
   }
-  return hasil;
+  return { ...hasil, ...ukuranGambar(pilihanGambar, base, normal) };
+};
+
+/**
+ * Tentukan dimensi yang boleh dideklarasikan untuk sebuah URL gambar.
+ * Hanya endpoint normalisasi yang dimensinya DIJAMIN 1200x630.
+ */
+const ukuranGambar = (url, base, normal) => {
+  if (url && normal && url === normal) return { imageWidth: 1200, imageHeight: 630, imageType: 'image/jpeg' };
+  if (url && String(url).startsWith(base) && String(url).includes('/og/')) {
+    // Kartu templat yang di-commit ke repo memang 1200x630.
+    return { imageWidth: 1200, imageHeight: 630, imageType: 'image/jpeg' };
+  }
+  return { imageWidth: 0, imageHeight: 0, imageType: '' };
 };
 
 /**
@@ -125,7 +188,23 @@ export const metaProduk = (product, base, pickImage = null) => {
  * Isinya sengaja ringan: hanya <head> + satu blok teks. Pembaca manusia yang
  * tidak sengaja mendarat di sini diarahkan ke halaman aplikasi.
  */
-export const buildShareHtml = (meta, { siteName = 'Cilegon Enggih Official Store' } = {}) => {
+/**
+ * Bangun HTML kartu share.
+ *
+ * Menerima `meta` hasil `metaProduk()`. Karena `metaProduk` bisa mengembalikan
+ * Promise (saat `pickImage` async), fungsi ini menerima keduanya dan
+ * menunggu hasilnya lebih dulu. Tanpa penanganan itu, `meta.image` yang masih
+ * Promise akan tercetak sebagai "[object Promise]" di `og:image` — crawler
+ * lalu tidak menemukan gambar sama sekali.
+ */
+export const buildShareHtml = (metaAtauPromise, opsi = {}) => {
+  if (metaAtauPromise && typeof metaAtauPromise.then === 'function') {
+    return metaAtauPromise.then((meta) => renderShareHtml(meta, opsi));
+  }
+  return renderShareHtml(metaAtauPromise, opsi);
+};
+
+const renderShareHtml = (meta, { siteName = 'Cilegon Enggih Official Store' } = {}) => {
   const t = escapeHtml(meta.title);
   const d = escapeHtml(meta.description);
   const img = escapeHtml(meta.image);
@@ -155,10 +234,14 @@ export const buildShareHtml = (meta, { siteName = 'Cilegon Enggih Official Store
     <meta property="og:url" content="${url}" />
     <meta property="og:image" content="${img}" />
     <meta property="og:image:secure_url" content="${img}" />
-    <meta property="og:image:type" content="image/jpeg" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="${t}" />
+${
+  meta.imageType
+    ? `    <meta property="og:image:type" content="${escapeHtml(meta.imageType)}" />
+    <meta property="og:image:width" content="${meta.imageWidth}" />
+    <meta property="og:image:height" content="${meta.imageHeight}" />
+`
+    : ''
+}    <meta property="og:image:alt" content="${t}" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="${t}" />

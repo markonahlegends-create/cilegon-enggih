@@ -52,5 +52,14 @@ export default async function handler(req, res) {
     res.status(result.status).send(result.body);
     return;
   }
+  /*
+   * Respons BINER (thumbnail `/api/og-image/<slug>.jpg`). Tanpa cabang ini
+   * Buffer di-`json()` menjadi `{"type":"Buffer","data":[...]}` sehingga
+   * crawler menerima teks, bukan JPEG, dan thumbnail tidak muncul.
+   */
+  if (Buffer.isBuffer(result.body)) {
+    res.status(result.status).send(result.body);
+    return;
+  }
   res.status(result.status).json(result.body);
 }

@@ -82,6 +82,15 @@ export const createApp = () => {
     if (typeof result.body === 'string' && ctype && !ctype.includes('json')) {
       return res.status(result.status).send(result.body);
     }
+    /*
+     * Respons BINER (mis. thumbnail `/api/og-image/<slug>.jpg`).
+     * Tanpa cabang ini Buffer akan di-`json()` menjadi objek
+     * `{"type":"Buffer","data":[...]}` dan crawler menerima teks, bukan JPEG —
+     * thumbnail tidak muncul walau berkasnya benar.
+     */
+    if (Buffer.isBuffer(result.body)) {
+      return res.status(result.status).send(result.body);
+    }
     res.status(result.status).json(result.body);
   });
 

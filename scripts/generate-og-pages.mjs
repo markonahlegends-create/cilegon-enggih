@@ -297,13 +297,48 @@ const writeVercelRewrites = (routes) => {
   cfg.headers = [
     ...cfg.headers.filter((h) => !String(h.source).startsWith('/og/')),
     {
+      /*
+       * JANGAN `immutable` setahun di sini.
+       *
+       * Halaman share adalah HTML yang isinya bisa berubah setiap kali admin
+       * mengganti nama/harga/foto produk. Dengan `immutable, max-age=31536000`
+       * crawler menyimpan versi lama selama setahun dan perbaikan kartu tidak
+       * pernah terlihat — persis keluhan "sudah diperbaiki tapi thumbnail
+       * masih tidak muncul". Lima menit cukup untuk menahan beban, dan
+       * `must-revalidate` memastikan perubahan langsung terpakai.
+       *
+       * (Penyaringan .html vs .jpg TIDAK bisa dilakukan di sini: Vercel
+       * menolak `source` berpola ekstensi seperti `/og/(.*)\.jpg`.
+       * Karena itu satu nilai aman dipakai untuk keduanya.)
+       */
       source: '/og/(.*)',
-      headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }]
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=300, must-revalidate' }
+      ]
     }
   ];
 
   fs.writeFileSync(VERCEL_JSON, `${JSON.stringify(cfg, null, 2)}\n`, 'utf8');
   console.log(`[og-pages] vercel.json: ${shareRules.length} aturan share untuk crawler`);
+};
+
+/**
+ * Gambar pratinjau untuk halaman PRODUK.
+ *
+ * KENAPA BUKAN KARTU `/og/<slug>.jpg`
+ * Kartu templat hanya memuat foto pada saat kartu itu dibuat. Bila admin
+ * mengganti foto produk, kartu lama tetap terpakai dan pembeli melihat gambar
+ * usang. Selain itu kartu tidak ada untuk produk yang ditambahkan setelah
+ * deploy. Karena itu halaman produk menunjuk ke thumbnail yang dibangun
+ * langsung dari FOTO UTAMA produk di database:
+ *   /api/og-image/<slug>.jpg  → JPEG 1200x630, < 300 KB, selalu ikut database.
+ * Kartu templat hanya dipertahankan sebagai cadangan bila produk tidak punya
+ * foto (mis. halaman non-produk memakai kartu toko).
+ */
+const gambarProduk = (pageMeta, site) => {
+  const slug = pageMeta?.slug;
+  if (!slug) return null;
+  return `${site.baseUrl}/api/og-image/${encodeURIComponent(slug)}.jpg`;
 };
 
 const main = () => {
@@ -321,7 +356,15 @@ const main = () => {
     // "/" tidak butuh file khusus: index.html sudah berisi OG beranda.
     if (route === '/') continue;
     const slug = route.replace(/^\//, '').replace(/\//g, '--');
-    fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), buildHtml(pageMeta, meta), 'utf8');
+    /*
+     * Produk → thumbnail dari foto utama (dinamis, ikut database).
+     * Halaman lain (katalog, tentang-kami, ...) tetap memakai kartu toko.
+     */
+    const gambarKhusus = route.startsWith('/produk/') ? gambarProduk(pageMeta, meta) : null;
+    const isiHalaman = gambarKhusus
+      ? { ...pageMeta, image: gambarKhusus, imageType: 'image/jpeg', imageWidth: 1200, imageHeight: 630 }
+      : pageMeta;
+    fs.writeFileSync(path.join(OUT_DIR, `${slug}.html`), buildHtml(isiHalaman, meta), 'utf8');
     written.push(`${slug}.html`);
 
     // Catatan: tidak perlu aturan untuk "/produk/x/". Dengan trailingSlash
