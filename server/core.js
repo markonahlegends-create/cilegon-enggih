@@ -56,6 +56,7 @@ import {
 import { sendDailyDigest } from './digest.js';
 import { summarizeSales, salesOrders } from './reports.js';
 import { markOrderPaid } from './payments.js';
+import { metaProduk, buildShareHtml } from './og-share.js';
 import {
   scoreVendorForDropship,
   computeMargin,
@@ -95,6 +96,7 @@ import {
   templateShipped,
   templateB2B,
   templateTest,
+  telegramApiBase,
   esc
 } from './notify.js';
 import {
@@ -1694,6 +1696,72 @@ route('POST', '/api/telegram/webhook', async ({ headers, body }) => {
 });
 
 /**
+ * KARTU SHARE DINAMIS — untuk produk yang ditambahkan admin.
+ *
+ * KENAPA ADA
+ * Halaman share statis (`public/og/*.html`) dibuat saat build dari katalog.
+ * Produk yang ditambahkan setelah deploy tidak punya halaman itu, sehingga
+ * crawler WhatsApp/Facebook menerima index.html dan menampilkan kartu beranda.
+ * Endpoint ini membangun kartu dari database, jadi produk baru langsung punya
+ * pratinjau yang benar.
+ *
+ * `vercel.json` hanya mengarahkan crawler ke sini untuk produk yang TIDAK
+ * punya berkas statis — produk lama tetap dilayani file statis (nol invocation).
+ */
+route('GET', '/api/share/produk/:slug', async ({ params }) => {
+  const slug = String(params.slug || '').trim().toLowerCase();
+  if (!slug) return bad('Slug produk wajib diisi.', 400);
+
+  const products = await readProducts();
+  const product = products.find(
+    (p) => String(p.slug || '').toLowerCase() === slug && p.active !== false
+  );
+  if (!product) return bad('Produk tidak ditemukan.', 404);
+
+  const base = String(process.env.PUBLIC_BASE_URL || 'https://cilegon-enggih.vercel.app').replace(
+    /\/+$/,
+    ''
+  );
+  const settings = await readSettings().catch(() => ({}));
+
+  /*
+   * Pilih gambar: kartu OG lebih dulu, lalu foto produk (bila ukurannya wajar),
+   * terakhir kartu toko. Fungsi ini sengaja TIDAK melakukan request ke internet
+   * — cukup memeriksa ketersediaan berkas lokal, karena kartu OG dibuat saat
+   * build dan ada di repo.
+   */
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const pilihGambar = async ({ kartu, foto, toko }) => {
+    const adaKartu = await fs
+      .stat(path.join(process.cwd(), 'public', 'og', `${slug}.jpg`))
+      .then((st) => st.size > 0)
+      .catch(() => false);
+    if (adaKartu) return kartu;
+    /*
+     * Foto produk dipakai apa adanya. WhatsApp membuang gambar > ~300 KB atau
+     * yang tidak bisa diakses; kalau itu terjadi, yang tampil adalah kartu toko
+     * bawaan aplikasi — tetap lebih baik daripada tidak ada pratinjau.
+     */
+    return foto || toko;
+  };
+
+  const html = buildShareHtml(await metaProduk(product, base, pilihGambar), {
+    siteName: settings.storeName ? `${settings.storeName} Official Store` : undefined
+  });
+
+  return ok(html, 200, {
+    'Content-Type': 'text/html; charset=utf-8',
+    /*
+     * Jangan di-cache lama: produk bisa berganti foto/harga, dan pratinjau
+     * yang terkunci membuat admin mengira perbaikannya tidak berhasil.
+     */
+    'Cache-Control': 'public, max-age=0, must-revalidate',
+    'X-Robots-Tag': 'noindex, follow'
+  });
+});
+
+/**
  * Lacak pesanan.
  * Keamanan: WAJIB kode (nomor order / resi / invoice) + 4 digit terakhir WhatsApp
  * pemesan. Tanpa itu, siapa pun bisa melihat pesanan orang lain.
@@ -2694,8 +2762,19 @@ const ALLOWED_EMBED_HOSTS = [
 const MAX_OPTION_GROUPS = 3;
 const MAX_OPTION_VALUES = 30;
 
-const cleanOptionGroups = (raw, basePrice = 0) => {
+const cleanOptionGroups = (raw, basePrice = 0, catatan = null) => {
   if (!Array.isArray(raw)) return [];
+  /*
+   * Batas selisih harga per nilai pilihan.
+   *
+   * KENAPA ADA BATAS: mencegah salah ketik (mis. 1900000 untuk +19.000) yang
+   * membuat harga produk melonjak tanpa terlihat.
+   *
+   * KENAPA DICATAT: dulu nilai di atas batas dipotong DIAM-DIAM. Admin melihat
+   * 19.000 di form tetapi yang tersimpan angka lain, tanpa penjelasan apa pun —
+   * persis keluhan "input 19.000 tapi tersimpan 8.000". Sekarang setiap
+   * pemotongan dikembalikan sebagai peringatan yang bisa ditampilkan.
+   */
   const maxDelta = Math.max(1000, Math.round(basePrice * 0.5));
 
   return raw
@@ -2714,8 +2793,15 @@ const cleanOptionGroups = (raw, basePrice = 0) => {
           if (seen.has(id)) return null;
           seen.add(id);
 
-          const deltaRaw = Number(v && v.priceDelta) || 0;
-          const priceDelta = Math.max(-maxDelta, Math.min(maxDelta, Math.round(deltaRaw)));
+          const deltaRaw = Math.round(Number(v && v.priceDelta) || 0);
+          const priceDelta = Math.max(-maxDelta, Math.min(maxDelta, deltaRaw));
+          if (catatan && priceDelta !== deltaRaw) {
+            catatan.push(
+              `Selisih harga "${label}" pada ${name} di luar batas (maks ${
+                maxDelta.toLocaleString('id-ID')
+              } dari harga dasar), disimpan ${priceDelta.toLocaleString('id-ID')}.`
+            );
+          }
 
           const hex = String((v && v.colorHex) || '').trim();
           const colorHex = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex) ? hex : '';
@@ -2955,10 +3041,14 @@ const normalizeProduct = async (payload, existing) => {
    * benar diisi; produk yang belum mengisinya tetap memakai `variants[]` lama.
    * Kombinasi dibersihkan SETELAH grup, karena referensinya harus valid.
    */
+  const catatanSelisih = [];
   const optionGroups = cleanOptionGroups(
     src.optionGroups ?? base.optionGroups,
-    Number(src.price ?? base.price) || 0
+    Number(src.price ?? base.price) || 0,
+    catatanSelisih
   );
+  /* Dikembalikan bersama produk agar dashboard bisa menampilkan peringatan. */
+  const peringatanSelisih = catatanSelisih;
   const combinations = cleanCombinations(
     src.combinations ?? base.combinations,
     optionGroups
@@ -2980,6 +3070,7 @@ const normalizeProduct = async (payload, existing) => {
 
   return {
     errors: [],
+    warnings: peringatanSelisih,
     product: {
       ...base,
       slug,
@@ -3042,7 +3133,7 @@ const normalizeProduct = async (payload, existing) => {
 
 route('POST', '/api/admin/products', async ({ headers, body }) => {
   if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
-  const { errors, product } = await normalizeProduct(body || {}, null);
+  const { errors, product, warnings } = await normalizeProduct(body || {}, null);
   if (errors.length) return bad(errors[0], 400, { errors });
   const created = {
     ...product,
@@ -3058,7 +3149,7 @@ route('POST', '/api/admin/products', async ({ headers, body }) => {
     target: created.id,
     detail: { nama: created.name, harga: created.price, hpp: created.costPrice ?? null }
   });
-  return ok({ product: created, products: await readProducts() }, 201);
+  return ok({ product: created, warnings, products: await readProducts() }, 201);
 });
 
 route('PUT', '/api/admin/products/:id', async ({ headers, params, body }) => {
@@ -3066,7 +3157,7 @@ route('PUT', '/api/admin/products/:id', async ({ headers, params, body }) => {
   const existing = await store.get('products', params.id);
   if (!existing) return bad('Produk tidak ditemukan.', 404);
 
-  const { errors, product } = await normalizeProduct(body || {}, existing);
+  const { errors, product, warnings } = await normalizeProduct(body || {}, existing);
   if (errors.length) return bad(errors[0], 400, { errors });
 
   const updated = { ...product, id: existing.id, updatedAt: nowIso() };
@@ -3083,7 +3174,7 @@ route('PUT', '/api/admin/products/:id', async ({ headers, params, body }) => {
       stok: { dari: existing.stock, ke: updated.stock }
     }
   });
-  return ok({ product: updated, products: await readProducts() });
+  return ok({ product: updated, warnings, products: await readProducts() });
 });
 
 /** Duplikat produk (mempercepat pembuatan varian produk serupa). */
@@ -3292,7 +3383,7 @@ route('POST', '/api/admin/telegram/webhook', async ({ headers, body }) => {
   const url = `${base}/api/telegram/webhook`;
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/setWebhook`, {
+    const res = await fetch(`${telegramApiBase()}/bot${cfg.botToken}/setWebhook`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -3325,6 +3416,7 @@ route('POST', '/api/admin/telegram/webhook', async ({ headers, body }) => {
         'Webhook terdaftar. Tombol "Verifikasi LUNAS" di Telegram sekarang berfungsi. Uji dengan mengirim bukti transfer baru.'
     });
   } catch (err) {
+    await catatStatusNotifikasi({ sent: false, reason: err.message }, 'webhook');
     return bad(`Gagal menghubungi Telegram: ${err.message}`, 502);
   }
 });
@@ -3366,7 +3458,7 @@ route('GET', '/api/admin/telegram/diagnosa', async ({ headers }) => {
 
   const panggil = async (metode) => {
     try {
-      const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/${metode}`);
+      const res = await fetch(`${telegramApiBase()}/bot${cfg.botToken}/${metode}`);
       const data = await res.json().catch(() => ({}));
       return { ok: res.ok && data.ok !== false, data, description: data.description || '' };
     } catch (err) {
@@ -3417,6 +3509,21 @@ route('GET', '/api/admin/telegram/diagnosa', async ({ headers }) => {
   });
 
   const health = settings.telegramHealth || {};
+  const webhookTerakhir = health.webhook;
+  if (webhookTerakhir) {
+    langkah.push({
+      nama: 'Pendaftaran webhook terakhir',
+      ok: Boolean(webhookTerakhir.sent),
+      pesan: webhookTerakhir.sent
+        ? `Berhasil${webhookTerakhir.at ? ` pada ${webhookTerakhir.at}` : ''} - ${String(
+            webhookTerakhir.reason || ''
+          ).replace(/^webhook:\s*/, '')}`
+        : `GAGAL${webhookTerakhir.at ? ` pada ${webhookTerakhir.at}` : ''}: ${
+            webhookTerakhir.reason || 'tanpa keterangan'
+          }`
+    });
+  }
+
   const terakhir = health['bukti-transfer'];
   if (terakhir) {
     langkah.push({
@@ -3436,6 +3543,8 @@ route('GET', '/api/admin/telegram/diagnosa', async ({ headers }) => {
     'Kunci webhook tersedia': 'Tambahkan env TELEGRAM_WEBHOOK_SECRET di Vercel lalu redeploy.',
     'Webhook terdaftar (tombol verifikasi)':
       'Klik "Aktifkan Verifikasi Sekali-Klik" di kartu Notifikasi Telegram.',
+    'Pendaftaran webhook terakhir':
+      'Pendaftaran webhook gagal. Baca alasannya di atas, lalu klik ulang tombolnya.',
     'Pengiriman terakhir (bukti transfer)':
       'Baca alasan gagal di atas, perbaiki, lalu uji dengan Tes Koneksi.'
   };
@@ -3457,7 +3566,7 @@ route('GET', '/api/admin/telegram/webhook', async ({ headers }) => {
   if (!cfg.botToken) return ok({ configured: false, reason: 'bot-token-kosong' });
 
   try {
-    const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/getWebhookInfo`);
+    const res = await fetch(`${telegramApiBase()}/bot${cfg.botToken}/getWebhookInfo`);
     const data = await res.json().catch(() => ({}));
     const info = data.result || {};
     return ok({

@@ -19,7 +19,9 @@
  * keperluan pengujian otomatis (scripts/test-notify-e2e.mjs). Di produksi
  * nilainya selalu https://api.telegram.org.
  */
-const TG_API = String(process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
+/** Dasar URL Bot API. Dibaca ulang tiap panggilan agar bisa diuji. */
+export const telegramApiBase = () =>
+  String(process.env.TELEGRAM_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
 
 export const esc = (input) =>
   String(input ?? '')
@@ -94,7 +96,7 @@ export const sendTelegramMessage = async (settings, html, options = {}) => {
   }
 
   try {
-    const res = await fetch(`${TG_API}/bot${cfg.botToken}/sendMessage`, {
+    const res = await fetch(`${telegramApiBase()}/bot${cfg.botToken}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -128,7 +130,7 @@ export const sendTelegramMessage = async (settings, html, options = {}) => {
 export const answerCallbackQuery = async (botToken, callbackQueryId, text = '') => {
   if (!botToken || !callbackQueryId) return { ok: false };
   try {
-    const res = await fetch(`${TG_API}/bot${botToken}/answerCallbackQuery`, {
+    const res = await fetch(`${telegramApiBase()}/bot${botToken}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ callback_query_id: callbackQueryId, text, show_alert: false })
@@ -148,7 +150,7 @@ export const answerCallbackQuery = async (botToken, callbackQueryId, text = '') 
 export const editTelegramMessage = async (botToken, chatId, messageId, html) => {
   if (!botToken || !chatId || !messageId) return { ok: false };
   try {
-    const res = await fetch(`${TG_API}/bot${botToken}/editMessageText`, {
+    const res = await fetch(`${telegramApiBase()}/bot${botToken}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

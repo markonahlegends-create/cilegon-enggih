@@ -51,3 +51,5 @@ server/data/
 
 # Data sementara uji E2E notifikasi (dibuat & dihapus otomatis)
 .tmp-e2e-notify/
+.tmp-e2e-telegram/
+.tmp-e2e-share/
