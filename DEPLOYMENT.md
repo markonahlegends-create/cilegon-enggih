@@ -232,6 +232,8 @@ Lihat `.env.example`. Ringkasnya:
 | Kredensial di backup | `botToken`/`chatId` **tidak pernah** ikut dicadangkan | by design |
 | Audit log | 90 hari, tanpa kredensial | `pruneAudit(store, 90)` |
 | Bukti transfer | URL Supabase Storage (bukan base64 di order) | butuh Supabase aktif |
+| **Verifikasi lewat Telegram** | Tombol ✅ / 🚫 di notifikasi bukti transfer. 4 lapis pengaman: env `TELEGRAM_WEBHOOK_SECRET` wajib (fail-closed 503), header `x-telegram-bot-api-secret-token` harus cocok (401), hanya chat ID admin yang direspons, semua tindakan masuk audit | `TELEGRAM_WEBHOOK_SECRET`, `PUBLIC_BASE_URL` (opsional) |
+| **Satu pintu pelunasan** | Dashboard & Telegram sama-sama memanggil `markOrderPaid()` → `paidAt`, timeline, dan perpindahan status selalu konsisten; tekan dua kali tidak menggandakan apa pun | `server/payments.js` |
 
 > **Penting:** 2FA hanya bisa dinyalakan setelah `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID` (atau isian di Pengaturan) tersambung. Kalau pengiriman kode gagal, login **tidak** terkunci total — sistem lanjut dengan peringatan agar Anda tidak kehilangan akses; perbaiki bot lalu login ulang.
 
@@ -241,7 +243,7 @@ Lihat `.env.example`. Ringkasnya:
 
 1. **Pembeli** checkout tanpa akun → order dibuat dengan status `MENUNGGU_VERIFIKASI` + **kode unik 3 digit** (mis. `Rp 129.559`).
 2. Pembeli transfer ke rekening toko / scan QRIS, lalu unggah bukti (opsional) atau klik **Konfirmasi via WhatsApp**.
-3. **Admin** (`/admin` → Pesanan) memverifikasi pembayaran → `LUNAS`.
+3. **Admin** memverifikasi pembayaran → `LUNAS`. Bisa dari dua tempat: dashboard (`/admin` → Pesanan) atau tombol **✅ Verifikasi LUNAS** di notifikasi Telegram (lihat `GO-LIVE.md` §14). Pelunasan otomatis memindahkan pesanan `MENUNGGU_KONFIRMASI` → `DIPROSES`.
 4. Admin packing, serahkan ke kurir, lalu **input resi asli** → klik **Simpan Resi & Tandai Dikirim** (status otomatis `DIKIRIM`).
 5. Admin klik **Kabari Pembeli** → WhatsApp berisi nomor resi + link lacak.
 6. Pembeli melacak di `/lacak-pesanan` (bisa pakai Order ID, Resi, atau nomor WhatsApp) → tombol **Cek Resi** membuka situs kurir resmi.

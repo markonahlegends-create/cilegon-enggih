@@ -55,6 +55,7 @@ import {
 } from './session.js';
 import { sendDailyDigest } from './digest.js';
 import { summarizeSales, salesOrders } from './reports.js';
+import { markOrderPaid } from './payments.js';
 import {
   scoreVendorForDropship,
   computeMargin,
@@ -87,10 +88,14 @@ import {
   telegramConfig,
   templateNewOrder,
   templatePaymentProof,
+  paymentProofKeyboard,
+  answerCallbackQuery,
+  editTelegramMessage,
   templatePaid,
   templateShipped,
   templateB2B,
-  templateTest
+  templateTest,
+  esc
 } from './notify.js';
 import {
   STORE,
@@ -1478,10 +1483,170 @@ route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {
 
   const proofSettings = await readSettings();
   if (telegramConfig(proofSettings).notifyPaymentProof !== false) {
-    await notifySafe(proofSettings, templatePaymentProof(updated));
+    /*
+     * Tombol "✅ Verifikasi LUNAS" disertakan supaya admin bisa memverifikasi
+     * langsung dari Telegram, tanpa membuka dashboard — inilah yang memangkas
+     * penantian pembeli saat admin sedang di luar.
+     */
+    await notifySafe(proofSettings, templatePaymentProof(updated), {
+      replyMarkup: paymentProofKeyboard(updated)
+    });
   }
 
   return ok({ order: decorateOrder(updated) });
+});
+
+/* ---------------- Telegram: verifikasi sekali-klik ---------------- */
+
+/**
+ * WEBHOOK TELEGRAM — admin menekan tombol "✅ Verifikasi LUNAS" di Telegram.
+ *
+ * KENAPA ADA ENDPOINT PUBLIK
+ * Telegram memanggil URL ini sendiri, jadi tidak bisa memakai sesi admin.
+ * Keamanannya bertumpuk:
+ *   1. Header `X-Telegram-Bot-Api-Secret-Token` harus sama dengan secret yang
+ *      kita daftarkan ke Telegram (setWebhook). Tanpa secret, ditolak.
+ *   2. Tombol hanya memuat nomor pesanan — tidak ada nominal atau data pembeli
+ *      yang bisa dipalsukan dari luar.
+ *   3. Hanya chat ID admin yang diizinkan; chat lain diabaikan.
+ *   4. Setiap tindakan dicatat di audit.
+ *
+ * Bila TELEGRAM_WEBHOOK_SECRET belum diset, endpoint menolak semua permintaan
+ * (fail-closed) supaya tidak ada celah default terbuka.
+ */
+route('POST', '/api/telegram/webhook', async ({ headers, body }) => {
+  const expected = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+  if (!expected) return bad('Webhook Telegram belum dikonfigurasi.', 503);
+  const got = String(headers['x-telegram-bot-api-secret-token'] || '').trim();
+  if (got !== expected) return bad('Token webhook tidak sah.', 401);
+
+  const settings = await readSettings();
+  const cfg = telegramConfig(settings);
+  if (!cfg.botToken) return bad('Bot Telegram belum dikonfigurasi.', 503);
+
+  /* --- Ketukan tombol --- */
+  const cq = body?.callback_query;
+  if (cq) {
+    const fromChat = String(cq.message?.chat?.id ?? '');
+    if (fromChat !== String(cfg.chatId)) {
+      await answerCallbackQuery(cfg.botToken, cq.id, 'Chat ini tidak berwenang.');
+      return ok({ ignored: true, reason: 'chat-bukan-admin' });
+    }
+
+    const data = String(cq.data || '');
+    const sep = data.indexOf(':');
+    const aksi = sep > 0 ? data.slice(0, sep) : data;
+    const orderId = sep > 0 ? data.slice(sep + 1) : '';
+    if (!orderId || (aksi !== 'paid' && aksi !== 'void')) {
+      await answerCallbackQuery(cfg.botToken, cq.id, 'Perintah tidak dikenal.');
+      return ok({ ignored: true, reason: 'aksi-tidak-dikenal' });
+    }
+
+    const order = await store.get('orders', orderId);
+    if (!order) {
+      await answerCallbackQuery(cfg.botToken, cq.id, 'Pesanan tidak ditemukan.');
+      return ok({ ignored: true, reason: 'order-tidak-ada' });
+    }
+
+    const actor = `telegram:${cq.from?.username || cq.from?.id || 'admin'}`;
+
+    if (aksi === 'void') {
+      if (order.status === 'DIBATALKAN') {
+        await answerCallbackQuery(cfg.botToken, cq.id, 'Sudah dibatalkan sebelumnya.');
+        return ok({ changed: false });
+      }
+      const cancelled = {
+        ...order,
+        status: 'DIBATALKAN',
+        ...(order.paymentStatus !== 'LUNAS' ? { paymentStatus: 'DIBATALKAN' } : {}),
+        updatedAt: nowIso(),
+        timeline: [
+          ...(order.timeline || []),
+          {
+            time: wibStamp(),
+            status: `Pesanan dibatalkan via Telegram oleh ${actor}`,
+            location: 'Bot Telegram Admin'
+          }
+        ]
+      };
+      if (order.stockAppliedAt && !order.stockReleasedAt) {
+        try {
+          const movement = await applyStockMovement(store, order.items, { direction: -1 });
+          if (movement.changed) {
+            cancelled.stockReleasedAt = nowIso();
+            cancelled.timeline.push({
+              time: wibStamp(),
+              status: `Stok dikembalikan otomatis (${movement.changed} produk)`,
+              location: 'Sistem Cilegon Enggih'
+            });
+          }
+        } catch (err) {
+          console.error('[stock] gagal mengembalikan stok (telegram):', err.message);
+        }
+      }
+      await store.put('orders', cancelled);
+      await recordAudit(store, {
+        action: 'order.dibatalkan-via-telegram',
+        actor,
+        ip: 'telegram',
+        target: order.orderId,
+        detail: { dari: order.status, ke: 'DIBATALKAN' }
+      });
+      await answerCallbackQuery(cfg.botToken, cq.id, 'Pesanan dibatalkan.');
+      await editTelegramMessage(
+        cfg.botToken,
+        cq.message?.chat?.id,
+        cq.message?.message_id,
+        `${cq.message?.text || ''}\n\n🚫 <b>DIBATALKAN</b> ${esc(orderId)} oleh ${esc(actor)}`
+      );
+      return ok({ changed: true, status: 'DIBATALKAN' });
+    }
+
+    const result = await markOrderPaid(order, { via: 'telegram', actor });
+    if (!result.ok) {
+      await answerCallbackQuery(cfg.botToken, cq.id, result.reason || 'Gagal.');
+      return ok({ changed: false, reason: result.reason });
+    }
+    if (!result.changed) {
+      await answerCallbackQuery(cfg.botToken, cq.id, 'Pesanan sudah LUNAS.');
+      return ok({ changed: false });
+    }
+
+    await recordAudit(store, {
+      action: 'pembayaran.diverifikasi-via-telegram',
+      actor,
+      ip: 'telegram',
+      target: order.orderId,
+      detail: { total: order.totalAmount, status: result.order.status }
+    });
+
+    await answerCallbackQuery(cfg.botToken, cq.id, 'Pembayaran ditandai LUNAS.');
+    await editTelegramMessage(
+      cfg.botToken,
+      cq.message?.chat?.id,
+      cq.message?.message_id,
+      `${cq.message?.text || ''}\n\n✅ <b>LUNAS</b> diverifikasi oleh ${esc(actor)}`
+    );
+
+    if (cfg.notifyPaid !== false) {
+      await notifySafe(settings, templatePaid(result.order));
+    }
+    return ok({ changed: true, status: 'LUNAS' });
+  }
+
+  /* --- /start: jelaskan cara pakai --- */
+  const msg = body?.message;
+  if (msg && String(msg.text || '').startsWith('/start')) {
+    if (String(msg.chat?.id ?? '') === String(cfg.chatId)) {
+      await notifySafe(
+        settings,
+        '🤖 <b>Bot Cilegon Enggih aktif</b>\n\nSaat ada bukti transfer masuk, bot mengirim pesan berisi tombol <b>✅ Verifikasi LUNAS</b>. Tekan tombol itu — pembayaran langsung diverifikasi tanpa membuka dashboard.'
+      );
+    }
+    return ok({ welcomed: true });
+  }
+
+  return ok({ ignored: true });
 });
 
 /**
@@ -1525,6 +1690,17 @@ const publicTrackingView = (order) => ({
   uniqueCode: order.uniqueCode,
   totalAmount: order.totalAmount,
   paymentMethod: order.paymentMethod,
+  /*
+   * Bukti yang dipegang pembeli.
+   *
+   * Sebelumnya pembeli tidak mendapat konfirmasi apa pun setelah mengunggah
+   * bukti transfer — statusnya tetap sama persis, sehingga ia ragu apakah
+   * usahanya tercatat. Sekarang dikirim jam unggah dan jam verifikasi agar
+   * halaman lacak bisa menampilkan kepastian.
+   */
+  paymentProofAt: order.paymentProofAt || null,
+  paymentProofNote: order.paymentProofNote || '',
+  paidAt: order.paidAt || null,
   bankAccount: order.paymentStatus === 'LUNAS' ? undefined : order.bankAccount,
   isPreOrder: Boolean(order.isPreOrder),
   preOrderNote: order.preOrderNote,
@@ -1979,7 +2155,7 @@ route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
   ]);
   const report = buildInsights({ events: pruneOldEvents(events || [], 180), orders, products, days });
 
-  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csvEsc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const lines = [];
   lines.push('Laporan;Cilegon Enggih');
   lines.push(`Periode;${report.period.from} s/d ${report.period.to} (${report.period.days} hari)`);
@@ -1987,45 +2163,45 @@ route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
   lines.push('TRAFIK HARIAN');
   lines.push('Tanggal;Kunjungan;Pengunjung Unik;Pesanan;Pendapatan;Konversi %');
   report.traffic.daily.forEach((d) =>
-    lines.push([d.day, d.views, d.visitors, d.orders, d.revenue, d.conversion].map(esc).join(';'))
+    lines.push([d.day, d.views, d.visitors, d.orders, d.revenue, d.conversion].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('PRODUK');
   lines.push('Produk;Dilihat;Masuk Keranjang;Terjual;Pendapatan;Konversi %;Catatan');
   report.products.forEach((p) =>
-    lines.push([p.name, p.views, p.carts, p.sold, p.revenue, p.conversion ?? '', p.verdict].map(esc).join(';'))
+    lines.push([p.name, p.views, p.carts, p.sold, p.revenue, p.conversion ?? '', p.verdict].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('PROYEKSI STOK');
   lines.push('Produk;Stok;Terjual;Rata-rata/hari;Perkiraan Habis (hari)');
   report.stockForecast.forEach((p) =>
-    lines.push([p.name, p.stock, p.sold, p.perDay, p.daysLeft ?? ''].map(esc).join(';'))
+    lines.push([p.name, p.stock, p.sold, p.perDay, p.daysLeft ?? ''].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('LOKASI');
   lines.push('Zona;Pesanan;Pendapatan;Porsi %');
-  report.byZone.forEach((z) => lines.push([z.label, z.orders, z.revenue, z.share].map(esc).join(';')));
+  report.byZone.forEach((z) => lines.push([z.label, z.orders, z.revenue, z.share].map(csvEsc).join(';')));
   lines.push('');
   lines.push('SUMBER TRAFIK');
   lines.push('Sumber;Pengunjung;Kunjungan');
   report.bySource.forEach((s) =>
-    lines.push([s.label || s.source, s.visitors, s.views].map(esc).join(';'))
+    lines.push([s.label || s.source, s.visitors, s.views].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('PERANGKAT');
   lines.push('Perangkat;Pengunjung;Porsi %');
-  report.byDevice.forEach((d) => lines.push([d.label, d.visitors, d.share].map(esc).join(';')));
+  report.byDevice.forEach((d) => lines.push([d.label, d.visitors, d.share].map(csvEsc).join(';')));
   lines.push('');
   lines.push('HALAMAN TERATAS');
   lines.push('Halaman;Path;Kunjungan;Pengunjung');
-  report.topPaths.forEach((p) => lines.push([p.label, p.path, p.views, p.visitors].map(esc).join(';')));
+  report.topPaths.forEach((p) => lines.push([p.label, p.path, p.views, p.visitors].map(csvEsc).join(';')));
   lines.push('');
   lines.push('VARIAN PRODUK');
   lines.push('Produk;Varian;Dilihat;Masuk Keranjang;Terjual;Omzet');
   report.variants.forEach((v) =>
     lines.push(
       [v.productName || v.productId || '', v.label, v.views, v.carts, v.sold, v.revenue]
-        .map(esc)
+        .map(csvEsc)
         .join(';')
     )
   );
@@ -2033,13 +2209,13 @@ route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
   lines.push('LOKASI PENGUNJUNG (perkiraan kota, tanpa IP)');
   lines.push('Zona;Pengunjung;Porsi %');
   (report.byVisitorZone || []).forEach((z) =>
-    lines.push([z.label, z.visitors, z.share].map(esc).join(';'))
+    lines.push([z.label, z.visitors, z.share].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('JAM TERSIBUK (hari x jam, WIB)');
   lines.push('Hari;Jam;Kunjungan');
   (report.heatmap?.peakSlots || []).forEach((p) =>
-    lines.push([p.day, `${String(p.hour).padStart(2, '0')}:00`, p.views].map(esc).join(';'))
+    lines.push([p.day, `${String(p.hour).padStart(2, '0')}:00`, p.views].map(csvEsc).join(';'))
   );
   lines.push('');
   lines.push('PEMBANDING PERIODE SEBELUMNYA');
@@ -2047,11 +2223,11 @@ route('GET', '/api/admin/insights/export', async ({ headers, query }) => {
   const cmp = report.comparison || {};
   lines.push(
     ['Pengunjung', report.traffic.totalVisitors, cmp.prevVisitors ?? 0, cmp.visitors ?? '']
-      .map(esc)
+      .map(csvEsc)
       .join(';')
   );
-  lines.push(['Kunjungan', report.traffic.totalViews, cmp.prevViews ?? 0, cmp.views ?? ''].map(esc).join(';'));
-  lines.push(['Pesanan', report.traffic.totalOrders, cmp.prevOrders ?? 0, cmp.orders ?? ''].map(esc).join(';'));
+  lines.push(['Kunjungan', report.traffic.totalViews, cmp.prevViews ?? 0, cmp.views ?? ''].map(csvEsc).join(';'));
+  lines.push(['Pesanan', report.traffic.totalOrders, cmp.prevOrders ?? 0, cmp.orders ?? ''].map(csvEsc).join(';'));
 
   return ok(
     { csv: lines.join('\n') },
@@ -2147,15 +2323,35 @@ route('PATCH', '/api/admin/orders/:orderId', async ({ headers, params, body }) =
     timeline.push({ time: wibStamp(), status, location });
   };
 
+  /*
+   * Perubahan status pembayaran.
+   *
+   * Jalur LUNAS memakai `markOrderPaid` (payments.js) — modul yang SAMA
+   * dengan tombol verifikasi di Telegram. Dengan begitu timeline, `paidAt`,
+   * dan pemindahan otomatis ke antrean proses selalu konsisten, dari jalur
+   * mana pun pesanan diverifikasi.
+   */
   if (payload.paymentStatus && PAYMENT_STATUSES.includes(payload.paymentStatus)) {
-    next.paymentStatus = payload.paymentStatus;
-    pushTimeline(
-      payload.paymentStatus === 'LUNAS'
-        ? `Pembayaran diverifikasi LUNAS oleh Admin${
-            payload.verifiedAmount ? ` (Rp ${Number(payload.verifiedAmount).toLocaleString('id-ID')})` : ''
-          }`
-        : `Status pembayaran diubah menjadi ${payload.paymentStatus}`
-    );
+    if (payload.paymentStatus === 'LUNAS') {
+      const paid = await markOrderPaid(
+        { ...next, timeline },
+        {
+          via: 'admin',
+          actor: 'admin',
+          verifiedAmount: payload.verifiedAmount
+        }
+      );
+      if (paid.ok) {
+        Object.assign(next, paid.order);
+        next.timeline = paid.order.timeline;
+      } else {
+        // Tidak bisa dilunaskan (mis. pesanan sudah dibatalkan) — jangan diam.
+        return bad(paid.reason || 'Pesanan tidak bisa ditandai lunas.', 409);
+      }
+    } else {
+      next.paymentStatus = payload.paymentStatus;
+      pushTimeline(`Status pembayaran diubah menjadi ${payload.paymentStatus}`);
+    }
   }
 
   if (payload.status && ORDER_STATUSES.includes(payload.status)) {
@@ -3012,6 +3208,97 @@ route('POST', '/api/admin/telegram/test', async ({ headers, body }) => {
   // Simpan kalau berhasil supaya admin tidak perlu menyimpan manual.
   await store.put('settings', { ...candidate, id: 'store-settings', updatedAt: nowIso() });
   return ok({ sent: true, message: 'Pesan uji terkirim ke Telegram.' });
+});
+
+/**
+ * Daftarkan (atau periksa) webhook Telegram.
+ *
+ * Tanpa webhook, tombol "✅ Verifikasi LUNAS" hanya bisa ditekan tetapi
+ * Telegram tidak punya tempat mengirim ketukannya. Endpoint ini memanggil
+ * `setWebhook` milik Telegram memakai secret dari env, sehingga admin cukup
+ * menekan satu tombol di dashboard.
+ *
+ * Secret TIDAK dikirim balik ke browser — hanya statusnya.
+ */
+route('POST', '/api/admin/telegram/webhook', async ({ headers, body }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+
+  const settings = await readSettings();
+  const cfg = telegramConfig(settings);
+  if (!cfg.botToken) return bad('Bot Token Telegram belum diisi.', 400);
+
+  const secret = String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim();
+  if (!secret) {
+    return bad(
+      'TELEGRAM_WEBHOOK_SECRET belum diset di server. Tambahkan env var itu di Vercel (nilai bebas, mis. 32 karakter acak), lalu Redeploy.',
+      400
+    );
+  }
+
+  const base = String(
+    body?.publicUrl || process.env.PUBLIC_BASE_URL || 'https://cilegon-enggih.vercel.app'
+  ).replace(/\/+$/, '');
+  const url = `${base}/api/telegram/webhook`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url,
+        secret_token: secret,
+        allowed_updates: ['callback_query', 'message'],
+        drop_pending_updates: false
+      })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      return bad(
+        `Telegram menolak webhook: ${data.description || res.status}. Pastikan URL publik memakai https.`,
+        400
+      );
+    }
+
+    await recordAudit(store, {
+      action: 'telegram.webhook-didaftarkan',
+      actor: 'admin',
+      ip: clientIp(headers),
+      target: url,
+      detail: { ok: true }
+    });
+
+    return ok({
+      registered: true,
+      url,
+      message:
+        'Webhook terdaftar. Tombol "Verifikasi LUNAS" di Telegram sekarang berfungsi. Uji dengan mengirim bukti transfer baru.'
+    });
+  } catch (err) {
+    return bad(`Gagal menghubungi Telegram: ${err.message}`, 502);
+  }
+});
+
+/** Lihat status webhook yang sedang aktif (tanpa membocorkan secret). */
+route('GET', '/api/admin/telegram/webhook', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const settings = await readSettings();
+  const cfg = telegramConfig(settings);
+  if (!cfg.botToken) return ok({ configured: false, reason: 'bot-token-kosong' });
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${cfg.botToken}/getWebhookInfo`);
+    const data = await res.json().catch(() => ({}));
+    const info = data.result || {};
+    return ok({
+      configured: Boolean(info.url),
+      url: info.url || '',
+      pendingUpdates: info.pending_update_count || 0,
+      lastError: info.last_error_message || '',
+      secretDiset: Boolean(String(process.env.TELEGRAM_WEBHOOK_SECRET || '').trim())
+    });
+  } catch (err) {
+    return bad(`Gagal menghubungi Telegram: ${err.message}`, 502);
+  }
 });
 
 /**
