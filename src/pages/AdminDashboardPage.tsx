@@ -33,7 +33,8 @@ import {
   Sparkles,
   Calculator,
   ShieldCheck,
-  BarChart3
+  BarChart3,
+  Zap
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { vendorLinks } from '../lib/vendorLinks';
@@ -55,6 +56,8 @@ import {
   adminCreateProduct,
   adminDuplicateProduct,
   adminTestTelegram,
+  adminRegisterTelegramWebhook,
+  adminTelegramWebhookStatus,
   adminSendDigest,
   adminSettingsFull,
   adminVerifyOtp,
@@ -447,6 +450,36 @@ export const AdminDashboardPage: React.FC = () => {
       );
     } finally {
       setSendingDigest(false);
+    }
+  };
+
+  /**
+   * Daftarkan webhook Telegram supaya tombol "✅ Verifikasi LUNAS" di
+   * notifikasi bukti transfer benar-benar berfungsi. Tanpa webhook, tombolnya
+   * tampil tetapi tidak ada yang memproses ketukan.
+   */
+  const registerTelegramWebhook = async () => {
+    setBusyId('telegram-webhook');
+    try {
+      /*
+       * Simpan token yang mungkin baru saja diketik — tanpa memakai `busyId`
+       * milik tombol Simpan, supaya indikator tombol ini tidak berkedip.
+       * Kegagalan simpan tidak menghentikan pendaftaran: token lama di server
+       * mungkin sudah benar.
+       */
+      if (draftSettings?.telegram?.botToken) {
+        await adminUpdateSettings(draftSettings).catch(() => null);
+      }
+      const res = await adminRegisterTelegramWebhook(window.location.origin);
+      pushToast('Verifikasi Sekali-Klik Aktif', res.message, 'success');
+    } catch (err) {
+      pushToast(
+        'Gagal Mendaftarkan Webhook',
+        err instanceof ApiError ? err.message : 'Coba lagi beberapa saat.',
+        'error'
+      );
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -1272,6 +1305,8 @@ export const AdminDashboardPage: React.FC = () => {
           onSave={saveSettings}
           onReset={resetSettings}
           onTestTelegram={testTelegram}
+          onRegisterWebhook={registerTelegramWebhook}
+          registeringWebhook={busyId === 'telegram-webhook'}
           onSendDigest={sendDigestNow}
           sendingDigest={sendingDigest}
           testingTelegram={testingTelegram}
@@ -1719,6 +1754,8 @@ const SettingsPanel: React.FC<{
   onSave: () => void;
   onReset: () => void;
   onTestTelegram: () => void;
+  onRegisterWebhook: () => void;
+  registeringWebhook: boolean;
   onSendDigest: () => void;
   sendingDigest: boolean;
   testingTelegram: boolean;
@@ -1730,6 +1767,8 @@ const SettingsPanel: React.FC<{
   onSave,
   onReset,
   onTestTelegram,
+  onRegisterWebhook,
+  registeringWebhook,
   onSendDigest,
   sendingDigest,
   testingTelegram,
@@ -1737,7 +1776,21 @@ const SettingsPanel: React.FC<{
   pushToast
 }) => {
   const [copied, setCopied] = useState('');
+  const [webhook, setWebhook] = useState<{ configured: boolean; lastError?: string } | null>(null);
   const set = (key: string, val: any) => onChange({ ...value, [key]: val });
+
+  // Status webhook hanya informatif; kegagalan cek tidak mengganggu panel.
+  useEffect(() => {
+    let alive = true;
+    adminTelegramWebhookStatus()
+      .then((res) => {
+        if (alive) setWebhook(res);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [registeringWebhook]);
   const setNested = (group: string, key: string, val: any) =>
     onChange({ ...value, [group]: { ...(value[group] || {}), [key]: val } });
 
@@ -2098,6 +2151,13 @@ const SettingsPanel: React.FC<{
             <strong>3.</strong> Tempel token & chat id di bawah → klik <strong>Tes Koneksi</strong>{' '}
             → Simpan Pengaturan.
           </div>
+          <div className="rounded-lg bg-amberbrand-50 border border-amberbrand-200 px-2 py-1.5">
+            <strong>4. Verifikasi sekali-klik.</strong> Klik{' '}
+            <strong>Aktifkan Verifikasi Sekali-Klik</strong> di bawah. Setelah itu, tiap kali ada
+            bukti transfer masuk, Telegram mengirim tombol <strong>✅ Verifikasi LUNAS</strong> —
+            tekan dari ponsel, pembayaran langsung lunas tanpa membuka dashboard. Pembeli tidak
+            perlu menunggu Anda sampai di rumah.
+          </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <Field label="Bot Token">
@@ -2145,6 +2205,29 @@ const SettingsPanel: React.FC<{
             )}
             {sendingDigest ? 'Menyusun…' : 'Kirim Digest Sekarang'}
           </button>
+          <button
+            type="button"
+            onClick={onRegisterWebhook}
+            disabled={registeringWebhook}
+            className="px-3 py-2 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 disabled:opacity-60 text-navy-950 text-[11px] font-extrabold inline-flex items-center gap-1.5"
+            title="Agar tombol 'Verifikasi LUNAS' di Telegram berfungsi saat Anda sedang di luar"
+          >
+            {registeringWebhook ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Zap className="w-3.5 h-3.5" />
+            )}
+            {registeringWebhook ? 'Mendaftarkan…' : 'Aktifkan Verifikasi Sekali-Klik'}
+          </button>
+          {webhook?.configured ? (
+            <span className="text-[10.5px] font-bold text-forest-700 bg-forest-50 px-2 py-1 rounded-lg">
+              ✓ Verifikasi Telegram aktif
+            </span>
+          ) : webhook ? (
+            <span className="text-[10.5px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-lg">
+              Webhook belum aktif
+            </span>
+          ) : null}
           <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
             <input
               type="checkbox"

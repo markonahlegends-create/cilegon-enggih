@@ -16,7 +16,7 @@
 
 const TG_API = 'https://api.telegram.org';
 
-const esc = (input) =>
+export const esc = (input) =>
   String(input ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -87,6 +87,51 @@ export const sendTelegramMessage = async (settings, html, options = {}) => {
   }
 };
 
+/**
+ * Jawab ketukan tombol inline (memunculkan toast kecil di Telegram).
+ * Tanpa ini, Telegram menampilkan indikator loading terus di tombolnya.
+ * Tidak pernah melempar error.
+ */
+export const answerCallbackQuery = async (botToken, callbackQueryId, text = '') => {
+  if (!botToken || !callbackQueryId) return { ok: false };
+  try {
+    const res = await fetch(`${TG_API}/bot${botToken}/answerCallbackQuery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ callback_query_id: callbackQueryId, text, show_alert: false })
+    });
+    return { ok: res.ok };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+};
+
+/**
+ * Ubah teks pesan yang sudah terkirim — dipakai untuk menandai
+ * "✅ LUNAS diverifikasi" pada pesan bukti transfer, sehingga admin bisa
+ * melihat sekilas pesanan mana yang sudah ditangani.
+ * Tidak pernah melempar error.
+ */
+export const editTelegramMessage = async (botToken, chatId, messageId, html) => {
+  if (!botToken || !chatId || !messageId) return { ok: false };
+  try {
+    const res = await fetch(`${TG_API}/bot${botToken}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text: html,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true
+      })
+    });
+    return { ok: res.ok };
+  } catch (err) {
+    return { ok: false, reason: err.message };
+  }
+};
+
 /** Kirim lalu telan semua error (dipakai di route order). */
 export const notifySafe = async (settings, html, options) => {
   try {
@@ -149,10 +194,30 @@ export const templatePaymentProof = (order) =>
     `💵 ${rupiah(order.total)}`,
     order.paymentProofNote ? `📝 ${esc(order.paymentProofNote)}` : '',
     '',
-    '<i>Segera verifikasi di Dashboard Admin → Pesanan.</i>'
+    '<i>Tekan tombol di bawah untuk memverifikasi tanpa membuka dashboard.</i>'
   ]
     .filter((line) => line !== '')
     .join('\n');
+
+/**
+ * Tombol inline "Verifikasi LUNAS" untuk notifikasi bukti transfer.
+ *
+ * KENAPA: admin sering di luar rumah / hanya memegang ponsel. Tanpa ini,
+ * pembeli harus menunggu admin membuka laptop dan dashboard. Dengan satu
+ * ketukan di Telegram, pembayaran langsung LUNAS.
+ *
+ * Panjang `data` callback dibatasi Telegram 64 byte. "paid:" (5) + orderId
+ * (maks ~14) masih jauh di bawah batas.
+ */
+export const paymentProofKeyboard = (order) => ({
+  inline_keyboard: [
+    [
+      { text: '✅ Verifikasi LUNAS', callback_data: `paid:${order.orderId}` },
+      { text: '🚫 Tandai Batal', callback_data: `void:${order.orderId}` }
+    ],
+    [{ text: '📄 Buka Dashboard', url: 'https://cilegon-enggih.vercel.app/admin' }]
+  ]
+});
 
 export const templatePaid = (order) =>
   [

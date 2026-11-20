@@ -373,7 +373,17 @@ export const CheckoutModal: React.FC = () => {
       setCreatedOrder(res.order);
       cacheOrderLocally(res.order);
       setProofSaved(true);
-      pushToast('Bukti Terkirim', 'Admin akan memverifikasi pembayaran Anda', 'success');
+      /*
+       * Pesan ini penting secara psikologis. Dulu bunyinya "Admin akan
+       * memverifikasi pembayaran Anda" — pembeli merasa uangnya belum
+       * dianggap masuk. Sekarang ditegaskan bahwa buktinya SUDAH diterima
+       * dan kapan biasanya dicek, meniru pola marketplace.
+       */
+      pushToast(
+        'Bukti Pembayaran Diterima',
+        'Sudah kami terima. Admin mengecek maksimal 30 menit (08.00–21.00 WIB). Simpan nomor pesanan Anda.',
+        'success'
+      );
     } catch (err) {
       pushToast(
         'Gagal Mengirim Bukti',
@@ -836,8 +846,19 @@ export const CheckoutModal: React.FC = () => {
                   Terima Kasih, {createdOrder.customerName}!
                 </h4>
                 <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  Pesanan Anda tercatat. Admin akan memverifikasi pembayaran lalu menginput nomor
-                  resi kurir asli setelah paket diserahkan ke ekspedisi.
+                  {proofSaved ? (
+                    <>
+                      <strong className="text-forest-700">Bukti pembayaran Anda sudah kami terima.</strong>{' '}
+                      Admin mengecek maksimal 30 menit pada jam operasional — Anda tidak perlu
+                      melakukan apa pun lagi. Status berubah menjadi <em>Lunas</em> otomatis dan
+                      bisa Anda pantau di halaman Lacak Pesanan.
+                    </>
+                  ) : (
+                    <>
+                      Pesanan Anda tercatat. Admin akan memverifikasi pembayaran lalu menginput
+                      nomor resi kurir asli setelah paket diserahkan ke ekspedisi.
+                    </>
+                  )}
                 </p>
               </div>
 

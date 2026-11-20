@@ -12,7 +12,8 @@ import {
   Printer,
   MessageCircle,
   Info,
-  Copy
+  Copy,
+  XCircle
 } from 'lucide-react';
 import { formatRupiah, buildWhatsAppUrlFor } from '../data/products';
 import { useStore, findCachedOrder } from '../context/StoreContext';
@@ -20,6 +21,103 @@ import { trackOrder, ApiError } from '../lib/api';
 import { InvoiceDocument } from '../components/InvoiceDocument';
 
 const STATUS_STEPS = ['MENUNGGU_KONFIRMASI', 'DIPROSES', 'DIKIRIM', 'SELESAI'];
+
+/**
+ * Kartu status pembayaran untuk halaman lacak.
+ *
+ * Menjawab tiga pertanyaan pembeli: "bukti saya sudah masuk belum?",
+ * "kalau sudah, sejak kapan?", dan "berapa lama lagi dicek?".
+ */
+const PaymentStatusCard: React.FC<{ order: any; settings: any }> = ({ order, settings }) => {
+  const lunas = order.paymentStatus === 'LUNAS';
+  const buktiAda = Boolean(order.paymentProofAt);
+  const batal = order.status === 'DIBATALKAN';
+
+  const jam = (iso?: string | null) => {
+    if (!iso) return '';
+    try {
+      return new Intl.DateTimeFormat('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      }).format(new Date(iso));
+    } catch {
+      return '';
+    }
+  };
+
+  const tone = batal
+    ? 'bg-slate-50 border-slate-200'
+    : lunas
+      ? 'bg-forest-50 border-forest-200'
+      : buktiAda
+        ? 'bg-forest-50/60 border-forest-200'
+        : 'bg-amberbrand-50 border-amberbrand-200';
+
+  const judul = batal
+    ? 'Pesanan Dibatalkan'
+    : lunas
+      ? 'Pembayaran Lunas'
+      : buktiAda
+        ? 'Bukti Pembayaran Diterima'
+        : 'Menunggu Pembayaran';
+
+  return (
+    <div className={`rounded-2xl border p-3.5 ${tone}`}>
+      <div className="flex items-start gap-2">
+        <span
+          className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+            batal
+              ? 'bg-slate-200 text-slate-600'
+              : lunas || buktiAda
+                ? 'bg-forest-600 text-white'
+                : 'bg-amberbrand-400 text-navy-950'
+          }`}
+        >
+          {batal ? <XCircle className="w-4 h-4" /> : lunas || buktiAda ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+        </span>
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase font-extrabold tracking-wider text-slate-500">
+            Status Pembayaran
+          </div>
+          <div className="text-sm font-extrabold text-navy-800">{judul}</div>
+
+          {lunas ? (
+            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+              Pembayaran Anda sudah diverifikasi{order.paidAt ? ` pada ${jam(order.paidAt)}` : ''}.
+              Pesanan diproses tanpa perlu menunggu lagi.
+            </p>
+          ) : buktiAda ? (
+            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+              Bukti transfer kami terima{order.paymentProofAt ? ` pada ${jam(order.paymentProofAt)}` : ''}.
+              Admin mengecek <strong>maksimal 30 menit</strong> pada jam operasional{' '}
+              {(settings && settings.openHours) || '08.00–21.00 WIB'}. Tidak ada yang perlu Anda
+              lakukan lagi — halaman ini diperbarui otomatis.
+            </p>
+          ) : batal ? (
+            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+              Pesanan ini dibatalkan. Bila Anda sudah melakukan pembayaran, hubungi admin untuk
+              pengembalian dana.
+            </p>
+          ) : (
+            <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+              Belum ada bukti transfer yang kami terima. Setelah membayar, unggah bukti dari halaman
+              checkout atau kirim ke WhatsApp admin agar pesanan segera diproses.
+            </p>
+          )}
+
+          {order.uniqueCode ? (
+            <div className="mt-1.5 text-[10.5px] text-slate-500">
+              Kode unik pembayaran: <strong className="text-navy-800">{order.uniqueCode}</strong>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
   MENUNGGU_KONFIRMASI: { label: 'Menunggu Konfirmasi Admin', color: 'bg-amberbrand-500' },
@@ -42,13 +140,16 @@ export const TrackOrderPage: React.FC = () => {
   const [offline, setOffline] = useState(false);
   const [showInvoice, setShowInvoice] = useState(false);
 
-  const runTracking = async (code: string, last4 = phoneLast4) => {
+  const runTracking = async (code: string, last4 = phoneLast4, opts: { silent?: boolean } = {}) => {
     if (!code.trim()) return;
     if (String(last4).replace(/\D/g, '').length < 4) {
-      setErrorMsg('Masukkan 4 digit terakhir nomor WhatsApp Anda untuk membuka data pesanan.');
+      if (!opts.silent) {
+        setErrorMsg('Masukkan 4 digit terakhir nomor WhatsApp Anda untuk membuka data pesanan.');
+      }
       return;
     }
-    setLoading(true);
+    // Auto-refresh memakai mode senyap: jangan berkedip / memicu spinner.
+    if (!opts.silent) setLoading(true);
     setErrorMsg('');
     setOffline(false);
     try {
@@ -69,7 +170,7 @@ export const TrackOrderPage: React.FC = () => {
         );
       }
     } finally {
-      setLoading(false);
+      if (!opts.silent) setLoading(false);
     }
   };
 
@@ -80,6 +181,27 @@ export const TrackOrderPage: React.FC = () => {
       setQuery(initialQuery);
     }
   }, [initialQuery]);
+
+  /*
+   * AUTO-REFRESH tiap 30 detik selama pesanan masih dalam proses.
+   *
+   * KENAPA: admin bisa memverifikasi pembayaran dari Telegram saat pembeli
+   * masih menatap halaman ini. Tanpa auto-refresh, pembeli harus menekan
+   * "Lacak" sendiri dan mengira tidak ada perubahan — padahal statusnya
+   * sudah LUNAS. Refresh berhenti sendiri setelah pesanan SELESAI atau
+   * DIBATALKAN supaya tidak membebani server tanpa guna.
+   */
+  useEffect(() => {
+    if (!order) return;
+    if (order.status === 'SELESAI' || order.status === 'DIBATALKAN') return;
+    if (String(phoneLast4).replace(/\D/g, '').length < 4) return;
+
+    const id = window.setInterval(() => {
+      runTracking(query, phoneLast4, { silent: true });
+    }, 30000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [order?.orderId, order?.status, query, phoneLast4]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,6 +364,18 @@ export const TrackOrderPage: React.FC = () => {
             {/* Resi & actions */}
             <div className="p-5 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
               <div className="lg:col-span-7 space-y-4">
+                {/*
+                  Kartu status pembayaran.
+
+                  KENAPA ADA: dulu pembeli yang sudah mengunggah bukti transfer
+                  tidak melihat perubahan apa pun — statusnya tetap
+                  "menunggu verifikasi" tanpa keterangan, sehingga ia ragu dan
+                  kadang membatalkan pesanan padahal uangnya sudah masuk.
+                  Kartu ini memberi kepastian: bukti diterima kapan, dan
+                  perkiraan berapa lama dicek.
+                */}
+                <PaymentStatusCard order={order} settings={settings} />
+
                 {/* Resi Card */}
                 <div
                   className={`rounded-2xl border p-3.5 ${

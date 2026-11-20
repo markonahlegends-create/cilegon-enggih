@@ -643,3 +643,76 @@ Dokumen terkait:
 - [`.env.example`](./.env.example) — daftar lengkap environment variables.
 
 **Web Develop by [Fadil Labs](https://fadil-labs.vercel.app/)**
+
+---
+
+## 14. Verifikasi pembayaran sekali-klik dari Telegram
+
+Fitur ini menjawab satu masalah nyata: pembeli sudah transfer, bukti sudah diunggah,
+tetapi harus menunggu admin membuka dashboard. Pembeli ragu, lalu membatalkan
+pesanan. Sekarang admin bisa memverifikasi langsung dari notifikasi Telegram di
+ponsel, tanpa membuka dashboard.
+
+### A. Sekali saja: aktifkan
+
+1. Buat nilai acak untuk pengaman webhook:
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. Isi di **Vercel → Settings → Environment Variables** (Production):
+
+   | Nama | Wajib | Isi |
+   | --- | --- | --- |
+   | `TELEGRAM_WEBHOOK_SECRET` | ya | hasil `openssl rand -hex 32` di atas |
+   | `PUBLIC_BASE_URL` | tidak | `https://cilegon-enggih.vercel.app` |
+
+   Tanpa `TELEGRAM_WEBHOOK_SECRET`, endpoint webhook **menolak semua permintaan**
+   (fail-closed). Ini disengaja: lebih baik tombol tidak berfungsi daripada
+   sembarang orang bisa melunasi pesanan.
+
+3. Redeploy (env baru hanya terbaca setelah deploy ulang).
+
+4. Buka **Dashboard Admin → Pengaturan → Notifikasi Telegram**, lalu klik
+   **Aktifkan Verifikasi Sekali-Klik**. Tombol ini mendaftarkan alamat webhook ke
+   Telegram sekaligus memasang token pengamannya.
+
+5. Verifikasi: kirim pesanan uji dengan bukti transfer. Notifikasi yang masuk ke
+   Telegram kini punya tombol:
+
+   - **✅ Verifikasi LUNAS** — pesanan langsung LUNAS dan otomatis pindah ke
+     **Diproses**; pembeli melihat statusnya berubah di halaman lacak tanpa
+     menekan tombol apa pun.
+   - **🚫 Tandai Batal** — pesanan dibatalkan dan stok dikembalikan otomatis.
+   - **📄 Buka Dashboard** — untuk memeriksa detail bila perlu.
+
+### B. Yang perlu Anda tahu
+
+- **Tidak ada pelunasan otomatis dari bukti transfer.** Bukti transfer mudah
+  dipalsukan; karena itu keputusan tetap di tangan Anda, hanya jalurnya yang
+  dipersingkat.
+- Setiap ketukan tercatat di audit (`pembayaran.diverifikasi-via-telegram`,
+  `order.dibatalkan-via-telegram`) lengkap dengan nama akun Telegram Anda.
+- Hanya **chat ID admin** yang tombolnya berfungsi. Kalau pesan itu diteruskan ke
+  orang lain, ketukan mereka diabaikan.
+- Menekan tombol dua kali aman: tidak ada timeline ganda, tidak ada notifikasi ganda.
+- Pembeli melihat kartu **"Bukti Pembayaran Diterima"** berisi jam unggah dan janji
+  pemeriksaan maksimal 30 menit. Halaman lacak menyegarkan dirinya sendiri tiap
+  30 detik, jadi pembeli tidak perlu menekan "Lacak" berulang kali.
+
+### C. Kalau tombol tidak merespons
+
+| Gejala | Penyebab | Tindakan |
+| --- | --- | --- |
+| Tombol tampil, ditekan tidak ada reaksi | webhook belum didaftarkan | klik **Aktifkan Verifikasi Sekali-Klik** |
+| Muncul peringatan "belum dikonfigurasi" | `TELEGRAM_WEBHOOK_SECRET` kosong | isi env lalu redeploy |
+| Notifikasi masuk tetapi tanpa tombol | pesan dikirim sebelum webhook aktif | tidak masalah; pesanan lama tetap bisa diverifikasi dari dashboard |
+
+### D. Uji otomatis terkait
+
+```bash
+npm run test:payments   # 20 uji aturan pelunasan (idempoten, tolak order batal)
+npm run test:stock      # 14 uji stok & pengembalian stok
+npm run test:reports    # 22 uji konsistensi laporan
+```

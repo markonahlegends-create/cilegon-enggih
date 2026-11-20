@@ -446,6 +446,24 @@ export const adminRequestVideoTicket = (payload: { filename: string; sizeBytes: 
     maxBytes: number;
   }>('/api/admin/video-upload-ticket', { method: 'POST', body: payload, admin: true });
 
+/** Daftarkan webhook Telegram agar tombol "Verifikasi LUNAS" berfungsi. */
+export const adminRegisterTelegramWebhook = (publicUrl?: string) =>
+  apiRequest<{ registered: boolean; url: string; message: string }>(
+    '/api/admin/telegram/webhook',
+    { method: 'POST', body: publicUrl ? { publicUrl } : {}, admin: true }
+  );
+
+/** Status webhook Telegram yang sedang aktif (tanpa membocorkan secret). */
+export const adminTelegramWebhookStatus = () =>
+  apiRequest<{
+    configured: boolean;
+    url?: string;
+    pendingUpdates?: number;
+    lastError?: string;
+    secretDiset?: boolean;
+    reason?: string;
+  }>('/api/admin/telegram/webhook', { admin: true });
+
 export const adminSettingsFull = () =>
   apiRequest<{ settings: any }>('/api/admin/settings', { admin: true });
 
