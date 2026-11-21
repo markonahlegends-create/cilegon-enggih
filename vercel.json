@@ -6,6 +6,17 @@
   "installCommand": "npm install",
   "rewrites": [
     {
+      "source": "/artikel/([^/]+)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(facebookexternalhit|facebot|twitterbot|whatsapp|telegrambot|slackbot|discordbot|linkedinbot|skypeuripreview|googlebot|bingbot)"
+        }
+      ],
+      "destination": "/api/share?slug=$1"
+    },
+    {
       "source": "/((?!api/|assets/|images/|covers/|favicon|robots|site\\.webmanifest|sitemap\\.xml|rss\\.xml).*)",
       "destination": "/index.html"
     }
