@@ -214,7 +214,8 @@ export const api = {
     const qs = query.toString();
     return request<ArticleListResponse>(`/api/articles${qs ? `?${qs}` : ''}`);
   },
-  article: (slug: string) => request<ArticleResponse>(`/api/articles/${encodeURIComponent(slug)}`),
+  article: (slug: string) =>
+    request<ArticleResponse>(`/api/index?path=${encodeURIComponent(`/api/articles/${slug}`)}`),
   comments: (slug: string) => request<{ items: CommentItem[] }>(`/api/comments?slug=${encodeURIComponent(slug)}`),
   postComment: (payload: { articleSlug: string; name: string; email?: string; body: string; honeypot?: string }) =>
     request<{ ok: boolean; message: string }>('/api/comments', { method: 'POST', body: JSON.stringify(payload) }),

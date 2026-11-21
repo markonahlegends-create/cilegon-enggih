@@ -13,7 +13,10 @@ import { formatCompact, formatDateWithTime } from '../lib/format';
 
 export function ArticlePage() {
   const { slug = '' } = useParams();
-  const { data, loading, error } = useApi<ArticleResponse>(`/api/articles/${encodeURIComponent(slug)}`, [slug]);
+  // Vercel's catch-all can treat /api/articles/:slug as a filesystem path;
+  // route parameterized detail requests through the explicit API entrypoint.
+  const detailPath = `/api/index?path=${encodeURIComponent(`/api/articles/${slug}`)}`;
+  const { data, loading, error } = useApi<ArticleResponse>(detailPath, [slug]);
   const { has, toggle } = useBookmarks();
   const progress = useScrollProgress();
   const [renderedContent, setRenderedContent] = useState('');
