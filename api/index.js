@@ -1,11 +1,58 @@
 /**
- * Fungsi datar `/api` — tujuan rewrite berbentuk `/api?__path=<path asli>`.
- *
- * MENGAPA PERLU BERKAS SENDIRI
- * Tujuan rewrite `/api` hanya dilayani berkas `api/index.js`. Tanpa berkas ini
- * Vercel tidak menemukan fungsi untuk tujuan tersebut dan permintaan jatuh ke
- * aturan SPA — crawler menerima kartu beranda, bukan kartu produk.
- * (Tujuan `/api?__path=` juga tidak boleh menggantikan berkas nyata: rewrite
- * yang tujuannya bertabrakan dengan berkas statis tidak diterapkan.)
+ * Vercel Serverless Function — semua /api/* diarahkan ke sini lewat vercel.json.
+ * Untuk penyimpanan permanen di Vercel, set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY
+ * (lihat supabase/schema.sql). Tanpa itu, data hanya bertahan selama instance hidup.
  */
-export { default, config } from '../server/vercel-handler.js';
+import '../server/env.js';
+import { handleRequest } from '../server/core.js';
+import { store } from '../server/db.js';
+
+function readBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
+    }
+  }
+  return req.body;
+}
+
+export default async function handler(req, res) {
+  const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
+  const headers = req.headers || {};
+  // Root utility paths (e.g. /sitemap.xml) can explicitly select an API route.
+  const requestPath = url.searchParams.get('path') || url.pathname;
+  try {
+    await store.init();
+    const result = await handleRequest({
+      method: req.method,
+      path: requestPath,
+      query: Object.fromEntries(url.searchParams.entries()),
+      headers,
+      body: req.method === 'GET' || req.method === 'DELETE' ? {} : readBody(req),
+      ip: String(headers['x-forwarded-for'] || '').split(',')[0].trim(),
+    });
+
+    if (result.headers) {
+      Object.entries(result.headers).forEach(([key, value]) => res.setHeader(key, value));
+    }
+    res.statusCode = result.status || 200;
+    if (result.binary) {
+      res.send(result.binary);
+      return;
+    }
+    if (result.raw !== undefined) {
+      res.send(result.raw);
+      return;
+    }
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.send(JSON.stringify(result.body ?? {}));
+  } catch (error) {
+    console.error('[Info Kelurahan] Fatal:', error);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.send(JSON.stringify({ error: 'Terjadi kesalahan pada server.' }));
+  }
+}

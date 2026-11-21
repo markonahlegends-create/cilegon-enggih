@@ -1,13 +1,18 @@
 {
-  "name": "Cilegon Enggih Official Store",
-  "short_name": "Cilegon Enggih",
-  "description": "Merchandise & oleh-oleh modern khas Kota Cilegon",
+  "name": "Info Kelurahan — Berita & Informasi Warga",
+  "short_name": "Info Kelurahan",
+  "description": "Portal berita dan informasi warga Kelurahan Karang Asem, Kecamatan Cibeber, Kota Cilegon.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#F8FAF8",
-  "theme_color": "#1B365D",
+  "background_color": "#ffffff",
+  "theme_color": "#e11d2e",
   "lang": "id",
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }

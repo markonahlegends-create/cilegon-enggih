@@ -1,417 +1,216 @@
 /**
- * Storage adapter Cilegon Enggih.
+ * Penyimpanan data Info Kelurahan.
  *
- * Dua mode, otomatis dipilih berdasarkan environment variable:
- *  1) SUPABASE  → jika SUPABASE_URL & (SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY) tersedia.
- *     Memakai Supabase REST API (PostgREST) ke tabel `ce_documents`, sehingga aman
- *     untuk serverless (Vercel Functions / Cloudflare Pages Functions).
- *  2) LOCAL JSON → fallback untuk dev / preview / self-host. Data disimpan di
- *     `CE_DATA_DIR` (default `server/data`), otomatis memakai folder writable
- *     seperti `/tmp/cilegon-enggih-data` bila path tidak bisa ditulis (serverless).
+ * Tiga mode, dipilih otomatis:
+ *  1. Supabase (PostgREST) — bila SUPABASE_URL + key tersedia. Cocok untuk produksi
+ *     (Vercel serverless tidak punya disk permanen).
+ *  2. File JSON lokal (server/data/db.json) — default untuk dev / self-host / VPS.
+ *  3. Memori — fallback bila filesystem read-only (mis. Vercel tanpa Supabase).
  *
- * Skema dokumen generik (lihat supabase-schema.sql):
- *   ce_documents(collection text, id text, data jsonb, updated_at timestamptz)
+ * Semua mode memakai satu dokumen JSON utuh sehingga mudah dibackup/dipindah.
  */
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { seedDatabase } from './seed.js';
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { SEED_ORDERS, SEED_B2B, DEFAULT_SETTINGS, DEFAULT_VOUCHERS } from './constants.js';
-import { SEED_PRODUCTS } from './seed/catalog.js';
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'server', 'data');
+const DB_FILE = path.join(DATA_DIR, 'db.json');
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const SUPABASE_URL = (
-  process.env.SUPABASE_URL ||
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  ''
-).replace(/\/+$/, '');
-
-// Dukung dua gaya kunci Supabase:
-//  • legacy JWT  → service_role / anon key (eyJhbGciOi...)
-//  • baru (2025) → secret key `sb_secret_...` / publishable `sb_publishable_...`
+const SUPABASE_URL = (process.env.SUPABASE_URL || '').replace(/\/+$/, '');
 const SUPABASE_KEY =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  process.env.SUPABASE_SECRET_KEY ||
-  process.env.SUPABASE_SERVICE_KEY ||
-  process.env.SUPABASE_ANON_KEY ||
-  '';
+  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || '';
+const SUPABASE_TABLE = process.env.SUPABASE_TABLE || 'site_state';
+const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_KEY);
 
-/** Jenis kunci — dipakai untuk peringatan konfigurasi (tanpa membocorkan nilai). */
-export const SUPABASE_KEY_TYPE = !SUPABASE_KEY
-  ? 'none'
-  : SUPABASE_KEY.startsWith('sb_secret_')
-  ? 'secret'
-  : SUPABASE_KEY.startsWith('sb_publishable_')
-  ? 'publishable'
-  : 'jwt';
-const TABLE = process.env.SUPABASE_DOCS_TABLE || 'ce_documents';
+const MEMORY_ONLY = process.env.VERCEL === '1' || process.env.READ_ONLY_FS === '1';
 
-export const USING_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_KEY);
+function clone(value) {
+  return JSON.parse(JSON.stringify(value));
+}
 
-/* ------------------------------------------------------------------ */
-/* Local JSON fallback                                                 */
-/* ------------------------------------------------------------------ */
+function headers() {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+  };
+}
 
-// Catatan: JANGAN memakai ./data di root (dulu sempat ter-commit dan
-// membuat build gagal); default selalu server/data.
-const OLD_DATA_DIR = path.join(__dirname, 'data');
-const PREFERRED_DIR = process.env.CE_DATA_DIR || OLD_DATA_DIR;
-
-const isWritableDir = (dir) => {
-  try {
-    fs.mkdirSync(dir, { recursive: true });
-    const probe = path.join(dir, '.write-probe');
-    fs.writeFileSync(probe, 'ok');
-    fs.unlinkSync(probe);
-    return true;
-  } catch {
-    return false;
+class Store {
+  constructor() {
+    this.doc = null;
+    this.mode = SUPABASE_ENABLED ? 'supabase' : MEMORY_ONLY ? 'memory' : 'file';
+    this.fileDisabled = MEMORY_ONLY;
+    this.timer = null;
+    this.pending = false;
+    this.ready = null;
   }
-};
 
-const DATA_DIR = isWritableDir(PREFERRED_DIR)
-  ? PREFERRED_DIR
-  : [path.join('/tmp', 'cilegon-enggih-data'), path.join(process.cwd(), '.ce-data')].find(
-      (dir) => isWritableDir(dir)
-    ) || PREFERRED_DIR;
-
-/** Urutan tampil produk mengikuti katalog seed (retail dulu, lalu bundling). */
-const ORDERED_COLLECTIONS = new Set(['products']);
-
-const sortDocs = (collection, list) =>
-  ORDERED_COLLECTIONS.has(collection)
-    ? [...list].sort(
-        (a, b) =>
-          Number(Boolean(b.isBundle)) - Number(Boolean(a.isBundle)) ||
-          new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
-      )
-    : list;
-
-const memoryStore = new Map();
-const fileCache = new Map();
-
-const fileOf = (collection) => path.join(DATA_DIR, `${collection}.json`);
-
-const normalize = (doc, fallbackId) => {
-  if (!doc) return doc;
-  const id = doc.id || doc.orderId || doc.quoteId || doc.code || doc.slug || fallbackId;
-  return id ? { ...doc, id } : { ...doc };
-};
-
-/** Settings & dokumen singleton tetap butuh id agar bisa di-UPSERT. */
-const SINGLETON_IDS = { settings: 'store-settings' };
-
-/** Baca file koleksi apa adanya (tanpa normalisasi) — dipakai penanda seed. */
-const readLocalRaw = (collection) => {
-  try {
-    return fs.readFileSync(fileOf(collection), 'utf-8');
-  } catch {
-    return null;
+  async init() {
+    if (!this.ready) this.ready = this._init();
+    return this.ready;
   }
-};
 
-const readLocal = (collection) => {
-  if (memoryStore.has(collection)) return memoryStore.get(collection);
-  if (fileCache.has(collection)) return fileCache.get(collection);
-  try {
-    const raw = fs.readFileSync(fileOf(collection), 'utf-8');
-    const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed)
-      ? sortDocs(collection, parsed.map((doc) => normalize(doc, SINGLETON_IDS[collection])))
-      : [];
-    fileCache.set(collection, list);
-    return list;
-  } catch {
-    return null;
-  }
-};
+  async _init() {
+    const seed = seedDatabase();
 
-const writeLocal = (collection, list) => {
-  const normalized = sortDocs(collection, list.map(normalize));
-  memoryStore.set(collection, normalized);
-  fileCache.set(collection, normalized);
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(fileOf(collection), JSON.stringify(normalized, null, 2));
-    return true;
-  } catch {
-    // Read-only filesystem (mis. Vercel): data tetap hidup di memori proses.
-    return false;
-  }
-};
-
-const seedFor = (collection) => {
-  if (collection === 'products') return SEED_PRODUCTS.map((p) => ({ ...p, active: true }));
-  if (collection === 'orders') return SEED_ORDERS;
-  if (collection === 'b2b') return SEED_B2B;
-  if (collection === 'vouchers') return DEFAULT_VOUCHERS;
-  if (collection === 'settings') return [DEFAULT_SETTINGS];
-  return [];
-};
-
-const SEED_MARKER_FILE = 'seed-initialized.json';
-
-const readSeedMarkers = () => {
-  try {
-    const raw = readLocalRaw(SEED_MARKER_FILE);
-    return raw ? JSON.parse(raw) : {};
-  } catch {
-    return {};
-  }
-};
-
-const seedAlreadyDone = async (collection) => {
-  if (USING_SUPABASE && remoteAvailable()) {
-    try {
-      const rows = await remoteRequest(
-        `?collection=eq.__seed&select=id&limit=10`
-      );
-      return (rows || []).some((r) => r.id === `seed-${collection}`);
-    } catch {
-      return Boolean(readSeedMarkers()[collection]);
+    if (SUPABASE_ENABLED) {
+      try {
+        const res = await fetch(
+          `${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}?id=eq.main&select=doc`,
+          { headers: headers() }
+        );
+        if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+        const rows = await res.json();
+        if (Array.isArray(rows) && rows[0]?.doc) {
+          this.doc = normalize(rows[0].doc, seed);
+          this.mode = 'supabase';
+          return this.doc;
+        }
+        this.doc = seed;
+        await this._pushSupabase();
+        console.log('[Info Kelurahan] Supabase kosong — data awal (seed) diunggah.');
+        return this.doc;
+      } catch (error) {
+        console.error('[Info Kelurahan] Supabase gagal dimuat, fallback ke memori:', error.message);
+        this.mode = 'memory';
+        this.doc = seed;
+        return this.doc;
+      }
     }
-  }
-  return Boolean(readSeedMarkers()[collection]);
-};
 
-const markSeedDone = async (collection) => {
-  if (USING_SUPABASE && remoteAvailable()) {
-    try {
-      await store.put('__seed', {
-        id: `seed-${collection}`,
-        collection,
-        seededAt: new Date().toISOString()
-      });
+    if (!this.fileDisabled) {
+      try {
+        if (fs.existsSync(DB_FILE)) {
+          const raw = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+          this.doc = normalize(raw, seed);
+          this.mode = 'file';
+          return this.doc;
+        }
+        this.doc = seed;
+        this._writeFile();
+        this.mode = 'file';
+        console.log(`[Info Kelurahan] Database baru dibuat: ${DB_FILE}`);
+        return this.doc;
+      } catch (error) {
+        console.error('[Info Kelurahan] Gagal membaca db.json, memakai memori:', error.message);
+        this.fileDisabled = true;
+        this.mode = 'memory';
+      }
+    }
+
+    this.doc = seed;
+    return this.doc;
+  }
+
+  get() {
+    if (!this.doc) this.doc = seedDatabase();
+    return this.doc;
+  }
+
+  /** Simpan perubahan; penulisan ke disk di-debounce agar tidak thrash. */
+  persist() {
+    this.pending = true;
+    if (this.timer) clearTimeout(this.timer);
+    this.timer = setTimeout(() => {
+      this.timer = null;
+      this.flush().catch((error) => console.error('[Info Kelurahan] Gagal menyimpan:', error.message));
+    }, 250);
+  }
+
+  async flush() {
+    if (!this.pending) return;
+    this.pending = false;
+    const snapshot = this.get();
+    if (SUPABASE_ENABLED && this.mode === 'supabase') {
+      await this._pushSupabase(snapshot);
       return;
-    } catch (err) {
-      console.error('[storage] gagal menandai seed:', err.message);
     }
+    this._writeFile(snapshot);
   }
-  const markers = readSeedMarkers();
-  markers[collection] = new Date().toISOString();
-  try {
-    memoryStore.delete(SEED_MARKER_FILE);
-    fileCache.delete(SEED_MARKER_FILE);
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(fileOf(SEED_MARKER_FILE), JSON.stringify(markers, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('[storage] gagal menyimpan penanda seed:', err.message);
-  }
-};
 
-const ensureLocalSeed = (collection) => {
-  const existing = readLocal(collection);
-  if (existing && existing.length > 0) return existing;
-  // Sudah pernah disemai lalu dikosongkan admin → biarkan kosong.
-  if (readSeedMarkers()[collection]) return [];
-  const seeded = seedFor(collection).map((doc) => normalize(doc, SINGLETON_IDS[collection]));
-  if (seeded.length) {
-    writeLocal(collection, seeded);
-    const markers = readSeedMarkers();
-    markers[collection] = new Date().toISOString();
+  _writeFile(snapshot = this.get()) {
+    if (this.fileDisabled) return;
     try {
       fs.mkdirSync(DATA_DIR, { recursive: true });
-      fs.writeFileSync(fileOf(SEED_MARKER_FILE), JSON.stringify(markers, null, 2), 'utf-8');
-    } catch (err) {
-      console.error('[storage] gagal menyimpan penanda seed:', err.message);
+      const tmp = `${DB_FILE}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(snapshot, null, 2));
+      fs.renameSync(tmp, DB_FILE);
+    } catch (error) {
+      console.error('[Info Kelurahan] Penulisan file gagal (filesystem read-only?):', error.message);
+      this.fileDisabled = true;
+      this.mode = 'memory';
     }
   }
-  return seeded;
-};
 
-/* ------------------------------------------------------------------ */
-/* Supabase REST adapter                                               */
-/* ------------------------------------------------------------------ */
+  async _pushSupabase(snapshot = this.get()) {
+    const body = JSON.stringify([{ id: 'main', doc: snapshot, updated_at: new Date().toISOString() }]);
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${SUPABASE_TABLE}`, {
+      method: 'POST',
+      headers: { ...headers(), Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body,
+    });
+    if (!res.ok) throw new Error(`Supabase ${res.status}: ${await res.text()}`);
+  }
 
-const sbHeaders = (extra = {}) => {
-  const headers = {
-    apikey: SUPABASE_KEY,
-    'Content-Type': 'application/json',
-    Prefer: 'return=representation'
+  /** Rahasia HMAC sesi admin; disimpan di dokumen agar sesi bertahan setelah restart. */
+  secret() {
+    if (process.env.ADMIN_SECRET) return process.env.ADMIN_SECRET;
+    const doc = this.get();
+    if (!doc.meta.secret) {
+      doc.meta.secret = crypto.randomBytes(32).toString('hex');
+      this.persist();
+    }
+    return doc.meta.secret;
+  }
+}
+
+/** Pastikan dokumen lama/korup tetap punya semua field wajib. */
+function normalize(doc, seed) {
+  const raw = doc && typeof doc === 'object' ? doc : {};
+  const out = {
+    ...seed,
+    ...raw,
+    meta: { ...seed.meta, ...(raw.meta || {}) },
+    settings: { ...seed.settings, ...(raw.settings || {}) },
+    stats: { ...seed.stats, ...(raw.stats || {}) },
+    categories: Array.isArray(raw.categories) && raw.categories.length ? raw.categories : seed.categories,
+    authors: Array.isArray(raw.authors) && raw.authors.length ? raw.authors : seed.authors,
+    articles: Array.isArray(raw.articles) ? raw.articles : seed.articles,
+    agenda: Array.isArray(raw.agenda) ? raw.agenda : seed.agenda,
+    comments: Array.isArray(raw.comments) ? raw.comments : [],
+    messages: Array.isArray(raw.messages) ? raw.messages : [],
+    subscribers: Array.isArray(raw.subscribers) ? raw.subscribers : [],
+    media: Array.isArray(raw.media) ? raw.media : [],
   };
-  // Kunci gaya baru (sb_secret_/sb_publishable_) cukup lewat header `apikey`.
-  // Kunci JWT legacy tetap butuh Authorization: Bearer <key>.
-  if (!SUPABASE_KEY.startsWith('sb_')) {
-    headers.Authorization = `Bearer ${SUPABASE_KEY}`;
-  }
-  return { ...headers, ...extra };
+  return out;
+}
+
+export const store = new Store();
+export const storageInfo = {
+  get mode() {
+    return store.mode;
+  },
+  supabase: SUPABASE_ENABLED,
+  table: SUPABASE_TABLE,
+  file: DB_FILE,
 };
 
-/**
- * Circuit breaker sederhana: kalau Supabase tidak bisa dihubungi
- * (mis. salah URL / jaringan down), jangan ulangi request mahal di setiap
- * panggilan. Setelah 3 kegagalan berturut-turut, remote dilewati 60 detik.
- */
-let remoteFailures = 0;
-let remoteBlockedUntil = 0;
+export function slugify(input, fallback = 'artikel') {
+  const slug = String(input || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 90)
+    .replace(/^-|-$/g, '');
+  return slug || `${fallback}-${Date.now().toString(36)}`;
+}
 
-const remoteAvailable = () => Date.now() > remoteBlockedUntil;
-
-const noteRemoteFailure = (err) => {
-  remoteFailures += 1;
-  if (remoteFailures >= 3) {
-    remoteBlockedUntil = Date.now() + 60_000;
-    remoteFailures = 0;
-    console.error('[storage] Supabase tidak tersedia, fallback lokal selama 60 detik:', err.message);
-  }
-};
-
-const remoteRequest = async (queryPath, options = {}) => {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}${queryPath}`, {
-    ...options,
-    headers: sbHeaders(options.headers)
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    noteRemoteFailure(new Error(`Supabase ${res.status}: ${text.slice(0, 240)}`));
-    throw new Error(`Supabase ${res.status}: ${text.slice(0, 240)}`);
-  }
-  remoteFailures = 0;
-  if (res.status === 204) return null;
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
-};
-
-/* ------------------------------------------------------------------ */
-/* Public API                                                          */
-/* ------------------------------------------------------------------ */
-
-export const store = {
-  mode: USING_SUPABASE ? 'supabase' : 'local-json',
-  dataDir: USING_SUPABASE ? null : DATA_DIR,
-
-  /** Cek konektivitas + keberadaan tabel (dipakai /api/health). */
-  async ping() {
-    if (!USING_SUPABASE) return false;
-    try {
-      await remoteRequest('?select=id&limit=1');
-      remoteFailures = 0;
-      return true;
-    } catch (err) {
-      console.error('[storage] ping Supabase gagal:', err.message);
-      return false;
-    }
-  },
-
-  async list(collection) {
-    if (!USING_SUPABASE || !remoteAvailable()) return ensureLocalSeed(collection);
-    try {
-      const rows = await remoteRequest(
-        `?collection=eq.${encodeURIComponent(collection)}&select=id,data&order=updated_at.desc`
-      );
-      const docs = (rows || []).map((r) => normalize({ ...r.data, id: r.id }));
-      if (docs.length > 0) return docs;
-
-      /**
-       * PENTING: data contoh hanya boleh dibuat sekali.
-       * Sebelumnya `list()` menyemai ulang setiap kali koleksi kosong,
-       * sehingga pesanan yang sengaja dihapus admin **muncul kembali**.
-       * Sekarang jejak `seed-initialized` disimpan permanen; bila sudah ada,
-       * koleksi kosong berarti memang kosong.
-       */
-      if (await seedAlreadyDone(collection)) return [];
-
-      const seeded = seedFor(collection).map((doc) => normalize(doc, SINGLETON_IDS[collection]));
-      if (seeded.length) {
-        await Promise.all(seeded.map((doc) => store.put(collection, doc)));
-        await markSeedDone(collection);
-      }
-      return seeded;
-    } catch (err) {
-      console.error('[storage] Supabase list gagal, pakai fallback lokal:', err.message);
-      return ensureLocalSeed(collection);
-    }
-  },
-
-  async get(collection, id) {
-    const key = String(id);
-    if (!USING_SUPABASE || !remoteAvailable()) {
-      return (ensureLocalSeed(collection) || []).find((d) => String(d.id) === key) || null;
-    }
-    try {
-      const rows = await remoteRequest(
-        `?collection=eq.${encodeURIComponent(collection)}&id=eq.${encodeURIComponent(key)}&select=id,data&limit=1`
-      );
-      if (!rows || rows.length === 0) return null;
-      return normalize({ ...rows[0].data, id: rows[0].id });
-    } catch (err) {
-      console.error('[storage] Supabase get gagal:', err.message);
-      return (ensureLocalSeed(collection) || []).find((d) => String(d.id) === key) || null;
-    }
-  },
-
-  async put(collection, doc) {
-    const normalized = normalize(doc, SINGLETON_IDS[collection]);
-    if (!normalized.id) throw new Error('Dokumen butuh properti id.');
-    if (!USING_SUPABASE || !remoteAvailable()) {
-      const list = ensureLocalSeed(collection).filter((d) => String(d.id) !== String(normalized.id));
-      list.unshift(normalized);
-      writeLocal(collection, list);
-      return normalized;
-    }
-    try {
-      await remoteRequest('?on_conflict=collection,id', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-        body: JSON.stringify([
-          {
-            collection,
-            id: String(normalized.id),
-            data: normalized,
-            updated_at: new Date().toISOString()
-          }
-        ])
-      });
-      return normalized;
-    } catch (err) {
-      console.error('[storage] Supabase put gagal, menulis lokal:', err.message);
-      const list = ensureLocalSeed(collection).filter((d) => String(d.id) !== String(normalized.id));
-      list.unshift(normalized);
-      writeLocal(collection, list);
-      return normalized;
-    }
-  },
-
-  async remove(collection, id) {
-    // Admin menghapus isi koleksi → tandai agar data contoh tidak disemai ulang.
-    if (seedFor(collection).length) await markSeedDone(collection);
-    if (!USING_SUPABASE || !remoteAvailable()) {
-      const list = ensureLocalSeed(collection).filter((d) => String(d.id) !== String(id));
-      writeLocal(collection, list);
-      return true;
-    }
-    try {
-      await remoteRequest(
-        `?collection=eq.${encodeURIComponent(collection)}&id=eq.${encodeURIComponent(id)}`,
-        { method: 'DELETE' }
-      );
-      return true;
-    } catch (err) {
-      console.error('[storage] Supabase delete gagal:', err.message);
-      return false;
-    }
-  },
-
-  async replaceAll(collection, docs) {
-    if (seedFor(collection).length) await markSeedDone(collection);
-    if (!USING_SUPABASE || !remoteAvailable()) {
-      writeLocal(collection, docs);
-      return docs;
-    }
-    try {
-      await remoteRequest(`?collection=eq.${encodeURIComponent(collection)}`, {
-        method: 'DELETE'
-      });
-      await Promise.all(docs.map((doc) => store.put(collection, doc)));
-      return docs;
-    } catch (err) {
-      console.error('[storage] Supabase replaceAll gagal:', err.message);
-      writeLocal(collection, docs);
-      return docs;
-    }
-  }
-};
-
-export const createLocalOnlyStore = () => store;
+export function uid(prefix = 'id') {
+  return `${prefix}_${Date.now().toString(36)}${crypto.randomBytes(3).toString('hex')}`;
+}

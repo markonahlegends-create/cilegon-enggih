@@ -4,147 +4,203 @@
 
 @layer base {
   html {
-    scroll-behavior: smooth;
-    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    /* iOS: cegah teks membesar sendiri saat ponsel diputar ke mode lanskap. */
     -webkit-text-size-adjust: 100%;
-    text-size-adjust: 100%;
   }
 
   body {
-    background-color: #F8FAF8;
-    color: #1e293b;
-    /* Cegah halaman melebar ke samping gara-gara satu elemen (mis. tabel
-       lebar). Tanpa ini, seluruh situs ikut bisa digeser horizontal di HP. */
-    overflow-x: hidden;
+    @apply bg-slate-50 font-sans text-slate-800 antialiased dark:bg-navy-950 dark:text-slate-200;
   }
 
-  /*
-   * iOS Safari memperbesar halaman otomatis bila fokus ke input dengan
-   * ukuran huruf < 16px — pembeli jadi harus zoom manual saat checkout.
-   * Aturan ini menahan ukuran minimum 16px HANYA di layar kecil, sehingga
-   * tampilan desktop tidak berubah.
-   */
-  @media (max-width: 640px) {
-    input:not([type='checkbox']):not([type='radio']),
-    select,
-    textarea {
-      font-size: 16px !important;
-    }
+  ::selection {
+    @apply bg-brand-600/20 text-inherit;
   }
 
-  /* Jangan pernah memunculkan scroll horizontal pada elemen apa pun. */
-  img,
-  svg,
-  video,
-  canvas {
-    max-width: 100%;
+  h1,
+  h2,
+  h3,
+  h4 {
+    text-wrap: balance;
+  }
+
+  /* Scrollbar halus */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 116, 139, 0.4) transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 116, 139, 0.35);
+    border-radius: 999px;
   }
 }
 
-@layer utilities {
-  /*
-   * Padding aman untuk perangkat berponi / gesture bar.
-   * Dipakai pada header, drawer bawah, dan tombol melayang.
-   */
-  .pt-safe {
-    padding-top: env(safe-area-inset-top, 0px);
+@layer components {
+  .container-news {
+    @apply mx-auto w-full max-w-[1240px] px-4 sm:px-6 lg:px-8;
   }
-  .pb-safe {
+
+  .surface {
+    @apply rounded-2xl border border-slate-200/80 bg-white shadow-card dark:border-white/10 dark:bg-navy-900;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 transition hover:border-brand-300 hover:text-brand-600 dark:border-white/10 dark:bg-white/5 dark:text-slate-300 dark:hover:border-brand-500/50 dark:hover:text-brand-300 sm:text-xs;
+  }
+
+  .chip-active {
+    @apply border-brand-600 bg-brand-600 text-white hover:border-brand-600 hover:text-white dark:border-brand-600 dark:bg-brand-600 dark:text-white;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/60 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-navy-950;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-600 text-white shadow-sm hover:bg-brand-700 active:scale-[.99];
+  }
+
+  .btn-ghost {
+    @apply btn border border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10;
+  }
+
+  .btn-dark {
+    @apply btn bg-navy-900 text-white hover:bg-navy-800 dark:bg-white dark:text-navy-900 dark:hover:bg-slate-200;
+  }
+
+  .field {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-500/15 dark:border-white/10 dark:bg-white/5 dark:text-slate-100 dark:placeholder:text-slate-500;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white sm:text-[11px];
+  }
+
+  .link-underline {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-position: 0 100%;
+    background-repeat: no-repeat;
+    background-size: 0% 1.5px;
+    transition: background-size 0.25s ease;
+  }
+
+  .link-underline:hover {
+    background-size: 100% 1.5px;
+  }
+
+  .line-clamp-1,
+  .line-clamp-2,
+  .line-clamp-3,
+  .line-clamp-4 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .line-clamp-1 {
+    -webkit-line-clamp: 1;
+  }
+  .line-clamp-2 {
+    -webkit-line-clamp: 2;
+  }
+  .line-clamp-3 {
+    -webkit-line-clamp: 3;
+  }
+  .line-clamp-4 {
+    -webkit-line-clamp: 4;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg bg-slate-200/70 dark:bg-white/10;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background-image: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+    animation: shimmer 1.6s infinite;
+  }
+
+  .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
-  .mb-safe {
-    margin-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Prose artikel berita */
+  .prose-news {
+    @apply text-[17px] leading-[1.85] text-slate-700 dark:text-slate-300;
   }
-
-}
-
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-@keyframes fadeInSlide {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+  .prose-news > * + * {
+    @apply mt-5;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  .prose-news p {
+    @apply font-serif text-[17px] leading-[1.9] sm:text-[18px];
   }
-}
-
-.animate-fade-in {
-  animation: fadeInSlide 0.25s ease-out forwards;
-}
-
-/* ------------------------------------------------------------------ */
-/* Cetak dokumen (Invoice & Label Pengiriman)                          */
-/* ------------------------------------------------------------------ */
-@media print {
-  @page {
-    size: A4;
-    margin: 10mm;
+  .prose-news h2 {
+    @apply mt-9 font-sans text-xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-[26px];
   }
-
-  /*
-   * Label pengiriman dicetak pada kertas A6 (label kurir standar).
-   * Tanpa aturan ini, label A6 tercetak di tengah kertas A4 dan memboroskan
-   * kertas. `.print-label` dipasang pada wadah dokumen saat mode = label.
-   */
-  body.print-label-mode @page {
-    size: A6;
-    margin: 4mm;
+  .prose-news h3 {
+    @apply mt-7 font-sans text-lg font-bold tracking-tight text-slate-900 dark:text-white sm:text-xl;
   }
-
-  /*
-   * Hanya SATU dokumen yang boleh tercetak. Bila halaman sempat memuat lebih
-   * dari satu `.print-sheet` (mis. modal invoice pembeli + label admin),
-   * semuanya akan tercetak bertumpuk. `.print-active` menandai yang aktif.
-   */
-  .print-sheet:not(.print-active) {
-    display: none !important;
+  .prose-news a {
+    @apply font-medium text-brand-600 underline decoration-brand-600/30 decoration-2 underline-offset-2 hover:decoration-brand-600 dark:text-brand-400;
   }
-
-  body {
-    background: #ffffff !important;
+  .prose-news strong {
+    @apply font-bold text-slate-900 dark:text-white;
   }
-
-  /* Sembunyikan seluruh UI, tampilkan hanya dokumen cetak */
-  body * {
-    visibility: hidden !important;
+  .prose-news ul {
+    @apply list-disc space-y-2 pl-6 font-serif;
   }
-
-  .print-sheet,
-  .print-sheet * {
-    visibility: visible !important;
+  .prose-news ol {
+    @apply list-decimal space-y-2 pl-6 font-serif;
   }
-
-  .print-sheet {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    box-shadow: none !important;
-    border: none !important;
-    padding: 0 !important;
-    background: #ffffff !important;
+  .prose-news blockquote {
+    @apply rounded-r-xl border-l-4 border-brand-500 bg-slate-100/80 px-5 py-4 font-serif text-[17px] italic text-slate-700 dark:bg-white/5 dark:text-slate-200;
   }
-
-  nav,
-  footer,
-  .no-print {
-    display: none !important;
+  .prose-news blockquote p {
+    @apply m-0;
+  }
+  .prose-news img {
+    @apply w-full rounded-xl border border-slate-200 dark:border-white/10;
+  }
+  .prose-news hr {
+    @apply my-8 border-slate-200 dark:border-white/10;
   }
 }
 
-/* Input style khusus dashboard admin (mengurangi repetisi class) */
-@layer components {
-  .input-admin {
-    @apply w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] text-slate-800 outline-none focus:border-forest-600;
+/* Ticker berjalan */
+.ticker-track {
+  display: inline-flex;
+  min-width: 200%;
+  animation: ticker 42s linear infinite;
+}
+.ticker-wrap:hover .ticker-track {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

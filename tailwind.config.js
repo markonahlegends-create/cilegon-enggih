@@ -1,66 +1,74 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  darkMode: 'class',
+  content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
     extend: {
       colors: {
+        brand: {
+          50: '#fff1f2',
+          100: '#ffe0e3',
+          200: '#ffc6cc',
+          300: '#ff9ea8',
+          400: '#ff6676',
+          500: '#f83a4f',
+          600: '#e11d2e',
+          700: '#bd1524',
+          800: '#9c1623',
+          900: '#821823',
+          950: '#470810',
+        },
         navy: {
-          50: '#f0f5fa',
-          100: '#dde7f3',
-          200: '#c2d5ea',
-          300: '#98b9dc',
-          400: '#6895ca',
-          500: '#4576b7',
-          600: '#335c9a',
-          700: '#2a4a7d',
-          800: '#1B365D', // Primary Biru Baja / Navy
-          900: '#152947',
-          950: '#0d192d',
+          50: '#f2f6fc',
+          100: '#e2ebf7',
+          200: '#cadeef',
+          300: '#a6c6e2',
+          400: '#7ba8d3',
+          500: '#5489c2',
+          600: '#3f6da6',
+          700: '#345787',
+          800: '#2f4a70',
+          900: '#0b2545',
+          950: '#071a33',
         },
-        forest: {
-          50: '#f1f8f3',
-          100: '#deefe2',
-          200: '#bfdfc8',
-          300: '#92c7a3',
-          400: '#5fa978',
-          500: '#3d8b57',
-          600: '#2E6F40', // Primary Hijau Tosca / Forest Green
-          700: '#255935',
-          800: '#20472c',
-          900: '#1b3b25',
-          950: '#0e2114',
+        gold: {
+          400: '#f7bc3f',
+          500: '#f0a500',
+          600: '#cc8400',
         },
-        amberbrand: {
-          50: '#fdf9ed',
-          100: '#f9efce',
-          200: '#f3dd9b',
-          300: '#ecc562',
-          400: '#E5A93C', // Primary Kuning Emas / Amber CTA
-          500: '#d89124',
-          600: '#bc701b',
-          700: '#9c5219',
-          800: '#80411b',
-          900: '#6a3619',
-        },
-        surface: {
-          DEFAULT: '#F8FAF8',
-          warm: '#F4F7F5',
-          card: '#FFFFFF',
-        }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-        display: ['Plus Jakarta Sans', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        serif: ['Lora', 'Georgia', 'Cambria', 'Times New Roman', 'serif'],
       },
       boxShadow: {
-        'soft': '0 4px 20px -2px rgba(27, 54, 93, 0.06), 0 2px 6px -1px rgba(46, 111, 64, 0.04)',
-        'card': '0 2px 12px rgba(27, 54, 93, 0.07)',
-        'card-hover': '0 12px 28px -4px rgba(27, 54, 93, 0.14), 0 4px 10px -2px rgba(46, 111, 64, 0.08)',
+        card: '0 1px 2px rgba(15, 23, 42, .06), 0 8px 24px -12px rgba(15, 23, 42, .18)',
+        float: '0 10px 40px -12px rgba(15, 23, 42, .35)',
+      },
+      keyframes: {
+        ticker: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
+        },
+        fadeUp: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        pulseDot: {
+          '0%, 100%': { opacity: '1', transform: 'scale(1)' },
+          '50%': { opacity: '.45', transform: 'scale(.85)' },
+        },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+      },
+      animation: {
+        ticker: 'ticker 38s linear infinite',
+        fadeUp: 'fadeUp .35s ease-out both',
+        pulseDot: 'pulseDot 1.6s ease-in-out infinite',
+        shimmer: 'shimmer 1.6s infinite',
       },
     },
   },
   plugins: [],
-}
+};

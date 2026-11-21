@@ -3,121 +3,14 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "installCommand": "npm install",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/[...route]"
-    },
-    {
-      "source": "/katalog",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/katalog.html"
-    },
-    {
-      "source": "/custom-korporat",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/custom-korporat.html"
-    },
-    {
-      "source": "/tentang-kami",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/tentang-kami.html"
-    },
-    {
-      "source": "/cara-order-faq",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/cara-order-faq.html"
-    },
-    {
-      "source": "/lacak-pesanan",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/lacak-pesanan.html"
-    },
-    {
-      "source": "/legalitas",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/og/legalitas.html"
-    },
-    {
-      "source": "/produk/:slug",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": {
-            "re": "[wW][hH][aA][tT][sS][aA][pP][pP]|[fF][aA][cC][eE][bB][oO][oO][kK][eE][xX][tT][eE][rR][nN][aA][lL][hH][iI][tT]|[fF][aA][cC][eE][bB][oO][oO][kK][cC][aA][tT][aA][lL][oO][gG]|[fF][aA][cC][eE][bB][oO][oO][kK]|[fF][aA][cC][eE][bB][oO][tT]|[mM][eE][tT][aA]-[eE][xX][tT][eE][rR][nN][aA][lL][aA][gG][eE][nN][tT]|[iI][nN][sS][tT][aA][gG][rR][aA][mM]|[tT][hH][rR][eE][aA][dD][sS]|[tT][wW][iI][tT][tT][eE][rR][bB][oO][tT]|[tT][eE][lL][eE][gG][rR][aA][mM][bB][oO][tT]|[lL][iI][nN][kK][eE][dD][iI][nN][bB][oO][tT]|[sS][lL][aA][cC][kK][bB][oO][tT]|[dD][iI][sS][cC][oO][rR][dD][bB][oO][tT]|[eE][mM][bB][eE][dD][lL][yY]|[pP][iI][nN][tT][eE][rR][eE][sS][tT]|[rR][eE][dD][dD][iI][tT][bB][oO][tT]|[sS][kK][yY][pP][eE][uU][rR][iI][pP][rR][eE][vV][iI][eE][wW]|[aA][pP][pP][lL][eE][bB][oO][tT]|[vV][kK][sS][hH][aA][rR][eE]|[nN][uU][zZ][zZ][eE][lL]|[mM][aA][sS][tT][oO][dD][oO][nN]|[bB][lL][uU][eE][sS][kK][yY]|[cC][aA][rR][dD][yY][bB]|[lL][iI][nN][eE]/|[vV][iI][bB][eE][rR]|[kK][aA][kK][aA][oO][tT][aA][lL][kK]|[tT][uU][mM][bB][lL][rR]|[qQ][uU][oO][rR][aA] [lL][iI][nN][kK] [pP][rR][eE][vV][iI][eE][wW]|[pP][oO][cC][kK][eE][tT][pP][aA][rR][sS][eE][rR]|[bB][uU][fF][fF][eE][rR]|[hH][oO][oO][tT][sS][uU][iI][tT][eE]|[sS][nN][aA][pP][cC][hH][aA][tT]|[iI][fF][rR][aA][mM][eE][lL][yY]|[sS][lL][uU][rR][pP]|[qQ][wW][aA][nN][tT][iI][fF][yY]|[yY][aA][nN][dD][eE][xX][bB][oO][tT]|[dD][uU][cC][kK][dD][uU][cC][kK][bB][oO][tT]|[sS][eE][mM][rR][uU][sS][hH][bB][oO][tT]|[aA][hH][rR][eE][fF][sS][bB][oO][tT]|[bB][aA][iI][dD][uU][sS][pP][iI][dD][eE][rR]|[nN][oO][tT][iI][fF]"
-          }
-        }
-      ],
-      "destination": "/api?__path=/api/share/produk/:slug"
-    },
-    {
-      "source": "/bi/:slug",
-      "destination": "/api?__path=/api/og-image/:slug"
-    },
-    {
-      "source": "/((?!api/).*)",
+      "source": "/((?!api/|assets/|images/|covers/|favicon|robots|site\\.webmanifest|sitemap\\.xml|rss\\.xml).*)",
       "destination": "/index.html"
     }
   ],
   "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-store, max-age=0"
-        }
-      ]
-    },
     {
       "source": "/assets/(.*)",
       "headers": [
@@ -128,171 +21,36 @@
       ]
     },
     {
-      "source": "/products/(.*)",
+      "source": "/images/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "public, max-age=604800, immutable"
+          "value": "public, max-age=604800"
         }
       ]
     },
     {
-      "source": "/((?!assets/).*)",
+      "source": "/(.*)",
       "headers": [
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "SAMEORIGIN"
         },
         {
           "key": "Referrer-Policy",
           "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "camera=(), microphone=(), geolocation=()"
-        },
-        {
-          "key": "Strict-Transport-Security",
-          "value": "max-age=31536000; includeSubDomains"
-        },
-        {
-          "key": "Content-Security-Policy",
-          "value": "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src 'self' https://*.supabase.co; media-src 'self' blob: https://*.supabase.co; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self' https://wa.me; object-src 'none'"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
-      "source": "/og/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300, s-maxage=300, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/bi/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=86400, s-maxage=604800, stale-while-revalidate=86400"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
         }
       ]
     }
   ],
   "functions": {
+    "api/index.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
     "api/[...route].js": {
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 10
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/backup",
-      "schedule": "0 11 * * *"
-    },
-    {
-      "path": "/api/cron/digest",
-      "schedule": "0 0 * * *"
-    }
-  ]
+  }
 }

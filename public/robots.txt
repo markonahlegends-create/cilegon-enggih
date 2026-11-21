@@ -1,7 +1,6 @@
-# Cilegon Enggih Official Store
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /api/
+Disallow: /api/admin
 
-Sitemap: https://cilegon-enggih.vercel.app/sitemap.xml
+Sitemap: https://infokelurahan.vercel.app/sitemap.xml

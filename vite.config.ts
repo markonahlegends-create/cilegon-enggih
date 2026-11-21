@@ -1,31 +1,34 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-// @ts-expect-error — modul mjs tanpa tipe; lihat scripts/sitemap.d.ts
-import { sitemapPlugin } from './scripts/sitemap.mjs';
+
+const API_TARGET = process.env.API_TARGET || 'http://127.0.0.1:3001';
+
+const proxy = {
+  '/api': { target: API_TARGET, changeOrigin: true },
+};
 
 export default defineConfig({
-  // sitemapPlugin: sitemap.xml & robots.txt digenerate ulang setiap build,
-  // sehingga produk baru otomatis masuk dan lastmod tidak basi.
-  plugins: [react(), sitemapPlugin()],
+  plugins: [react()],
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Preview Arena memakai domain *.e2b.app — izinkan semua host.
     allowedHosts: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3001',
-        changeOrigin: true,
-      },
-    },
+    proxy,
   },
   preview: {
     host: '0.0.0.0',
     port: 4173,
     allowedHosts: true,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:3001',
-        changeOrigin: true,
+    proxy,
+  },
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+        },
       },
     },
   },

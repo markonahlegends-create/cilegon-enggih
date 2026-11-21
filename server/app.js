@@ -1,139 +1,112 @@
 /**
- * Adapter Express untuk core API.
- * Dipakai oleh server lokal (`npm run server`), preview sandbox, dan self-host (VPS).
+ * Adapter Express untuk API Info Kelurahan.
+ * Juga menyajikan hasil build frontend (dist/) bila tersedia, sehingga
+ * `npm start` cukup satu proses untuk produksi / self-host.
  */
 import express from 'express';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dispatch } from './core.js';
-import { store } from './db.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { handleRequest } from './core.js';
+import { store, storageInfo } from './db.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const DIST_DIR = path.join(process.cwd(), 'dist');
 
-export const createApp = () => {
+function sendResult(res, result) {
+  if (result.headers) {
+    Object.entries(result.headers).forEach(([key, value]) => res.setHeader(key, value));
+  }
+  if (result.binary) {
+    res.status(result.status || 200).send(result.binary);
+    return;
+  }
+  if (result.raw !== undefined) {
+    res.status(result.status || 200).send(result.raw);
+    return;
+  }
+  res.status(result.status || 200).json(result.body ?? {});
+}
+
+export function createApp() {
   const app = express();
-
   app.disable('x-powered-by');
+  app.set('trust proxy', true);
+  app.use(express.json({ limit: '4mb' }));
+  app.use(express.urlencoded({ extended: false, limit: '1mb' }));
 
-  // Header keamanan dasar untuk self-host (Vercel/Cloudflare punya sendiri via config).
-  app.use((_req, res, next) => {
-    res.header('X-Content-Type-Options', 'nosniff');
-    res.header('X-Frame-Options', 'SAMEORIGIN');
-    res.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     next();
   });
 
-  // Healthcheck ringan (untuk uptime monitor) — tidak menyentuh storage.
-  app.get('/api/ping', (_req, res) => res.json({ pong: true, at: new Date().toISOString() }));
-
-  app.use(express.json({ limit: '6mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '6mb' }));
-
-  // CORS: izinkan SPA di origin berbeda (mis. Cloudflare Pages memanggil API Vercel).
-  app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
-    res.header('Vary', 'Origin');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-    res.header(
-      'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-Requested-With'
-    );
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
-    return next();
-  });
-
-  /**
-   * Body yang tidak bisa di-parse JANGAN menggagalkan request analitik.
-   * Endpoint /api/events bersifat best-effort: lebih baik diabaikan
-   * daripada mengembalikan error ke browser pembeli.
-   */
-  app.use('/api/events', (err, req, res, _next) => {
-    if (err) return res.status(204).end();
-    return res.status(204).end();
-  });
-
-  // Semua endpoint /api ditangani core framework-agnostic.
+  // Semua endpoint API (termasuk /api/sitemap.xml & /api/rss.xml).
   app.all('/api/*', async (req, res) => {
-    const result = await dispatch({
-      method: req.method,
-      path: req.originalUrl,
-      query: req.query,
-      body: req.body,
-      headers: req.headers
-    });
-    // Header tambahan (mis. Set-Cookie untuk sesi HttpOnly).
-    if (result.headers) {
-      for (const [key, value] of Object.entries(result.headers)) res.setHeader(key, value);
+    try {
+      await store.init();
+      const result = await handleRequest({
+        method: req.method,
+        path: req.path,
+        query: req.query,
+        headers: req.headers,
+        body: req.body,
+        ip: req.ip,
+      });
+      sendResult(res, result);
+    } catch (error) {
+      console.error('[Info Kelurahan] Unhandled:', error);
+      res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
     }
-    // 204 tanpa body, CSV dikirim sebagai teks (ekspor insight).
-    if (result.status === 204 || result.body === undefined) return res.status(result.status).end();
-    const ctype = String(res.getHeader('Content-Type') || '');
-    if (ctype.startsWith('text/csv')) {
-      return res.status(result.status).send(result.body.csv ?? result.body);
-    }
-    /*
-     * Respons NON-JSON (mis. kartu share `text/html`) harus dikirim apa adanya.
-     * Tanpa cabang ini, HTML di-`json()` sehingga keluar sebagai string
-     * ber-escape dan crawler tidak menemukan satu pun tag <meta>.
-     */
-    if (typeof result.body === 'string' && ctype && !ctype.includes('json')) {
-      return res.status(result.status).send(result.body);
-    }
-    /*
-     * Respons BINER (mis. thumbnail `/api/og-image/<slug>.jpg`).
-     * Tanpa cabang ini Buffer akan di-`json()` menjadi objek
-     * `{"type":"Buffer","data":[...]}` dan crawler menerima teks, bukan JPEG —
-     * thumbnail tidak muncul walau berkasnya benar.
-     */
-    if (Buffer.isBuffer(result.body)) {
-      return res.status(result.status).send(result.body);
-    }
-    res.status(result.status).json(result.body);
   });
 
-  // Static assets (foto produk, brand) — aman untuk semua adapter.
-  const publicPath = path.join(__dirname, '..', 'public');
-  if (fs.existsSync(publicPath)) {
+  app.get(['/sitemap.xml', '/rss.xml'], async (req, res) => {
+    await store.init();
+    const result = await handleRequest({
+      method: 'GET',
+      path: req.path === '/rss.xml' ? '/api/rss.xml' : '/api/sitemap.xml',
+      headers: req.headers,
+    });
+    sendResult(res, result);
+  });
+
+  if (fs.existsSync(path.join(DIST_DIR, 'index.html'))) {
     app.use(
-      express.static(publicPath, {
-        maxAge: '7d',
-        setHeaders: (res) => res.setHeader('Cache-Control', 'public, max-age=604800')
+      express.static(DIST_DIR, {
+        index: false,
+        maxAge: '1h',
+        setHeaders(res, filePath) {
+          if (/\.(js|css|woff2?|svg|webp|avif|png|jpg|jpeg)$/.test(filePath)) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        },
       })
     );
-  }
-
-  // Build SPA (production) kalau sudah ada.
-  const distPath = path.join(__dirname, '..', 'dist');
-  if (fs.existsSync(distPath)) {
-    app.use(express.static(distPath, { maxAge: '1h' }));
-    app.get('*', (req, res, next) => {
-      if (req.path.startsWith('/api')) return next();
-      return res.sendFile(path.join(distPath, 'index.html'));
+    app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache');
+      res.sendFile(path.join(DIST_DIR, 'index.html'));
+    });
+  } else {
+    app.get('/', (_req, res) => {
+      res
+        .type('html')
+        .send(
+          '<!doctype html><html lang="id"><body style="font-family:system-ui;padding:40px;max-width:640px;margin:auto">' +
+            '<h1>Info Kelurahan — API aktif</h1>' +
+            `<p>Mode penyimpanan: <b>${storageInfo.mode}</b></p>` +
+            '<p>Frontend belum dibangun. Jalankan <code>npm run dev</code> (Vite di :5173) ' +
+            'atau <code>npm run build</code> lalu <code>npm start</code>.</p>' +
+            '<p>Cek API: <a href="/api/health">/api/health</a></p></body></html>'
+        );
     });
   }
 
-  // Fallback root kalau dist belum dibuild (mode dev: cukup pakai Vite 5173).
-  app.get('/', (_req, res) => {
-    res
-      .status(200)
-      .type('html')
-      .send(
-        `<!doctype html><html lang="id"><head><meta charset="utf-8"><title>Cilegon Enggih API</title>
-        <meta name="viewport" content="width=device-width,initial-scale=1">
-        <style>body{font-family:system-ui,sans-serif;background:#0d192d;color:#e2e8f0;display:grid;place-items:center;min-height:100vh;margin:0}
-        .card{max-width:560px;padding:32px;border-radius:20px;background:#152947;border:1px solid #1B365D}
-        h1{margin:0 0 8px;font-size:22px}p{color:#94a3b8;line-height:1.6;font-size:14px}
-        code{background:#0d192d;padding:2px 6px;border-radius:6px;color:#E5A93C}a{color:#92c7a3}</style></head>
-        <body><div class="card"><h1>Cilegon Enggih — Official API</h1>
-        <p>Backend aktif pada port ini. Mode penyimpanan: <code>${store.mode}</code>.</p>
-        <p>Storefront dev berjalan di <a href="http://localhost:5173">http://localhost:5173</a>.
-        Endpoint cek cepat: <code>/api/health</code>, <code>/api/storefront</code>.</p>
-        <p>Build produksi (<code>npm run build</code>) akan otomatis menyajikan SPA di port ini.</p></div></body></html>`
-      );
+  app.use((error, _req, res, _next) => {
+    if (error?.type === 'entity.too.large') {
+      res.status(413).json({ error: 'Ukuran data terlalu besar (maksimal 4 MB).' });
+      return;
+    }
+    console.error('[Info Kelurahan] Express error:', error);
+    res.status(500).json({ error: 'Terjadi kesalahan pada server.' });
   });
 
   return app;
-};
+}
