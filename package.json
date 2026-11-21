@@ -15,7 +15,8 @@
     "start": "node server/index.js",
     "seed:reset": "node scripts/reset-db.mjs",
     "smoke": "node scripts/smoke-test.mjs",
-    "test:share": "node scripts/test-share-metadata.mjs"
+    "test:share": "node scripts/test-share-metadata.mjs",
+    "test:admin-entrypoint": "node scripts/test-admin-entrypoint.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",

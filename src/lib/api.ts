@@ -188,7 +188,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
-  const res = await fetch(path, { ...options, headers });
+  const requestPath = path.startsWith('/api/admin/')
+    ? `/api/index?path=${encodeURIComponent(path)}`
+    : path;
+  const res = await fetch(requestPath, { ...options, headers });
   const text = await res.text();
   let data: unknown = null;
   try {

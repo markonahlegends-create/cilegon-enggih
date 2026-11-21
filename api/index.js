@@ -22,14 +22,21 @@ function readBody(req) {
 export default async function handler(req, res) {
   const url = new URL(req.url || '/', `https://${req.headers.host || 'localhost'}`);
   const headers = req.headers || {};
-  // Root utility paths (e.g. /sitemap.xml) can explicitly select an API route.
-  const requestPath = url.searchParams.get('path') || url.pathname;
+  // Explicitly route API requests through /api/index?path=... when Vercel's
+  // catch-all does not resolve a nested endpoint consistently. Preserve the
+  // original endpoint query string and do not leak the internal `path` param.
+  const forwardedPath = url.searchParams.get('path');
+  const endpoint = new URL(forwardedPath || url.pathname, `https://${req.headers.host || 'localhost'}`);
+  const requestPath = endpoint.pathname;
+  const query = Object.fromEntries(url.searchParams.entries());
+  delete query.path;
+  endpoint.searchParams.forEach((value, key) => { query[key] = value; });
   try {
     await store.init();
     const result = await handleRequest({
       method: req.method,
       path: requestPath,
-      query: Object.fromEntries(url.searchParams.entries()),
+      query,
       headers,
       body: req.method === 'GET' || req.method === 'DELETE' ? {} : readBody(req),
       ip: String(headers['x-forwarded-for'] || '').split(',')[0].trim(),
