@@ -3,4 +3,4 @@ Allow: /
 Disallow: /admin
 Disallow: /api/admin
 
-Sitemap: https://infokelurahan.vercel.app/sitemap.xml
+Sitemap: https://cilegon-enggih.vercel.app/sitemap.xml
