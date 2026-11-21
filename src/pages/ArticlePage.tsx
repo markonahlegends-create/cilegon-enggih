@@ -103,6 +103,8 @@ export function ArticlePage() {
                 </aside>
               </div>
 
+              {article.sourceUrl && <aside className="mt-7 rounded-xl border border-sky-200 bg-sky-50 p-4 dark:border-sky-500/20 dark:bg-sky-500/5"><p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-sky-800 dark:text-sky-300">Sumber informasi</p><p className="mt-1 text-xs text-slate-700 dark:text-slate-200">Ringkasan dari {article.sourceName || 'sumber resmi'}{article.sourceDate ? ` · terbit ${article.sourceDate}` : ''}.</p><a href={article.sourceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-sky-800 underline underline-offset-2 dark:text-sky-300">Baca publikasi asli <ArrowRight className="ml-1 h-3.5 w-3.5"/></a></aside>}
+
               <div className="mt-8 rounded-2xl border border-brand-100 bg-brand-50/70 p-4 dark:border-brand-500/20 dark:bg-brand-500/5 sm:p-5">
                 <div className="flex items-start gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-brand-600 shadow-sm dark:bg-white/10"><Share2 className="h-4 w-4"/></span><p className="text-[12px] leading-relaxed text-slate-600 dark:text-slate-300"><b className="text-slate-800 dark:text-white">Punya informasi terkait?</b> Kirim klarifikasi atau informasi tambahan kepada redaksi melalui <Link to="/kontak" className="font-bold text-brand-600 underline underline-offset-2">halaman kontak</Link>. Setiap informasi akan diverifikasi sebelum dipublikasikan.</p></div>
               </div>

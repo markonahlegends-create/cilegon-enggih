@@ -81,6 +81,9 @@ export interface ArticleListItem {
   updatedAt: string;
   url: string;
   commentCount: number;
+  sourceName?: string;
+  sourceDate?: string;
+  sourceUrl?: string;
 }
 
 export interface ArticleDetail extends ArticleListItem {

@@ -117,6 +117,9 @@ function decorate(doc, article, options = {}) {
     updatedAt: article.updatedAt || article.publishedAt,
     url: `/artikel/${article.slug}`,
     commentCount: commentCount(doc, article.slug),
+    sourceName: article.sourceName || '',
+    sourceDate: article.sourceDate || '',
+    sourceUrl: article.sourceUrl || '',
   };
   if (options.withContent) base.content = article.content;
   return base;

@@ -43,7 +43,7 @@ export function HomePage() {
   const hero = headlines[0];
   const sideHeadlines = headlines.slice(1, 4);
 
-  useMeta({ title: 'Info Kelurahan — Kabar Warga Karang Asem, Cilegon', description: site?.settings.description || 'Berita, informasi, layanan publik, dan agenda warga Kelurahan Karang Asem, Cilegon.' });
+  useMeta({ title: 'Info Kelurahan — Informasi Seluruh Kelurahan Kota Cilegon', description: site?.settings.description || 'Kabar, layanan publik, dan kegiatan masyarakat dari seluruh kelurahan di Kota Cilegon.' });
 
   useEffect(() => {
     if (headlines.length < 2) return;
@@ -93,7 +93,7 @@ export function HomePage() {
           <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3 dark:border-white/10">
             <div className="flex items-start gap-3">
               <span className="mt-0.5 h-7 w-1 rounded-full bg-brand-600" />
-              <div><h2 className="text-lg font-extrabold tracking-tight text-navy-900 dark:text-white sm:text-xl">Berita Terbaru</h2><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Informasi terkini dari lingkungan kita</p></div>
+              <div><h2 className="text-lg font-extrabold tracking-tight text-navy-900 dark:text-white sm:text-xl">Berita Terbaru</h2><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">Kabar dan layanan publik dari berbagai wilayah Cilegon</p></div>
             </div>
             <Link to="/berita" className="inline-flex items-center gap-1 text-xs font-bold text-brand-600 hover:gap-2 dark:text-brand-400">Semua berita <ArrowRight className="h-3.5 w-3.5" /></Link>
           </div>

@@ -27,7 +27,7 @@ export function Logo({ compact = false }: { compact?: boolean }) {
         </span>
         {!compact && (
           <span className="mt-1 block text-[9px] font-bold uppercase tracking-[0.17em] text-slate-500 dark:text-slate-400 sm:text-[10px]">
-            Karang Asem · Cilegon
+            Seluruh Kelurahan · Cilegon
           </span>
         )}
       </span>

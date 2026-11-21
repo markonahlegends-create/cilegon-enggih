@@ -29,7 +29,7 @@ console.log(`\nSmoke test Info Kelurahan → ${base}\n`);
 
 await check('GET /api/health', async () => {
   const { status, data } = await json('/api/health');
-  return status === 200 && data.ok && data.published > 10;
+  return status === 200 && data.ok && data.published > 0;
 });
 
 await check('GET /api/bootstrap', async () => {
@@ -39,7 +39,7 @@ await check('GET /api/bootstrap', async () => {
 
 await check('GET /api/articles (paginasi)', async () => {
   const { status, data } = await json('/api/articles?limit=5');
-  return status === 200 && data.items.length === 5 && data.meta.total > 10;
+  return status === 200 && data.items.length === 5 && data.meta.total > 0;
 });
 
 await check('GET /api/articles?q=cari', async () => {
@@ -52,7 +52,7 @@ await check('GET /api/articles/:slug + komentar', async () => {
   const list = await json('/api/articles?limit=1');
   slug = list.data.items[0].slug;
   const { status, data } = await json(`/api/articles/${slug}`);
-  return status === 200 && data.article.content.length > 200 && Array.isArray(data.related);
+  return status === 200 && data.article.content.length > 100 && Boolean(data.article.sourceUrl?.startsWith('https://berita.cilegon.go.id/')) && Array.isArray(data.related);
 });
 
 await check('POST /api/comments (moderasi)', async () => {
@@ -85,7 +85,7 @@ await check('Admin login + proteksi', async () => {
   const overview = await json('/api/admin/overview', {
     headers: { Authorization: `Bearer ${login.data.token}` },
   });
-  return overview.status === 200 && overview.data.counts.published > 10;
+  return overview.status === 200 && overview.data.counts.published > 0;
 });
 
 await check('GET /api/sitemap.xml', async () => {

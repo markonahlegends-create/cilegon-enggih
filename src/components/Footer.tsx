@@ -16,7 +16,7 @@ export function Footer() {
           <div>
             <div className="inline-flex rounded-xl bg-white p-2"><Logo /></div>
             <p className="mt-4 max-w-sm text-[13px] leading-relaxed text-white/65">
-              {settings?.description || 'Portal berita dan informasi warga Kelurahan Karang Asem, Cilegon.'}
+              {settings?.description || 'Portal informasi untuk warga di seluruh kelurahan Kota Cilegon.'}
             </p>
             <div className="mt-4 flex items-center gap-2">
               {[

@@ -1,7 +1,7 @@
 {
-  "name": "Info Kelurahan — Berita & Informasi Warga",
+  "name": "Info Kelurahan — Informasi Seluruh Kelurahan Kota Cilegon",
   "short_name": "Info Kelurahan",
-  "description": "Portal berita dan informasi warga Kelurahan Karang Asem, Kecamatan Cibeber, Kota Cilegon.",
+  "description": "Portal informasi untuk warga di seluruh kelurahan Kota Cilegon, dengan tautan ke berita dan sumber resmi.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

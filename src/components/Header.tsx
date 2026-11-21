@@ -30,7 +30,7 @@ function TopBar() {
         <div className="flex items-center gap-4">
           <span className="font-medium text-white/90">{todayLabel()}</span>
           <span className="h-3 w-px bg-white/15" />
-          <span>{data?.settings.village || 'Kelurahan Karang Asem'}, {data?.settings.city || 'Cilegon'}</span>
+          <span>{data?.settings.village || 'Seluruh kelurahan'}, {data?.settings.city || 'Cilegon'}</span>
         </div>
         <div className="flex items-center gap-1.5">
           {socials.instagram && (

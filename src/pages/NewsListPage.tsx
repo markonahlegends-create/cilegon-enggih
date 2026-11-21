@@ -30,7 +30,7 @@ export function NewsListPage({ mode = 'all' }: { mode?: 'all' | 'category' | 'se
   const { data, loading, error } = useApi<ArticleListResponse>(mode === 'saved' ? null : apiPath);
   const items = mode === 'saved' ? [] : data?.items || [];
 
-  useMeta({ title: `${title} — Info Kelurahan`, description: mode === 'category' ? category?.description : `Baca ${title.toLowerCase()} dari Info Kelurahan, portal berita warga Karang Asem, Cilegon.` });
+  useMeta({ title: `${title} — Info Kelurahan`, description: mode === 'category' ? category?.description : `Baca ${title.toLowerCase()} dari Info Kelurahan, portal informasi seluruh kelurahan Kota Cilegon.` });
 
   const setSort = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -46,7 +46,7 @@ export function NewsListPage({ mode = 'all' }: { mode?: 'all' | 'category' | 'se
         <div>
           <div className="mb-2 flex items-center gap-2 text-[11px] font-medium text-slate-500"><Link to="/" className="hover:text-brand-600">Beranda</Link><span>/</span><span className="text-slate-700 dark:text-slate-300">{title}</span></div>
           <h1 className="text-2xl font-extrabold tracking-tight text-navy-900 dark:text-white sm:text-3xl">{title}</h1>
-          <p className="mt-1.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{mode === 'category' && category ? category.description : mode === 'search' ? `Menelusuri berita yang cocok dengan kata kunci “${q}”.` : mode === 'tag' ? 'Berita dan informasi terkini berdasarkan topik.' : 'Ikuti berita, informasi, dan cerita terbaru dari lingkungan Kelurahan Karang Asem.'}</p>
+          <p className="mt-1.5 max-w-2xl text-sm text-slate-500 dark:text-slate-400">{mode === 'category' && category ? category.description : mode === 'search' ? `Menelusuri berita yang cocok dengan kata kunci “${q}”.` : mode === 'tag' ? 'Berita dan informasi terkini berdasarkan topik.' : 'Ikuti berita dan informasi terbaru dari berbagai wilayah di Kota Cilegon.'}</p>
         </div>
         <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
           <SlidersHorizontal className="h-4 w-4" />
