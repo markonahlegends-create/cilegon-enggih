@@ -14,7 +14,7 @@ import { seedDatabase } from '../server/seed.js';
 const root = process.cwd();
 const publicDir = path.join(root, 'public');
 const coverDir = path.join(publicDir, 'covers');
-const SITE = process.env.SITE_URL || 'https://cilegon-enggih.vercel.app';
+const SITE = process.env.SITE_URL || 'https://infokelurahan.vercel.app';
 
 const doc = seedDatabase();
 const published = doc.articles
