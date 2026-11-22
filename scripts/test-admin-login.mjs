@@ -42,6 +42,9 @@ const cek = (nama, kondisi, detail = '') => {
 };
 
 let ip = 0;
+/** Pesan galat harus bisa ditindaklanjuti, bukan sekadar "salah". */
+const sebutPanjang = (pesan) => /\d+ karakter/.test(String(pesan || ''));
+
 const login = async (password) => {
   ip += 1;
   const hasil = await dispatch({
@@ -69,14 +72,47 @@ console.log('\n1. Password benar diterima');
   cek('tidak meminta OTP (2FA mati di uji ini)', r.body.otpRequired === false);
 }
 
-console.log('\n2. Password salah ditolak');
+console.log('\n2. Password salah ditolak, dengan pesan yang bisa ditindaklanjuti');
 {
-  const r = await login(`${PASSWORD}-beda`);
-  cek('status 401', r.status === 401, `dapat ${r.status}`);
+  /*
+   * KASUS NYATA (22 Nov 2026): admin mengetik 19 karakter, sedangkan nilai
+   * yang terpasang 43 karakter. Pesan lama "Password admin salah" membuat
+   * admin mengira salah ketik dan mencoba berulang, padahal nilai di hosting
+   * memang nilai lain. Pesan sekarang menyebut PANJANG (bukan isi) supaya
+   * pemilik toko tahu bahwa yang perlu dilakukan adalah MENGGANTI nilai.
+   */
+  const panjangBeda = await login(`${PASSWORD}-beda-jauh-lebih-panjang`);
+  cek('panjang berbeda → 401', panjangBeda.status === 401, `dapat ${panjangBeda.status}`);
   cek(
-    'pesan menjelaskan password salah',
-    /salah/i.test(String(r.body.error || '')),
-    String(r.body.error || '').slice(0, 60)
+    'pesan menyebut jumlah karakter',
+    sebutPanjang(panjangBeda.body.error),
+    String(panjangBeda.body.error || '').slice(0, 90)
+  );
+  cek(
+    'pesan menyuruh MENGGANTI nilai di hosting',
+    /ganti\s+ADMIN_PASSWORD/i.test(String(panjangBeda.body.error || '')),
+    String(panjangBeda.body.error || '').slice(0, 120)
+  );
+  cek(
+    'panjang dikirim lewat field terstruktur',
+    typeof panjangBeda.body.panjangDikirim === 'number' &&
+      typeof panjangBeda.body.panjangTersimpan === 'number',
+    JSON.stringify(panjangBeda.body).slice(0, 90)
+  );
+
+  /* Panjang SAMA tetapi isi beda → arahkan ke ejaan/kapitalisasi. */
+  const samaPanjang = await login(`${PASSWORD.slice(0, -1)}Z`);
+  cek('panjang sama → 401', samaPanjang.status === 401, `dapat ${samaPanjang.status}`);
+  cek(
+    'panjang sama → pesan mengarah ke ejaan/kapitalisasi, bukan menyuruh ganti',
+    /kapitalisasi|ejaan/i.test(String(samaPanjang.body.error || '')) &&
+      !/ganti\s+ADMIN_PASSWORD/i.test(String(samaPanjang.body.error || '')),
+    String(samaPanjang.body.error || '').slice(0, 110)
+  );
+  cek(
+    'password asli TIDAK dibocorkan di pesan galat',
+    !String(panjangBeda.body.error).includes(PASSWORD) &&
+      !String(samaPanjang.body.error).includes(PASSWORD)
   );
 }
 
@@ -169,11 +205,7 @@ console.log('\n7. Diagnosa melaporkan BENTUK password tersimpan');
   cek('diagnosa punya baris password-shape', Boolean(baris), `status ${r.status}`);
   if (baris) {
     cek('password uji dilaporkan sehat (tanpa spasi ujung)', baris.status === 'ok', JSON.stringify(baris));
-    cek(
-      'detail memuat panjang karakter',
-      /\d+ karakter/.test(String(baris.detail || '')),
-      String(baris.detail || '')
-    );
+    cek('detail memuat panjang karakter', sebutPanjang(baris.detail), String(baris.detail || ''));
     cek('detail TIDAK memuat nilai password', !JSON.stringify(baris).includes(PASSWORD));
   }
 }
