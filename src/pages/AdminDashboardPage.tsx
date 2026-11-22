@@ -218,7 +218,13 @@ export const AdminDashboardPage: React.FC = () => {
     setLoggingIn(true);
     setLoginError('');
     try {
-      const res = await adminLogin(password);
+      /*
+       * Rapikan spasi/baris baru di ujung sebelum dikirim. Password yang
+       * disalin dari WhatsApp atau Catatan HP sering membawa Enter di akhir;
+       * tanpa ini admin melihat "Password admin salah" padahal yang diketik
+       * benar. Karakter di TENGAH tidak disentuh.
+       */
+      const res = await adminLogin(password.trim());
 
       // Dua langkah: password benar, tapi butuh kode 6 digit dari Telegram.
       if (res.otpRequired && res.challengeId) {
@@ -731,6 +737,13 @@ export const AdminDashboardPage: React.FC = () => {
               </div>
             </div>
 
+            {/\s/.test(password) && (
+              <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-2.5">
+                Password mengandung spasi. Spasi di awal/akhir otomatis diabaikan, spasi di
+                tengah tetap diperhitungkan.
+              </p>
+            )}
+
             {loginError && (
               <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-2.5">
                 {loginError}
@@ -752,7 +765,8 @@ export const AdminDashboardPage: React.FC = () => {
             <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di hosting
             (Vercel/Cloudflare/VPS). Tidak ada password bawaan di dalam kode — kalau variabel
             itu belum diset, login dinonaktifkan. Saat menjalankan server di komputer sendiri,
-            password acak untuk sesi tersebut tercetak di konsol. Lihat{' '}
+            password acak untuk sesi tersebut tercetak di konsol. Spasi atau baris baru di ujung
+            password diabaikan otomatis, jadi aman menempel dari WhatsApp. Lihat{' '}
             <strong>DEPLOYMENT.md</strong>.
           </p>
         </div>
