@@ -32,8 +32,9 @@
     "test:editor": "node scripts/test-product-editor.mjs",
     "test:og": "node scripts/test-og-share.mjs",
     "test:crawler": "node scripts/test-crawler-ua.mjs",
+    "test:login": "node scripts/test-admin-login.mjs",
     "test:vercel": "node scripts/test-vercel-validator.mjs",
-    "test:all": "npm run test:payments && npm run test:stock && npm run test:reports && npm run test:notify && npm run test:og && npm run test:crawler && npm run test:vercel && npm run test:editor && npm run test:share && npm run test:thumb && npm run test:button && npm run test:notify:e2e"
+    "test:all": "npm run test:payments && npm run test:stock && npm run test:reports && npm run test:notify && npm run test:og && npm run test:crawler && npm run test:vercel && npm run test:editor && npm run test:share && npm run test:thumb && npm run test:login && npm run test:button && npm run test:notify:e2e"
   },
   "dependencies": {
     "express": "^4.21.2",

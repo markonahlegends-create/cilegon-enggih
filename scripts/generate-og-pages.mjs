@@ -239,7 +239,19 @@ const writeVercelRewrites = (routes) => {
    * OG-nya sudah diperbaiki. Dengan `must-revalidate` + tipe yang tegas,
    * crawler selalu membaca versi terbaru.
    */
-  cfg.headers = (cfg.headers || []).filter((h) => !String(h.source).startsWith('/og/'));
+  /*
+   * Buang aturan header yang KITA KELOLA sendiri sebelum menulis ulang.
+   *
+   * BUG YANG PERNAH TERJADI: filter ini semula hanya membuang `/og/`, padahal
+   * fungsi yang sama juga menambahkan aturan `/bi/` di bawah. Setiap build
+   * jadi menambah satu blok `/bi/(.*)` yang identik — `vercel.json` membengkak
+   * (pernah sampai 10 blok duplikat) dan setiap build mengubah berkas tanpa
+   * perubahan bermakna, sehingga riwayat commit dipenuhi noise.
+   */
+  const KELOLA_SENDIRI = ['/og/', '/bi/'];
+  cfg.headers = (cfg.headers || []).filter(
+    (h) => !KELOLA_SENDIRI.some((awalan) => String(h.source).startsWith(awalan))
+  );
 
   /*
    * HANYA halaman NON-PRODUK yang memakai kartu statis.
@@ -347,7 +359,13 @@ const writeVercelRewrites = (routes) => {
    * Facebook Sharing Debugger. Ini keterbatasan platform, bukan bug aplikasi.
    */
   cfg.headers = [
-    ...cfg.headers.filter((h) => !String(h.source).startsWith('/og/')),
+    /*
+     * Saringan yang sama seperti di atas: `/og/` DAN `/bi/` dikelola fungsi
+     * ini. Tanpa `/bi/`, aturan thumbnail menumpuk setiap kali build.
+     */
+    ...cfg.headers.filter(
+      (h) => !['/og/', '/bi/'].some((awalan) => String(h.source).startsWith(awalan))
+    ),
     {
       /*
        * JANGAN `immutable` setahun di sini.

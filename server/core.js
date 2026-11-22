@@ -146,6 +146,22 @@ const ADMIN_LOGIN_ENABLED = Boolean(ADMIN_PASSWORD);
 const ADMIN_TOKEN_SECRET = sessionSecret(ADMIN_PASSWORD);
 const TOKEN_TTL_MS = 1000 * 60 * 60 * 12; // 12 jam
 
+/**
+ * Rapikan nilai password dari formulir sebelum dibandingkan.
+ *
+ * MENGAPA PERLU
+ * Menyalin password dari WhatsApp/Notion/Catatan HP hampir selalu menyertakan
+ * spasi di ujung, dan papan ketik seluler sering menambahkan baris baru saat
+ * menekan "Enter". Sebelumnya perbandingan memakai `===` mentah sehingga
+ * "RahasiaToko2026 " ditolak dan admin melihat "Password admin salah"
+ * padahal password yang diketik benar. Bug ini terbukti terukur: tanpa
+ * normalisasi, variasi spasi/baris baru menghasilkan 401.
+ *
+ * Spasi & baris baru di UJUNG dibuang; karakter di TENGAH tidak disentuh
+ * karena password boleh mengandung spasi.
+ */
+const rapikanPassword = (nilai) => String(nilai ?? '').trim();
+
 const ok = (body, status = 200, headers = null) => ({ status, body, headers: headers || undefined });
 const bad = (message, status = 400, extra = {}) =>
   ({ status, body: { error: message, ...extra } });
@@ -907,6 +923,22 @@ route('GET', '/api/diagnose', async () => {
         ? 'BELUM DISET — login admin dinonaktifkan'
         : 'belum diset — memakai password acak sesi dev',
     'Set ADMIN_PASSWORD kuat di hosting, lalu Redeploy. Tanpa ini login admin ditolak.'
+  );
+  /*
+   * Bentuk password (BUKAN isinya) — hanya terlihat oleh admin yang sudah
+   * login. Ini yang membedakan "lupa password" dari "environment tersimpan
+   * dengan spasi/baris baru sehingga tidak mungkin diketik cocok".
+   */
+  add(
+    'password-shape',
+    'Bentuk ADMIN_PASSWORD',
+    ADMIN_PASSWORD && ADMIN_PASSWORD.trim() === ADMIN_PASSWORD ? 'ok' : 'fail',
+    ADMIN_PASSWORD
+      ? ADMIN_PASSWORD.trim() === ADMIN_PASSWORD
+        ? `${ADMIN_PASSWORD.length} karakter, tanpa spasi di ujung`
+        : `ADA spasi/baris baru di ujung (${ADMIN_PASSWORD.length} karakter) — hapus di dashboard Vercel lalu Redeploy`
+      : 'tidak ada',
+    'Buka Vercel → Settings → Environment Variables → ADMIN_PASSWORD, pastikan tidak ada spasi/Enter di akhir nilai.'
   );
   add(
     'token-secret',
@@ -2031,7 +2063,8 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
     );
   }
 
-  const passwordOk = ADMIN_LOGIN_ENABLED && String(password) === ADMIN_PASSWORD;
+  const passwordDikirim = rapikanPassword(password);
+  const passwordOk = ADMIN_LOGIN_ENABLED && passwordDikirim === ADMIN_PASSWORD;
   const usernameOk = String(username).toLowerCase() === 'admin';
 
   if (!ADMIN_LOGIN_ENABLED) {
@@ -2048,9 +2081,27 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
       actor: String(username || 'admin'),
       ip,
       status: 'failed',
-      detail: { sisaPercobaan: limit.remaining ?? 0 }
+      /*
+       * Catat BENTUK password, tidak pernah isinya. `adaSpasiUjung` menandai
+       * kasus yang paling sering: password benar tapi tersalin dengan spasi /
+       * baris baru. Tanpa metadata ini, keluhan "password salah" tidak bisa
+       * dibedakan dari "password memang beda".
+       */
+      detail: {
+        sisaPercobaan: limit.remaining ?? 0,
+        panjangDikirim: passwordDikirim.length,
+        panjangTersimpan: ADMIN_PASSWORD.length,
+        adaSpasiUjung: passwordDikirim !== String(password ?? ''),
+        kemungkinanBedaHurufBesarKecil:
+          passwordDikirim.toLowerCase() === ADMIN_PASSWORD.toLowerCase() && passwordDikirim !== ADMIN_PASSWORD
+      }
     });
-    return bad('Password admin salah. Cek kembali password yang diberikan pemilik toko.', 401);
+    return bad(
+      passwordDikirim.toLowerCase() === ADMIN_PASSWORD.toLowerCase() && passwordDikirim !== ADMIN_PASSWORD
+        ? 'Password hampir benar — periksa HURUF BESAR/kecil. Password membedakan kapitalisasi.'
+        : 'Password admin salah. Cek kembali password yang diberikan pemilik toko.',
+      401
+    );
   }
 
   const settings = await readSettings();
