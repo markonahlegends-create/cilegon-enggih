@@ -178,6 +178,19 @@ check('tipeDariByte: tidak dikenal', tipeDariByte(Buffer.from([0x00, 0x01, 0x02,
 console.log('\n5. Header cache halaman share TIDAK "immutable" setahun');
 
 const vercel = JSON.parse(fs.readFileSync(path.join(ROOT, 'vercel.json'), 'utf8'));
+/*
+ * vercel.json ditulis ulang oleh `scripts/generate-og-pages.mjs` setiap build.
+ * Fungsi itu menambahkan aturan header `/og/` dan `/bi/`, jadi ia WAJIB
+ * membuang aturan lamanya lebih dulu. Dulu filter hanya membuang `/og/`,
+ * sehingga blok `/bi/(.*)` bertambah satu setiap build (sempat 10 duplikat).
+ */
+{
+  const hitung = (awalan) =>
+    (vercel.headers || []).filter((h) => String(h.source) === `${awalan}(.*)`).length;
+  benar('header /og/ hanya satu blok', hitung('/og/') === 1, `${hitung('/og/')} blok`);
+  benar('header /bi/ hanya satu blok', hitung('/bi/') === 1, `${hitung('/bi/')} blok`);
+}
+
 const ogHeader = (vercel.headers || []).find((h) => String(h.source).startsWith('/og/'));
 benar('aturan header /og/ ada', Boolean(ogHeader), 'tidak ditemukan');
 const nilaiCache = ogHeader?.headers?.find((h) => h.key === 'Cache-Control')?.value || '';
