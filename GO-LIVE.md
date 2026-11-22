@@ -84,7 +84,7 @@ Isi minimal untuk uji lokal:
 
 ```env
 PORT=3001
-ADMIN_PASSWORD=CilegonEnggih#2026x
+ADMIN_PASSWORD=CilegonEnggih#2026x   # contoh saja — GANTI dengan 16+ karakter dan CATAT
 ADMIN_TOKEN_SECRET=<hasil generate di bawah>
 ```
 

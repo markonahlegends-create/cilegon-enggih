@@ -582,7 +582,9 @@ export const SecurityPanel: React.FC<{ pushToast: (t: string, m: string, k?: any
           <span>
             Catatan: kredensial sensitif tidak pernah dicatat di log.{' '}
             <strong>Jangan bagikan tautan dashboard admin</strong> ke publik, dan ganti password
-            secara berkala.
+            secara berkala. Password tidak bisa dipulihkan atau dilihat dari sini —{' '}
+            <strong>catat nilainya saat diganti</strong>. Kalau lupa, ganti{' '}
+            <code className="bg-white px-1 rounded">ADMIN_PASSWORD</code> di hosting lalu Redeploy.
           </span>
         </div>
       </div>

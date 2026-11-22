@@ -2096,11 +2096,49 @@ route('POST', '/api/admin/login', async ({ body, headers }) => {
           passwordDikirim.toLowerCase() === ADMIN_PASSWORD.toLowerCase() && passwordDikirim !== ADMIN_PASSWORD
       }
     });
+    /*
+     * Pesan galat harus BISA DITINDAKLANJUTI.
+     *
+     * Kasus nyata (22 Nov 2026): admin mengetik 19 karakter, sedangkan nilai
+     * yang terpasang di hosting 43 karakter. Dengan pesan "password salah"
+     * biasa, admin mengira salah ketik dan mencoba berulang — padahal yang
+     * terpasang memang nilai yang sama sekali berbeda, mungkin dibuat acak
+     * saat deploy pertama dan tidak pernah dicatat.
+     *
+     * Menyebut PANJANG (bukan isi) sudah cukup untuk membedakan tiga kondisi
+     * yang penanganannya berbeda jauh:
+     *   - panjang sama   → salah ketik / beda kapitalisasi → periksa ulang
+     *   - panjang beda   → nilai terpasang memang lain → harus diganti
+     *   - beda kapitalisasi saja → disebut eksplisit
+     * Panjang password bukan rahasia yang berguna bagi penyerang, sementara
+     * bagi pemilik toko ini satu-satunya petunjuk yang menentukan.
+     */
+    const panjangDikirim = passwordDikirim.length;
+    const panjangTersimpan = ADMIN_PASSWORD.length;
+
+    if (passwordDikirim.toLowerCase() === ADMIN_PASSWORD.toLowerCase() && passwordDikirim !== ADMIN_PASSWORD) {
+      return bad(
+        'Password hampir benar — periksa HURUF BESAR/kecil. Password membedakan kapitalisasi.',
+        401
+      );
+    }
+
+    if (panjangDikirim !== panjangTersimpan) {
+      return bad(
+        `Password tidak cocok: yang Anda kirim ${panjangDikirim} karakter, ` +
+          `sedangkan yang terpasang di server ${panjangTersimpan} karakter. ` +
+          'Artinya nilai di hosting memang berbeda — ganti ADMIN_PASSWORD di ' +
+          'Vercel → Settings → Environment Variables, lalu Redeploy.',
+        401,
+        { panjangDikirim, panjangTersimpan }
+      );
+    }
+
     return bad(
-      passwordDikirim.toLowerCase() === ADMIN_PASSWORD.toLowerCase() && passwordDikirim !== ADMIN_PASSWORD
-        ? 'Password hampir benar — periksa HURUF BESAR/kecil. Password membedakan kapitalisasi.'
-        : 'Password admin salah. Cek kembali password yang diberikan pemilik toko.',
-      401
+      `Password admin salah (${panjangDikirim} karakter, sama panjang dengan yang terpasang). ` +
+        'Periksa kembali ejaan dan kapitalisasinya.',
+      401,
+      { panjangDikirim, panjangTersimpan }
     );
   }
 

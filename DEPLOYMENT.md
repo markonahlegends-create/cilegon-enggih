@@ -270,7 +270,8 @@ Lihat `.env.example`. Ringkasnya:
 | --- | --- |
 | `/api/health` → `storage: local-json` di produksi | `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` belum diset. Data hanya hidup di memori/`/tmp` dan hilang saat cold start. |
 | Order hilang setelah beberapa jam di Vercel | Sama seperti di atas — serverless tidak punya disk persisten. Sambungkan Supabase. |
-| Login admin selalu gagal | `ADMIN_PASSWORD` berbeda antara build/instance, atau token tersimpan untuk password lama → logout/clear localStorage. |
+| Login admin selalu gagal | Baca pesannya: kalau menyebut **jumlah karakter berbeda**, nilai di hosting memang lain — ganti `ADMIN_PASSWORD` lalu Redeploy. Kalau panjangnya sama, periksa ejaan/kapitalisasi. Cek juga `/api/diagnose` baris `password-shape` (mendeteksi spasi/Enter yang ikut tersimpan). |
+| Password admin lupa | Tidak ada pemulihan mandiri dan nilai secret tidak bisa dibaca lagi. Ganti `ADMIN_PASSWORD` di hosting → Redeploy → login dengan nilai baru. **Catat nilai itu.** |
 | Dashboard kosong / 401 | Token kedaluwarsa (12 jam). Login ulang. |
 | `/api/*` 503 di Cloudflare | `API_ORIGIN` belum diset (lihat bagian 4). |
 | QRIS tidak muncul | Mode dinamis butuh payload EMVCo valid; untuk QRIS merchant nyata gunakan mode **statis** + gambar QRIS resmi. |
