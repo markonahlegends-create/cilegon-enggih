@@ -23,7 +23,18 @@ import type {
 } from '../data/products';
 
 /** Batas wajar agar salah ketik langsung ketahuan. */
-export const MAX_OPTION_GROUPS = 3;
+/**
+ * Batas jumlah grup pilihan.
+ *
+ * Dinaikkan dari 3 ke 4 karena produk apparel memakai tiga dimensi
+ * (Kode × Warna × Ukuran) DAN perlu satu grup tambahan "Momen" untuk
+ * akhir tahun, Ramadhan, Idul Fitri, ulang tahun, dan seterusnya.
+ * Dengan batas 3, grup keempat dibuang diam-diam setiap kali admin menyimpan.
+ *
+ * Tetap dibatasi: 4 × 30 nilai = 120 tombol sudah lebih dari cukup, dan
+ * lebih dari itu halaman produk jadi tidak terpakai di layar HP.
+ */
+export const MAX_OPTION_GROUPS = 4;
 export const MAX_OPTION_VALUES = 30;
 
 export type SelectedOptions = Record<string, string>;

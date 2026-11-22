@@ -2906,7 +2906,7 @@ const ALLOWED_EMBED_HOSTS = [
  * Bersihkan grup pilihan multi-dimensi (Model / Ukuran / Warna).
  *
  * Aturan yang ditegakkan:
- *  - maks 3 grup (60+ kombinasi membuat halaman tidak terpakai di HP)
+ *  - maks 4 grup (kombinasi berlebih membuat halaman tidak terpakai di HP)
  *  - maks 30 nilai per grup
  *  - ID nilai harus unik dalam satu grup; duplikat dibuang karena akan
  *    membuat harga ambigu saat diklik pembeli
@@ -2914,7 +2914,13 @@ const ALLOWED_EMBED_HOSTS = [
  *    (150000 alih-alih 15000) langsung terlihat, bukan menghasilkan harga gila
  *  - `colorHex` hanya menerima format #RGB / #RRGGBB
  */
-const MAX_OPTION_GROUPS = 3;
+/**
+ * 4 grup, bukan 3. Produk apparel memakai Kode × Warna × Ukuran (3 grup) dan
+ * masih perlu satu grup "Momen" (akhir tahun, Ramadhan, Idul Fitri, ulang
+ * tahun, wisuda, ...). Dengan batas 3, grup Momen dibuang diam-diam saat
+ * admin menyimpan — data yang terlihat di dashboard tapi hilang di toko.
+ */
+const MAX_OPTION_GROUPS = 4;
 const MAX_OPTION_VALUES = 30;
 
 const cleanOptionGroups = (raw, basePrice = 0, catatan = null) => {
