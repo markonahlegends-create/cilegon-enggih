@@ -45,13 +45,43 @@ export const midtransConfig = (env = process.env) => {
   const serverKey = String(env.MIDTRANS_SERVER_KEY || '').trim();
   const clientKey = String(env.MIDTRANS_CLIENT_KEY || '').trim();
   const flag = String(env.MIDTRANS_IS_PRODUCTION ?? '').trim().toLowerCase();
-  const isProduction = flag === 'true' || flag === '1' || flag === 'ya';
+
+  /*
+   * MODE DITEBAK DARI KUNCI, BUKAN DIPERCAYA DARI FLAG SAJA.
+   *
+   * Midtrans memakai awalan berbeda untuk tiap lingkungan:
+   *   sandbox    : SB-Mid-server-…  /  SB-Mid-client-…
+   *   produksi   : Mid-server-…     /  Mid-client-…
+   *
+   * Kalau flag dan kunci saling bertentangan, permintaan ke Midtrans akan
+   * ditolak (401/404) dengan pesan yang tidak menjelaskan apa-apa. Lebih
+   * buruk lagi kalau flag bilang produksi tetapi kunci sandbox — pembeli
+   * melihat "berhasil bayar" tanpa uang masuk.
+   *
+   * Aturan main: KUNCI MENANG. Flag hanya dipakai kalau kunci tidak berpola
+   * yang dikenali (mis. kunci lama/format lain).
+   */
+  const awalanServer = serverKey.match(/^(SB-)?Mid-server-/i);
+  const awalanClient = clientKey.match(/^(SB-)?Mid-client-/i);
+  const dariServer = awalanServer ? !/^SB-/i.test(serverKey) : null;
+  const dariClient = awalanClient ? !/^SB-/i.test(clientKey) : null;
+
+  const modeDariKunci = dariServer ?? dariClient;
+  const modeDariFlag = flag === 'true' || flag === '1' || flag === 'ya';
+  const isProduction = modeDariKunci != null ? modeDariKunci : modeDariFlag;
+
+  /* Dicatat supaya diagnosa bisa memberi tahu kalau flag dan kunci bertentangan. */
+  const konflik = modeDariKunci != null && modeDariKunci !== modeDariFlag;
 
   return {
     serverKey,
     clientKey,
     isProduction,
     base: isProduction ? PRODUCTION_BASE : SANDBOX_BASE,
+    /** true kalau MIDTRANS_IS_PRODUCTION bertentangan dengan kunci. */
+    konflik,
+    /** Lingkungan yang ditunjukkan oleh kunci itu sendiri (null = tak dikenali). */
+    modeDariKunci,
     /** Siap dipakai hanya kalau kedua kunci terisi. */
     ready: Boolean(serverKey && clientKey)
   };
