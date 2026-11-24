@@ -449,6 +449,35 @@ const readSettings = async () => {
   };
 };
 
+/**
+ * Pengaturan pembayaran untuk browser — dibersihkan dari sisa jalur manual.
+ *
+ * Teks `payment.instructions` tersimpan di database sejak era transfer bank
+ * manual. Setelah pindah ke Midtrans, teks itu berbunyi "termasuk 3 angka
+ * unik ... tanpa biaya gateway" — dan tetap dikirim apa adanya ke halaman
+ * checkout serta halaman lacak. Pembeli membacanya sebagai tagihan yang
+ * berbeda dari total, padahal Midtrans menagih angka bulat.
+ *
+ * Jadi teks lama itu DIGANTI saat Midtrans aktif. Instruksi kustom admin
+ * tetap dihormati kalau admin memang sudah menulis versi baru.
+ */
+const TEKS_MANUAL_LAMA = /angka unik|kode unik|NOMINAL AKHIR/i;
+
+const publicPayment = (settings) => {
+  const payment = settings.payment || {};
+  if (!midtransConfig().ready) return payment;
+
+  const instruksi = String(payment.instructions || '');
+  if (instruksi && !TEKS_MANUAL_LAMA.test(instruksi)) return payment;
+
+  return {
+    ...payment,
+    uniqueCodeEnabled: false,
+    instructions:
+      'Pembayaran diproses otomatis lewat Midtrans (QRIS, GoPay, OVO, DANA, ShopeePay, kartu, atau virtual account). Nominal dibayar sama persis dengan total tagihan — tidak ada biaya layanan tambahan.'
+  };
+};
+
 const publicSettings = (settings) => ({
   storeName: settings.storeName,
   legalName: settings.legalName,
@@ -468,7 +497,7 @@ const publicSettings = (settings) => ({
   developerUrl: settings.developerUrl,
   banks: settings.banks,
   qris: settings.qris,
-  payment: settings.payment,
+  payment: publicPayment(settings),
   /**
    * Status pembayaran otomatis untuk browser.
    *
@@ -1568,7 +1597,7 @@ route('POST', '/api/orders', async ({ body, headers }) => {
       ? {
           amount: totalAmount,
           windowHours: settings.payment.paymentWindowHours,
-          note: settings.payment.instructions
+          note: publicPayment(settings).instructions
         }
       : {
           amount: totalAmount,

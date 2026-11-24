@@ -195,6 +195,31 @@ cek('settlement via cek status melunaskan', sLunas.body.paymentStatus, 'LUNAS');
 cek('pesanan benar-benar LUNAS di database',
   (await store.get('orders', 'CE-AUD-6')).paymentStatus, 'LUNAS');
 
+/* ---------- 8. Teks jalur manual tidak boleh bocor ke browser ---------- */
+/*
+ * `payment.instructions` tersimpan di database sejak era transfer manual dan
+ * berbunyi "termasuk 3 angka unik". Teks itu dipakai checkout & halaman lacak,
+ * jadi harus DIGANTI saat Midtrans aktif — kalau tidak, pembeli membaca tagihan
+ * yang seolah berbeda dari total.
+ */
+const setelanLama = (await store.get('settings', 'store')) || {};
+await store.put('settings', {
+  ...setelanLama,
+  id: 'store',
+  payment: {
+    uniqueCodeEnabled: true,
+    paymentWindowHours: 24,
+    instructions: 'Transfer sesuai NOMINAL AKHIR (termasuk 3 angka unik di belakang).'
+  }
+});
+const sf = await core.dispatch({ method: 'GET', path: '/api/storefront', headers: {}, query: {} });
+const bayarPublik = sf.body.settings.payment;
+cek('storefront: instruksi lama diganti', /angka unik/i.test(bayarPublik.instructions), false);
+cek('storefront: kode unik dimatikan saat Midtrans aktif', bayarPublik.uniqueCodeEnabled, false);
+cek('storefront: instruksi menyebut Midtrans', /midtrans/i.test(bayarPublik.instructions), true);
+cek('storefront: serverKey TIDAK pernah dikirim',
+  JSON.stringify(sf.body).includes('Mid-server-audit'), false);
+
 globalThis.fetch = asli;
 fs.rmSync(DIR, { recursive: true, force: true });
 console.log(gagal === 0 ? '\nAUDIT PEMBAYARAN LULUS' : `\n${gagal} GAGAL`);
