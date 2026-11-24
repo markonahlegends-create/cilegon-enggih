@@ -175,7 +175,20 @@ export const CheckoutModal: React.FC = () => {
 
 
   const voucherDiscount = appliedVoucher?.discount || 0;
-  const totalBeforeCode = Math.max(0, cartSubtotal + selectedCourier.cost - voucherDiscount);
+
+  /*
+   * GRATIS ONGKIR — aturan datang dari server (`settings.ongkir`), TIDAK
+   * diputuskan di browser. Server tetap menghitung ulang saat pesanan dibuat,
+   * jadi tampilan ini hanya cermin dari aturan yang sama; kalau berbeda,
+   * server selalu menang.
+   */
+  const aturanOngkir = (settings as any)?.ongkir || {};
+  const ongkirGratis =
+    aturanOngkir.gratisOngkirSelalu === true ||
+    (Number(aturanOngkir.promoGratisOngkir) > 0 && cartSubtotal >= Number(aturanOngkir.promoGratisOngkir));
+  const ongkirDitagih = ongkirGratis ? 0 : selectedCourier.cost;
+
+  const totalBeforeCode = Math.max(0, cartSubtotal + ongkirDitagih - voucherDiscount);
 
   // Kode unik 3 digit — ditampilkan sebagai estimasi; server menentukan nilai final.
   const previewUniqueCode = useMemo(() => Number(String(Date.now()).slice(-3)), [isCheckoutOpen]);
@@ -287,7 +300,7 @@ export const CheckoutModal: React.FC = () => {
         addressDetail,
         courier: selectedCourier.courier,
         courierService: selectedCourier.courier,
-        shippingCost: selectedCourier.cost,
+        shippingCost: ongkirDitagih,
         paymentMethod: midtransSiap ? 'Midtrans (QRIS / Virtual Account / E-Wallet)' : 'Transfer Bank',
         bankId: undefined,
         voucherCode: appliedVoucher?.code,
@@ -763,7 +776,17 @@ export const CheckoutModal: React.FC = () => {
                     </div>
                   );
                 })}
-                Produk {formatRupiah(cartSubtotal)} + Ongkir {formatRupiah(selectedCourier.cost)}
+                Produk {formatRupiah(cartSubtotal)} +{' '}
+                {ongkirGratis ? (
+                  <span className="text-forest-700 font-extrabold">
+                    Ongkir GRATIS{' '}
+                    <span className="text-slate-400 font-normal line-through">
+                      {formatRupiah(selectedCourier.cost)}
+                    </span>
+                  </span>
+                ) : (
+                  <>Ongkir {formatRupiah(ongkirDitagih)}</>
+                )}
                 {voucherDiscount > 0 && (
                   <span className="text-forest-700 font-bold">
                     {' '}
@@ -774,6 +797,20 @@ export const CheckoutModal: React.FC = () => {
               <div className="text-base sm:text-lg font-extrabold text-navy-800">
                 Total Tagihan: {formatRupiah(estimatedTotal)}
               </div>
+              {/*
+                * Server bisa mengoreksi ongkir atau mengabaikan voucher yang
+                * tidak berlaku. Koreksi itu DICERITAKAN di sini — kalau tidak,
+                * pembeli melihat total berbeda dari yang ia hitung sendiri dan
+                * menyimpulkan tokonya menipu.
+                */}
+              {Array.isArray((createdOrder as any)?.penyesuaian) &&
+                (createdOrder as any).penyesuaian.length > 0 && (
+                  <ul className="text-[11px] text-amberbrand-900 bg-amberbrand-50 border border-amberbrand-200 rounded-lg p-2 space-y-1">
+                    {(createdOrder as any).penyesuaian.map((p: string, i: number) => (
+                      <li key={i}>• {p}</li>
+                    ))}
+                  </ul>
+                )}
             </div>
 
             <button
