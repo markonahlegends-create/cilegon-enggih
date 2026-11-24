@@ -56,6 +56,16 @@ import {
 import { sendDailyDigest } from './digest.js';
 import { summarizeSales, salesOrders } from './reports.js';
 import { markOrderPaid } from './payments.js';
+import {
+  midtransConfig,
+  snapScriptUrl,
+  verifySignature,
+  grossAmountToRupiah,
+  mapTransactionStatus,
+  buildMidtransOrderId,
+  createSnapToken,
+  fetchTransactionStatus
+} from './midtrans.js';
 import { metaProduk, buildShareHtml, TOKO_IMAGE } from './og-share.js';
 import { thumbnailProduk } from './og-image.js';
 import {
@@ -1501,6 +1511,327 @@ route('POST', '/api/orders', async ({ body, headers }) => {
     201
   );
 });
+
+/* ─────────────────────────── MIDTRANS ─────────────────────────── */
+
+/**
+ * Cari pesanan dari `order_id` yang dikirim Midtrans.
+ *
+ * `order_id` Midtrans tidak selalu sama persis dengan nomor pesanan kita:
+ * percobaan kedua dan seterusnya memakai akhiran -R2, -R3, dst (Midtrans
+ * menolak order_id yang sudah dipakai). Jadi pencarian dilakukan dua tahap:
+ * cocokkan `midtransOrderId` yang tersimpan, lalu kalau tidak ketemu,
+ * buang akhiran percobaan.
+ */
+const findOrderByMidtransId = async (midtransOrderId) => {
+  const id = String(midtransOrderId || '').trim();
+  if (!id) return null;
+
+  const semua = await store.list('orders');
+  const langsung = semua.find((o) => o.midtransOrderId === id);
+  if (langsung) return langsung;
+
+  const tanpaAkhiran = id.replace(/-R\d+$/, '');
+  return semua.find((o) => o.orderId === tanpaAkhiran) || null;
+};
+
+
+
+/**
+ * Buat token Snap untuk sebuah pesanan.
+ *
+ * Nominal SELALU diambil dari pesanan di database, tidak pernah dari browser.
+ * Kalau nominal dipercaya dari browser, pembeli bisa mengubah total tagihannya
+ * sendiri menjadi Rp 1.000.
+ *
+ * Endpoint ini sengaja tidak butuh login admin: yang memanggilnya adalah
+ * pembeli di halaman checkout, tepat setelah pesanannya dibuat. Pengamannya:
+ * orderId harus ada, dan pesanan yang sudah LUNAS tidak bisa ditagih lagi.
+ */
+route('POST', '/api/payments/midtrans/token', async ({ body, headers }) => {
+  const cfg = midtransConfig();
+  if (!cfg.ready) {
+    return bad('Pembayaran otomatis belum aktif. Hubungi admin toko.', 503);
+  }
+
+  const orderId = String(body?.orderId || '').trim();
+  if (!orderId) return bad('Nomor pesanan wajib dikirim.', 400);
+
+  const order = await store.get('orders', orderId);
+  if (!order) return bad('Pesanan tidak ditemukan.', 404);
+
+  if (order.paymentStatus === 'LUNAS') {
+    return bad('Pesanan ini sudah lunas.', 409, { alreadyPaid: true });
+  }
+  if (order.status === 'DIBATALKAN') {
+    return bad('Pesanan ini sudah dibatalkan.', 409);
+  }
+
+  /*
+   * Percobaan ke berapa untuk pesanan ini. Midtrans menolak order_id yang
+   * sudah pernah dipakai, jadi pembeli yang membiarkan tagihan kedaluwarsa
+   * lalu mencoba lagi harus mendapat order_id baru (-R2, -R3, dst).
+   */
+  const attempt = Number(order.paymentAttempt) || 0;
+  const midtransOrderId = buildMidtransOrderId(order.orderId, attempt);
+
+  const base = String(process.env.PUBLIC_BASE_URL || '').trim();
+  const finishUrl = base ? `${base.replace(/\/$/, '')}/pesanan/${encodeURIComponent(order.orderId)}` : undefined;
+
+  let snap;
+  try {
+    snap = await createSnapToken({ ...order, midtransOrderId }, cfg, { finishUrl });
+  } catch (err) {
+    console.error('[midtrans] gagal membuat token:', err.message);
+    return bad(err.message || 'Gagal membuat tagihan pembayaran.', 502);
+  }
+
+  const updated = {
+    ...order,
+    paymentAttempt: attempt,
+    midtransOrderId: snap.midtransOrderId,
+    snapToken: snap.token,
+    snapRedirectUrl: snap.redirectUrl || null,
+    paymentGateway: 'midtrans',
+    updatedAt: nowIso(),
+    timeline: [
+      ...(order.timeline || []),
+      {
+        time: wibStamp(),
+        status: `Tagihan pembayaran otomatis dibuat (percobaan ke-${attempt + 1})`,
+        location: 'Midtrans'
+      }
+    ]
+  };
+  await store.put('orders', updated);
+
+  return ok({
+    token: snap.token,
+    redirectUrl: snap.redirectUrl,
+    clientKey: cfg.clientKey,
+    // isProduction dipakai frontend untuk memilih URL snap.js yang benar.
+    isProduction: cfg.isProduction,
+    snapScriptUrl: snapScriptUrl(cfg.isProduction)
+  });
+});
+
+/**
+ * Notifikasi pembayaran dari Midtrans (webhook).
+ *
+ * TIDAK memakai login admin — yang memanggil endpoint ini adalah server
+ * Midtrans. Keamanannya bertumpu pada tanda tangan, ditambah empat pengaman:
+ *
+ *   1. Fail-closed kalau MIDTRANS_SERVER_KEY kosong (503).
+ *   2. Tanda tangan SHA512 wajib cocok (403).
+ *   3. Nominal wajib sama dengan total pesanan di database (tolak kalau beda).
+ *   4. Idempoten: pesanan yang sudah LUNAS langsung dibalas 200 tanpa diubah,
+ *      karena Midtrans mengirim ulang notifikasi yang gagal direspons.
+ */
+route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
+  const cfg = midtransConfig();
+  if (!cfg.serverKey) return bad('Midtrans belum dikonfigurasi.', 503);
+
+  const payload = body || {};
+  if (!verifySignature(payload, cfg.serverKey)) {
+    // Jangan bocorkan alasan detail: cukup tolak.
+    console.warn('[midtrans] notifikasi dengan tanda tangan tidak sah ditolak');
+    return bad('Tanda tangan notifikasi tidak sah.', 403);
+  }
+
+  const midtransOrderId = String(payload.order_id || '');
+  const order = await findOrderByMidtransId(midtransOrderId);
+  if (!order) {
+    // 200 supaya Midtrans berhenti mengirim ulang pesanan yang tidak kita kenal.
+    console.warn('[midtrans] notifikasi untuk pesanan tak dikenal:', midtransOrderId);
+    return ok({ ignored: true, reason: 'order-tidak-dikenal' });
+  }
+
+  const gross = grossAmountToRupiah(payload.gross_amount);
+  const expected = Math.round(Number(order.totalAmount) || 0);
+  if (!Number.isFinite(gross) || gross !== expected) {
+    /*
+     * Tanda tangan sah hanya berarti "pesan ini dari Midtrans", bukan
+     * "nominalnya benar". Tanpa pemeriksaan ini, transaksi Rp 1.000 yang sah
+     * bisa melunaskan pesanan Rp 300.000.
+     */
+    console.error(
+      `[midtrans] nominal tidak cocok untuk ${order.orderId}: dibayar ${gross}, seharusnya ${expected}`
+    );
+    await recordAudit(store, {
+      action: 'pembayaran.nominal-tidak-cocok',
+      actor: 'midtrans',
+      ip: 'midtrans',
+      target: order.orderId,
+      detail: { dibayar: gross, seharusnya: expected, transaction_id: payload.transaction_id || null }
+    });
+    return bad('Nominal pembayaran tidak cocok.', 400);
+  }
+
+  const keputusan = mapTransactionStatus(payload);
+
+  if (keputusan === 'LUNAS') {
+    const sudahLunas = order.paymentStatus === 'LUNAS';
+    const paid = await markOrderPaid(order, {
+      via: 'midtrans',
+      actor: `midtrans:${payload.payment_type || 'unknown'}`,
+      verifiedAmount: gross
+    });
+
+    if (!paid.ok) {
+      console.warn('[midtrans] tidak bisa melunaskan:', paid.reason);
+      return ok({ ignored: true, reason: paid.reason });
+    }
+
+    const final = {
+      ...paid.order,
+      paymentGateway: 'midtrans',
+      midtransOrderId,
+      midtransTransactionId: payload.transaction_id || null,
+      midtransPaymentType: payload.payment_type || null,
+      midtransTransactionStatus: payload.transaction_status || null,
+      midtransSettledAt: payload.settlement_time || null
+    };
+    await store.put('orders', final);
+
+    // Notifikasi Telegram hanya kalau status BENAR-BENAR berubah, supaya
+    // notifikasi ganda dari Midtrans tidak membanjiri Telegram admin.
+    if (paid.changed) {
+      const settings = await readSettings();
+      if (telegramConfig(settings).notifyPaid !== false) {
+        const hasil = await notifySafe(settings, templatePaid(final));
+        await catatStatusNotifikasi(hasil, 'pembayaran-lunas');
+      }
+      await recordAudit(store, {
+        action: 'pembayaran.lunas-otomatis',
+        actor: 'midtrans',
+        ip: 'midtrans',
+        target: order.orderId,
+        detail: { via: payload.payment_type || 'midtrans', nominal: gross }
+      });
+    }
+
+    return ok({ ok: true, orderId: order.orderId, changed: Boolean(paid.changed) });
+  }
+
+  if (keputusan === 'BATAL') {
+    if (order.status === 'DIBATALKAN') return ok({ ok: true, changed: false });
+
+    const cancelled = {
+      ...order,
+      status: 'DIBATALKAN',
+      paymentStatus: order.paymentStatus === 'LUNAS' ? order.paymentStatus : 'DIBATALKAN',
+      midtransTransactionStatus: payload.transaction_status || null,
+      updatedAt: nowIso(),
+      timeline: [
+        ...(order.timeline || []),
+        {
+          time: wibStamp(),
+          status: `Pembayaran ${
+            payload.transaction_status === 'expire' ? 'kedaluwarsa' : 'dibatalkan'
+          } di Midtrans`,
+          location: 'Midtrans (webhook terverifikasi)'
+        }
+      ]
+    };
+
+    /*
+     * Kembalikan stok. Tanpa ini, stok menyusut sendiri setiap ada pembeli
+     * yang membuka halaman bayar lalu meninggalkannya — dan itu terjadi
+     * jauh lebih sering daripada pembelian sungguhan.
+     */
+    if (order.stockAppliedAt && !order.stockReleasedAt) {
+      try {
+        const movement = await applyStockMovement(store, order.items, { direction: -1 });
+        if (movement.changed) {
+          cancelled.stockReleasedAt = nowIso();
+          cancelled.timeline.push({
+            time: wibStamp(),
+            status: `Stok dikembalikan otomatis (${movement.changed} produk)`,
+            location: 'Sistem Cilegon Enggih'
+          });
+        }
+      } catch (err) {
+        console.error('[stock] gagal mengembalikan stok (midtrans):', err.message);
+      }
+    }
+
+    await store.put('orders', cancelled);
+    return ok({ ok: true, orderId: order.orderId, status: 'DIBATALKAN' });
+  }
+
+  if (keputusan === 'TINJAU') {
+    /*
+     * Kartu yang ditandai berisiko (fraud_status = challenge). JANGAN
+     * dilunaskan otomatis: barang bisa dikirim tanpa uang benar-benar masuk.
+     * Cukup catat supaya admin melihatnya di dashboard.
+     */
+    const flagged = {
+      ...order,
+      midtransTransactionStatus: payload.transaction_status || null,
+      midtransFraudStatus: payload.fraud_status || null,
+      needsManualReview: true,
+      updatedAt: nowIso(),
+      timeline: [
+        ...(order.timeline || []),
+        {
+          time: wibStamp(),
+          status: 'Pembayaran ditandai berisiko oleh Midtrans — perlu ditinjau manual',
+          location: 'Midtrans (webhook terverifikasi)'
+        }
+      ]
+    };
+    await store.put('orders', flagged);
+    await recordAudit(store, {
+      action: 'pembayaran.perlu-tinjau',
+      actor: 'midtrans',
+      ip: 'midtrans',
+      target: order.orderId,
+      detail: { fraud_status: payload.fraud_status || null, transaction_status: payload.transaction_status }
+    });
+    return ok({ ok: true, needReview: true });
+  }
+
+  // 'TUNGGU' — belum lunas. Tidak ada yang perlu diubah.
+  return ok({ ok: true, pending: true });
+});
+
+/**
+ * Cek status langsung ke Midtrans.
+ *
+ * Jaring pengaman kalau webhook telat atau gagal masuk. Tanpa ini, pembeli
+ * yang sudah membayar bisa melihat pesanannya masih "menunggu pembayaran"
+ * sampai berjam-jam.
+ */
+route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
+  const cfg = midtransConfig();
+  if (!cfg.ready) return bad('Midtrans belum dikonfigurasi.', 503);
+
+  const order = await store.get('orders', String(params.orderId || ''));
+  if (!order) return bad('Pesanan tidak ditemukan.', 404);
+
+  if (!order.midtransOrderId) {
+    return ok({ orderId: order.orderId, paymentStatus: order.paymentStatus, gateway: null });
+  }
+
+  try {
+    const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
+    return ok({
+      orderId: order.orderId,
+      paymentStatus: order.paymentStatus,
+      gateway: {
+        ok: res.ok,
+        transactionStatus: res.data?.transaction_status || null,
+        fraudStatus: res.data?.fraud_status || null,
+        paymentType: res.data?.payment_type || null
+      }
+    });
+  } catch (err) {
+    console.error('[midtrans] gagal cek status:', err.message);
+    return bad('Tidak bisa menghubungi Midtrans saat ini.', 502);
+  }
+});
+
+/* ───────────────────────── AKHIR MIDTRANS ───────────────────────── */
 
 /** Klien mengirim bukti transfer (catatan / URL / base64 kecil) untuk disimpan. */
 route('POST', '/api/orders/:orderId/proof', async ({ params, body }) => {

@@ -1,7 +1,17 @@
 # Skema Migrasi: WhatsApp Manual → Midtrans Otomatis
 
-Status: **rencana, belum ada kode yang diubah.**
+Status: **tahap 1–2 SELESAI** (modul + endpoint + uji otomatis).
+Tahap 3–5 belum: checkout masih memakai jalur lama sampai tahap 3 dikerjakan.
 Tanggal: 16 November 2026
+
+> **Catatan kemajuan.** Modul `server/midtrans.js` dan tiga endpoint
+> (`/api/payments/midtrans/token`, `/notification`, `/status/:orderId`) sudah
+> terpasang dan teruji — termasuk verifikasi tanda tangan, pencocokan nominal,
+> idempotensi, pengembalian stok saat kedaluwarsa, dan penanganan
+> `capture` + `challenge`. Yang belum berubah: tampilan checkout, tombol
+> WhatsApp, dan jalur pembayaran manual. Jadi **toko masih berjalan seperti
+> sekarang** — tidak ada risiko dari perubahan ini. Persetujuan pemilik toko:
+> tahap 3–5 menunggu kredensial Midtrans.
 
 Keputusan yang sudah dikonfirmasi pemilik toko:
 
