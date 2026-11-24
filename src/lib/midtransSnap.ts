@@ -77,8 +77,22 @@ const muatSnapScript = (src: string): Promise<void> =>
     script.async = true;
     script.setAttribute(penanda, '1');
     script.onload = () => resolve();
-    script.onerror = () =>
-      reject(new Error('Tidak bisa memuat Midtrans. Periksa koneksi internet Anda.'));
+    script.onerror = () => {
+      /*
+       * Gejala paling umum di produksi BUKAN internet pembeli, melainkan
+       * Content-Security-Policy: kalau domain Midtrans tidak diizinkan di
+       * `script-src`, peramban memblokir skrip ini tanpa penjelasan apa pun
+       * ke pengguna — dan pesan "periksa koneksi internet" menyesatkan
+       * (penyebab aslinya sudah pernah terjadi dan menghabiskan waktu).
+       *
+       * Kita tidak bisa membaca pelanggaran CSP dari sini, tetapi kita bisa
+       * memeriksa apakah koneksi internet pembeli memang hidup.
+       */
+      const pesan = navigator.onLine
+        ? 'Midtrans diblokir oleh pengaturan keamanan situs (CSP). Hubungi admin toko — pembayaran belum bisa dibuka dari peramban ini.'
+        : 'Tidak ada koneksi internet. Sambungkan dulu, lalu coba lagi.';
+      reject(new Error(pesan));
+    };
     document.body.appendChild(script);
   });
 
@@ -134,6 +148,12 @@ export const useMidtransSnap = () => {
       } catch (err) {
         const pesan =
           err instanceof Error ? err.message : 'Gagal membuka pembayaran Midtrans.';
+        /*
+         * Diteruskan apa adanya. Pesan dari server (mis. "Midtrans menolak
+         * membuat tagihan: …") jauh lebih berguna daripada kalimat umum
+         * "coba lagi" — admin butuh tahu apa yang sebenarnya salah.
+         */
+        console.error('[midtrans] gagal membuka pembayaran:', pesan);
         setGalat(pesan);
         selesaikan('error');
       }
