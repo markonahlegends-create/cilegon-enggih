@@ -57,8 +57,35 @@ cek('menghormati prefers-reduced-motion', /prefers-reduced-motion/.test(komponen
 cek('autoplay hanya saat terlihat (IntersectionObserver)', /IntersectionObserver/.test(komponen));
 cek('berhenti saat tab disembunyikan', /document\.hidden/.test(komponen));
 
-cek('suara hanya aktif lewat tombol', /toggleSuara/.test(komponen));
-cek('kegagalan autoplay tidak menampilkan error', /catch\s*\{[\s\S]{0,400}?setSedangJalan\(false\)/.test(komponen));
+/*
+ * Suara: elemen video harus mulai SENYAP (`muted={!suaraAktif}`), dan
+ * `suaraAktif` hanya boleh diubah oleh tombol speaker — bukan otomatis.
+ * Kalau ada `setSuaraAktif(true)` di luar handler tombol, autoplay bersuara
+ * akan diblokir browser dan video membeku.
+ */
+cek('elemen video mulai senyap', /muted=\{!suaraAktif\}/.test(komponen));
+const jumlahSuaraAktif = (komponen.match(/setSuaraAktif\(/g) || []).length;
+cek(
+  'suara hanya diubah oleh tombol speaker',
+  jumlahSuaraAktif > 0 && jumlahSuaraAktif <= 2,
+  `setSuaraAktif dipanggil ${jumlahSuaraAktif}× (deklarasi state tidak dihitung)`
+);
+
+/*
+ * Penolakan autoplay BUKAN kegagalan. Browser menolak (iOS low-power, mode
+ * hemat data) → cukup diam. Yang memicu layar error hanyalah event `onError`
+ * dari elemen video, yaitu saat berkasnya benar-benar tidak bisa dimuat.
+ * Kalau `setGagal(true)` juga dipanggil di dalam catch, video yang sekadar
+ * ditolak autoplay akan menampilkan "Video tidak bisa dimuat" — menakut-nakuti
+ * pembeli tanpa sebab.
+ */
+const blokCatch = (komponen.match(/catch\s*\{[\s\S]{0,300}?\}/) || [''])[0];
+cek(
+  'penolakan autoplay tidak dianggap error',
+  blokCatch.length > 0 && !/setGagal\(true\)/.test(blokCatch),
+  blokCatch.replace(/\s+/g, ' ').slice(0, 80)
+);
+cek('kegagalan berkas asli tetap dilaporkan', /onError=\{\(\) => setGagal\(true\)\}/.test(komponen));
 
 cek('embed dimuat hanya setelah ditekan', /embedDibuka/.test(komponen) && /setEmbedDibuka\(true\)/.test(komponen));
 cek('embed memakai autoplay=1 setelah ditekan', /autoplay=1/.test(komponen));
@@ -76,6 +103,74 @@ cek(
   'bagian video lama disembunyikan bila hanya 1 video',
   /filter\(\(v\) => v && v\.url\)\.length > 1/.test(halaman)
 );
+
+/*
+ * ------------------------------------------------------------------
+ * UJI RENDER NYATA — menangkap bug yang tidak terlihat oleh grep.
+ * ------------------------------------------------------------------
+ *
+ * Versi pertama suite ini hanya memeriksa teks kode sumber, dan karena itu
+ * LULUS padahal video sama sekali tidak bisa diputar. Dua bug yang lolos:
+ *
+ *   1. Tombol play bergantung pada prop `onOpen` yang tidak pernah dikirim
+ *      halaman produk, sehingga onClick jatuh ke `setGagal(false)` — no-op.
+ *      Tidak ada error, tombol mati diam-diam.
+ *   2. `<video>` dirender tanpa atribut `controls`, jadi video tidak bisa
+ *      dijeda atau digeser.
+ *
+ * Keduanya hanya bisa ditangkap dengan benar-benar MERENDER komponen dan
+ * memeriksa HTML yang dihasilkan. Itulah yang dilakukan di bawah.
+ */
+console.log('\n▶ Render nyata komponen');
+
+const esbuild = await import('esbuild');
+const os = await import('node:os');
+const pathMod = await import('node:path');
+
+const dirUji = fs.mkdtempSync(pathMod.join(os.tmpdir(), 'ce-video-'));
+const sumberUji = pathMod.join(dirUji, 'uji.tsx');
+const keluaran = pathMod.join(dirUji, 'out.cjs');
+
+/* Berkas uji ditulis di dalam folder repo supaya `react` bisa di-resolve. */
+const berkasUji = pathMod.join(AKAR, '.uji-video-sementara.tsx');
+fs.writeFileSync(
+  berkasUji,
+  [
+    "import React from 'react';",
+    "import { renderToStaticMarkup } from 'react-dom/server';",
+    "import { GaleriVideo } from './src/components/ProductVideoPlayer';",
+    'const video = [{ id: "v1", url: "https://contoh.supabase.co/v/uji.mp4", source: "file", poster: "https://contoh.supabase.co/p.jpg", title: "Uji" }];',
+    'process.stdout.write(renderToStaticMarkup(React.createElement(GaleriVideo, { videos: video, autoplay: true })));'
+  ].join('\n'),
+  'utf8'
+);
+
+let html = '';
+try {
+  await esbuild.build({
+    entryPoints: [berkasUji],
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    outfile: keluaran,
+    logLevel: 'silent'
+  });
+  /* Berkas uji dijalankan sebagai proses terpisah; hasilnya lewat stdout. */
+  const { execFileSync } = await import('node:child_process');
+  html = execFileSync(process.execPath, [keluaran], { encoding: 'utf8', cwd: AKAR });
+} finally {
+  fs.rmSync(berkasUji, { force: true });
+}
+
+cek('komponen benar-benar merender <video>', /<video/.test(html), html.slice(0, 120));
+cek('elemen video punya `controls` (bisa dijeda & digeser)', /controls/.test(html));
+cek('elemen video punya `autoplay`', /autoplay/.test(html));
+cek('elemen video `muted` (syarat autoplay browser)', /muted/.test(html));
+cek('elemen video `playsinline` (syarat iOS)', /playsinline/.test(html));
+cek('elemen video punya `poster`', /poster=/.test(html));
+cek('src video mengarah ke berkas asli', /contoh\.supabase\.co\/v\/uji\.mp4/.test(html));
+
+fs.rmSync(dirUji, { recursive: true, force: true });
 
 console.log(gagal === 0 ? '\nVIDEO PRODUK LULUS\n' : `\n${gagal} asersi gagal\n`);
 process.exit(gagal === 0 ? 0 : 1);

@@ -49,14 +49,11 @@ export const toEmbedUrl = (video: ProductVideo): string | null => {
  * juga berjalan tanpa suara sampai ditekan.
  */
 const AUTOPLAY_SENYAP = true;
-
 interface GaleriVideoProps {
   videos?: ProductVideo[];
-  /** Dipanggil saat pembeli menekan tombol play besar (mode normal). */
-  onOpen?: (video: ProductVideo) => void;
   /**
    * true = berjalan sendiri di dalam galeri (layar pertama, menarik perhatian).
-   * false = hanya poster + tombol play (dipakai di tempat lain).
+   * false = hanya poster + tombol play.
    */
   autoplay?: boolean;
   className?: string;
@@ -73,19 +70,24 @@ interface GaleriVideoProps {
  * apalagi terpancing menonton — padahal video produk adalah hal pertama yang
  * membuat orang berhenti menggulir.
  *
- * Komponen ini dipakai di area galeri (layar pertama):
- *   - video file  → autoplay SENYAP, loop, playsInline (tidak membuka
- *     pemutar layar penuh di iPhone saat halaman dimuat)
- *   - video embed (YouTube/TikTok/IG) → tidak bisa autoplay tanpa iframe
- *     yang berat, jadi poster + tombol play; iframe baru dimuat setelah
- *     ditekan supaya halaman tetap ringan
- *   - `prefers-reduced-motion` → TIDAK autoplay (aksesibilitas)
- *   - hemat data: tidak memuat berkas video penuh lebih awal, hanya metadata
- *     dan poster; kalau koneksi lambat poster yang tampil lebih dulu
+ * RIWAYAT BUG (penting, jangan diulang)
+ * Versi pertama komponen ini punya dua cacat yang membuat video TIDAK PERNAH
+ * bisa diputar — autoplay tidak jalan, dan tombol play pun tidak bereaksi:
+ *
+ *   1. Tombol play memanggil prop `onOpen` yang TIDAK PERNAH dikirim oleh
+ *      halaman produk. Karena kosong, cabang `else` yang dijalankan, yaitu
+ *      `setGagal(false)` — dan nilai `gagal` memang sudah `false`, jadi
+ *      menekan tombol tidak mengubah apa pun. Tidak ada error, tidak ada
+ *      jejak: tombol mati diam-diam.
+ *   2. Elemen `<video>` dirender tanpa atribut `controls`, sehingga bahkan
+ *      bila video berhasil tampil, pembeli tidak punya cara memutar,
+ *      menjeda, atau menggeser waktunya.
+ *
+ * Sekarang tidak ada ketergantungan pada prop dari luar: tombol play bekerja
+ * sendiri di dalam komponen ini, dan `<video>` SELALU punya `controls`.
  */
 export const GaleriVideo: React.FC<GaleriVideoProps> = ({
   videos,
-  onOpen,
   autoplay = false,
   className = '',
   fallbackPoster
@@ -95,8 +97,17 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
     [videos]
   );
   const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  /**
+   * `siap` menandai pembeli sudah menekan play pada video FILE.
+   *
+   * Sebelum ditekan, yang dirender adalah poster (ringan, hemat kuota). Begitu
+   * ditekan, elemen `<video controls>` dipasang dan langsung diputar. Ini juga
+   * cara paling andal menghindari blokir autoplay: pemutaran terjadi karena
+   * tindakan pengguna, bukan karena halaman dimuat.
+   */
+  const [siap, setSiap] = useState(false);
   const [suaraAktif, setSuaraAktif] = useState(false);
-  const [sedangJalan, setSedangJalan] = useState(false);
   const [gagal, setGagal] = useState(false);
   const [embedDibuka, setEmbedDibuka] = useState(false);
   const [kurangiGerak, setKurangiGerak] = useState(false);
@@ -114,32 +125,42 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
   const embedUrl = aktif && aktif.source === 'embed' ? toEmbedUrl(aktif) : null;
 
   /*
-   * Jangan pernah memaksa putar bila:
-   *   - pembeli meminta animasi dikurangi (aksesibilitas),
-   *   - tab sedang tidak terlihat (hemat baterai & kuota),
-   *   - video ternyata gagal dimuat (biarkan poster yang tampil).
+   * KAPAN PEMUTAR DIPASANG.
+   *
+   * `siap`            → pembeli sudah menekan play.
+   * autoplay aktif    → pemutar dipasang langsung supaya bisa berjalan sendiri.
+   *                     Tanpa syarat ini, autoplay mustahil terjadi: pemutar
+   *                     baru ada setelah diklik, dan yang mengklik sudah
+   *                     pasti menonton — bukan autoplay namanya.
+   * reduced-motion    → jangan pasang sendiri; hormati pilihan pembeli.
+   */
+  const tampilPemutar = siap || (autoplay && !kurangiGerak);
+
+  /*
+   * AUTOPLAY SENYAP.
+   *
+   * Syarat yang tidak bisa dilanggar: `muted` + `playsInline`. Tanpa keduanya,
+   * Chrome dan iOS menolak memutar video yang belum disentuh pengguna.
+   *
+   * Autoplay hanya dicoba sekali di awal. Kalau browser menolak (mode hemat
+   * daya, iOS Low Power Mode), poster + tombol play tetap ada dan berfungsi —
+   * jadi penolakan bukan kegagalan, cukup diamkan.
    */
   useEffect(() => {
     const v = videoRef.current;
-    if (!v || !autoplay || aktif?.source !== 'file' || kurangiGerak || gagal) return;
+    if (!autoplay || kurangiGerak || gagal) return;
+    if (!v) return;
 
     let dibatalkan = false;
     const coba = async () => {
       try {
         v.muted = true;
         await v.play();
-        if (!dibatalkan) setSedangJalan(true);
       } catch {
-        /*
-         * Autoplay ditolak (kebijakan browser, mode hemat daya, iOS Low Power
-         * Mode). BUKAN error: poster + tombol play tetap ada, dan pembeli bisa
-         * menekannya. Jangan tampilkan pesan apa pun.
-         */
-        if (!dibatalkan) setSedangJalan(false);
+        /* Ditolak browser — biarkan poster yang tampil, jangan tampilkan error. */
       }
     };
 
-    /* Hanya saat benar-benar terlihat — menghemat kuota pembeli. */
     if (typeof IntersectionObserver === 'undefined') {
       void coba();
       return () => {
@@ -147,6 +168,7 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
       };
     }
 
+    /* Hanya saat benar-benar terlihat — menghemat kuota pembeli. */
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
@@ -169,7 +191,7 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
       io.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [autoplay, aktif?.url, aktif?.source, kurangiGerak, gagal]);
+  }, [autoplay, kurangiGerak, gagal, tampilPemutar]);
 
   if (!list.length || !aktif) return null;
 
@@ -178,15 +200,9 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
 
   const poster = aktif.poster || fallbackPoster || '';
 
-  const toggleSuara = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const v = videoRef.current;
-    if (!v) return;
-    const jadi = !suaraAktif;
-    v.muted = !jadi;
-    setSuaraAktif(jadi);
-    /* Menyalakan suara WAJIB disertai pemutaran — kalau tidak, hasilnya diam. */
-    void v.play().catch(() => null);
+  const mulaiPutar = () => {
+    setGagal(false);
+    setSiap(true);
   };
 
   /* ------------------------- EMBED (YouTube/TikTok) ------------------------ */
@@ -234,14 +250,43 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
   }
 
   /* ----------------------------- FILE (mp4/webm) --------------------------- */
-  const tampilkanPosterSaja = !autoplay || kurangiGerak || gagal;
 
-  return (
-    <div className={`relative h-full w-full bg-slate-900 ${className}`}>
-      {tampilkanPosterSaja ? (
+  /*
+   * Kalau berkasnya gagal dimuat (dihapus dari storage, format ditolak),
+   * PEMBELI HARUS TAHU. Sebelum ini kegagalan hanya membuat pemutar diam di
+   * frame pertama tanpa penjelasan apa pun.
+   */
+  if (gagal) {
+    return (
+      <div className={`relative flex h-full w-full flex-col items-center justify-center gap-2 bg-slate-900 ${className}`}>
+        {poster ? (
+          <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
+        ) : null}
+        <Film className="relative z-10 h-6 w-6 text-white/70" />
+        <p className="relative z-10 px-4 text-center text-[11px] text-white/80">
+          Video tidak bisa dimuat. Silakan lihat foto produk di samping.
+        </p>
         <button
           type="button"
-          onClick={() => (onOpen ? onOpen(aktif) : setGagal(false))}
+          onClick={() => {
+            setGagal(false);
+            setSiap(true);
+          }}
+          className="relative z-10 rounded-lg bg-white/15 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-white/25"
+        >
+          Coba lagi
+        </button>
+      </div>
+    );
+  }
+
+  /* Pemutar belum perlu dipasang → poster + tombol play. */
+  if (!tampilPemutar) {
+    return (
+      <div className={`relative h-full w-full bg-slate-900 ${className}`}>
+        <button
+          type="button"
+          onClick={mulaiPutar}
           className="group relative flex h-full w-full items-center justify-center"
           aria-label="Putar video produk"
         >
@@ -254,75 +299,70 @@ export const GaleriVideo: React.FC<GaleriVideoProps> = ({
           <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-105 group-hover:bg-white">
             <Play className="ml-0.5 h-5 w-5 text-navy-800" fill="currentColor" />
           </span>
-        </button>
-      ) : (
-        <>
-          <video
-            ref={videoRef}
-            src={aktif.url}
-            poster={poster || undefined}
-            /*
-             * muted + playsInline adalah SYARAT autoplay di iOS & Chrome
-             * Android. Tanpa playsInline, iPhone membuka pemutar layar penuh
-             * sendiri saat halaman dimuat.
-             */
-            muted
-            loop
-            playsInline
-            preload="metadata"
-            onPlaying={() => setSedangJalan(true)}
-            onError={() => setGagal(true)}
-            className="h-full w-full object-cover"
-            aria-label={aktif.title || 'Video produk'}
-          />
-
-          {/* Kontrol kecil: tidak menutupi produk, tapi selalu bisa dijangkau. */}
-          <div className="absolute bottom-2 right-2 z-10 flex gap-1.5">
-            <button
-              type="button"
-              onClick={toggleSuara}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
-              aria-label={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
-              title={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
-            >
-              {suaraAktif ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
-            </button>
-            {onOpen && (
-              <button
-                type="button"
-                onClick={() => onOpen(aktif)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
-                aria-label="Perbesar video"
-                title="Perbesar video"
-              >
-                <Play className="h-4 w-4" fill="currentColor" />
-              </button>
-            )}
-          </div>
-
-          {/* Penanda bahwa ini video, bukan foto diam. */}
-          <span className="pointer-events-none absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+          <span className="pointer-events-none absolute bottom-2 left-2 z-10 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
             <Film className="h-3 w-3" /> Video
           </span>
+        </button>
+      </div>
+    );
+  }
 
-          {!sedangJalan && (
-            <span className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center text-[10px] text-white/80">
-              Menyiapkan video…
-            </span>
-          )}
-        </>
-      )}
+  /* Sudah ditekan → pemutar sungguhan, SELALU dengan controls. */
+  return (
+    <div className={`relative h-full w-full bg-black ${className}`}>
+      <video
+        ref={videoRef}
+        src={aktif.url}
+        poster={poster || undefined}
+        /*
+         * `controls` WAJIB. Tanpanya, video yang tampil tidak bisa dijeda
+         * atau digeser — dan itulah yang membuat pembeli mengira pemutarnya
+         * rusak meskipun gambarnya berjalan.
+         */
+        controls
+        /* Dipasang hanya saat autoplay aktif atau setelah diklik. */
+        autoPlay
+        /*
+         * MULAI DALAM KEADAAN SENYAP — selalu.
+         *
+         * Autoplay bersuara diblokir browser; kalau tidak senyap, video
+         * membeku di frame pertama dan pembeli mengira pemutarnya rusak.
+         * Suara dinyalakan lewat tombol (atau kontrol bawaan browser).
+         */
+        muted={!suaraAktif}
+        loop
+        playsInline
+        preload="metadata"
+        onError={() => setGagal(true)}
+        className="h-full w-full object-cover"
+        aria-label={aktif.title || 'Video produk'}
+      />
+
+      {/*
+        Tombol suara terpisah tetap disediakan: `controls` bawaan browser sudah
+        punya tombol mute, tetapi di layar sempit (galeri 260px) tombol itu
+        kadang terpotong. Ini jaring pengamannya.
+      */}
+      <button
+        type="button"
+        onClick={() => {
+          const v = videoRef.current;
+          if (!v) return;
+          const jadi = !suaraAktif;
+          v.muted = !jadi;
+          setSuaraAktif(jadi);
+          void v.play().catch(() => null);
+        }}
+        className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
+        aria-label={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
+        title={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
+      >
+        {suaraAktif ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+      </button>
     </div>
   );
 };
 
-/**
- * Pemutar video produk (versi lengkap, untuk bagian bawah halaman).
- *
- * Tetap dipertahankan untuk produk yang punya LEBIH DARI SATU video: di sini
- * pembeli bisa memilih video mana yang ditonton. Untuk satu video, galeri di
- * atas sudah cukup — jadi komponen ini tidak perlu lagi ditampilkan.
- */
 export const ProductVideoPlayer: React.FC<{ videos?: ProductVideo[] }> = ({ videos }) => {
   const list = useMemo(
     () => (Array.isArray(videos) ? videos.filter((v) => v && v.url) : []),
