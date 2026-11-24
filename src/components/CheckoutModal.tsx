@@ -478,7 +478,7 @@ export const CheckoutModal: React.FC = () => {
                     required
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="Contoh: 081927157103"
+                    placeholder="Contoh: 082249879873"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:border-forest-600 outline-none"
                   />
                 </div>

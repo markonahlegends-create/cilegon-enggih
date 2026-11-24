@@ -40,7 +40,7 @@ const pesananBaru = () => ({
   orderId: 'CE-20261120-403',
   invoiceNumber: 'INV/CE/2026/11/0001',
   customerName: 'SOBNet',
-  customerPhone: '081927157103',
+  customerPhone: '082249879873',
   destination: 'Kota Cilegon (Jombang, Purwakarta, Cibeber, Citangkil, Ramanuju)',
   items: [
     {

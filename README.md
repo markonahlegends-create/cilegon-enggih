@@ -18,7 +18,7 @@ Website e-commerce resmi untuk brand merchandise **Cilegon Enggih** yang mengang
 | --- | --- |
 | Alamat | Link. Jerang Barat RT. 004/001 Kel. Karang Asem Kec. Cibeber Kota Cilegon - Banten 42425 |
 | Email | cilegonenggih@gmail.com |
-| WhatsApp | 0819-2715-7103 (`wa.me/6281927157103`) |
+| WhatsApp | +62 822-4987-9873 (`wa.me/6282249879873`) |
 | Web Developer | **Web Develop by Fadil Labs** — <https://fadil-labs.vercel.app/> |
 
 ## Fitur Utama

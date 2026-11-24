@@ -1703,8 +1703,8 @@ export const DEVELOPER_CREDIT = {
   url: 'https://fadil-labs.vercel.app/'
 } as const;
 
-export const WHATSAPP_NUMBER = '6281927157103';
-export const WHATSAPP_DISPLAY = '0819-2715-7103';
+export const WHATSAPP_NUMBER = '6282249879873';
+export const WHATSAPP_DISPLAY = '+62 822-4987-9873';
 export const STORE_EMAIL = 'cilegonenggih@gmail.com';
 /**
  * Domain publik toko. Dipakai untuk canonical, footer, invoice, dan teks legal.
