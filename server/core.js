@@ -1284,7 +1284,7 @@ route('GET', '/api/diagnose', async () => {
               ditolak.length > 0 ? ` • ${ditolak.length} penolakan lama (sudah terlewati)` : ''
             }`,
         masihBermasalah
-          ? `Notifikasi SAMPAI tetapi tanda tangannya ditolak — hampir pasti MIDTRANS_SERVER_KEY di Vercel berbeda dari akun Midtrans tempat transaksi dibuat. Bandingkan 8 karakter terakhir kunci: server memakai "…${tolakTerakhir.serverKeyEkor || '?'}" (lihat dashboard Midtrans → Settings → Access Keys). Ganti MIDTRANS_SERVER_KEY lalu Redeploy.`
+          ? `Notifikasi SAMPAI tetapi tanda tangannya ditolak — MIDTRANS_SERVER_KEY di server berbeda dari akun Midtrans tempat transaksi dibuat. Server memakai kunci berakhiran "…${tolakTerakhir.serverKeyEkor || '?'}". Untuk memastikan tanpa menunggu notifikasi berikutnya: buka salah satu pesanan yang sudah dibayar di halaman Lacak Pesanan, tekan "Saya Sudah Bayar — Periksa Status". Bila kuncinya salah, halaman itu akan mengatakannya (dan audit mencatat pembayaran.kunci-tidak-cocok-dengan-akun). Perbaiki dengan menyalin ServerKey PRODUKSI dari dashboard Midtrans → Settings → Access Keys ke MIDTRANS_SERVER_KEY di Vercel, lalu Redeploy.`
           : 'Tidak ada yang perlu diperbaiki.'
       );
     }
