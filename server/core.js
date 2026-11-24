@@ -65,7 +65,8 @@ import {
   buildMidtransOrderId,
   createSnapToken,
   fetchTransactionStatus,
-  cancelTransaction
+  cancelTransaction,
+  sidikKunci
 } from './midtrans.js';
 import { metaProduk, buildShareHtml, TOKO_IMAGE } from './og-share.js';
 import { thumbnailProduk } from './og-image.js';
@@ -879,6 +880,13 @@ route('GET', '/api/diagnose', async () => {
   const settings = await readSettings();
   const checks = [];
 
+  /*
+   * Riwayat notifikasi diisi belakangan (butuh `mt`), tetapi harus sudah
+   * dideklarasikan di sini: `notifikasiMidtrans` ikut di respons walau
+   * Midtrans belum dikonfigurasi.
+   */
+  let notifikasi = [];
+
   const add = (id, label, status, detail, fix = '') =>
     checks.push({ id, label, status, detail, fix });
 
@@ -1126,6 +1134,86 @@ route('GET', '/api/diagnose', async () => {
     'Set SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY, lalu buat bucket "product-images" (Public) di Supabase Storage.'
   );
 
+  /*
+   * 6. RIWAYAT NOTIFIKASI MIDTRANS.
+   *
+   * Ini penentu diagnosa yang paling sering dibutuhkan: apakah Midtrans
+   * benar-benar mengirim notifikasi ke server kita, atau tidak sama sekali?
+   *
+   *   - tidak ada satu pun entri  → Midtrans tidak pernah mengirim. Perbaiki
+   *     Notification URL di dashboard Midtrans (environment yang benar).
+   *   - ada entri "ditolak-signature" → notifikasi sampai, tetapi ServerKey
+   *     kita berbeda dari kunci akun tempat transaksi dibuat.
+   *   - ada entri "lunas-otomatis" → webhook sehat, tidak ada yang perlu
+   *     diperbaiki.
+   *
+   * Hanya 8 karakter terakhir ServerKey yang pernah dicatat (lihat sidikKunci);
+   * nilai kunci penuh tidak pernah tersimpan di audit.
+   */
+  if (mt.ready) {
+    try {
+      const audit = await store.list('audit');
+      notifikasi = audit
+        .filter((d) => String(d.action || '').startsWith('pembayaran.'))
+        .sort((a, b) => String(b.at).localeCompare(String(a.at)))
+        .slice(0, 8)
+        .map((d) => ({
+          at: d.at,
+          action: d.action,
+          target: d.target || '',
+          status: d.status || 'ok',
+          alasan: d.detail?.alasan || d.detail?.keterangan || null,
+          transactionStatus: d.detail?.transaction_status || null,
+          serverKeyEkor: d.detail?.sidikEkor || null
+        }));
+    } catch (err) {
+      console.error('[diagnose] gagal membaca riwayat notifikasi:', err.message);
+    }
+
+    if (notifikasi.length === 0) {
+      add(
+        'midtrans-notifikasi-terakhir',
+        'Notifikasi Midtrans yang pernah diterima',
+        'warn',
+        'belum pernah ada — server ini belum menerima satu pun notifikasi Midtrans',
+        `Kalau sudah ada pembeli yang membayar, artinya notifikasi TIDAK sampai: isi Payment Notification URL di dashboard Midtrans → Settings → Payment → Notification URL untuk environment ${labelMode}, persis: ${baseUrlDari(process.env)}/api/payments/midtrans/notification. Setelah itu lakukan satu pembayaran uji kecil.`
+      );
+    } else {
+      const terakhir = notifikasi[0];
+      const ditolak = notifikasi.filter((n) => n.action.includes('ditolak-signature'));
+
+      /*
+       * Status hanya BERMASALAH kalau penolakan terakhir LEBIH BARU daripada
+       * notifikasi sukses terakhir.
+       *
+       * Tanpa pembanding ini, satu penolakan lama (mis. sebelum kunci diganti)
+       * membuat diagnosa merah SELAMANYA — dan peringatan yang selalu menyala
+       * sama saja dengan tidak ada peringatan.
+       */
+      const suksesTerakhir = notifikasi.find(
+        (n) => n.action === 'pembayaran.lunas-otomatis' || n.action === 'pembayaran.notifikasi-ulang'
+      );
+      const tolakTerakhir = ditolak[0];
+      const masihBermasalah =
+        Boolean(tolakTerakhir) &&
+        (!suksesTerakhir || String(tolakTerakhir.at) > String(suksesTerakhir.at));
+
+      add(
+        'midtrans-notifikasi-terakhir',
+        'Notifikasi Midtrans yang pernah diterima',
+        masihBermasalah ? 'fail' : 'ok',
+        masihBermasalah
+          ? `${notifikasi.length} terakhir • ${ditolak.length} DITOLAK karena tanda tangan tidak cocok • terakhir ${terakhir.action}`
+          : `${notifikasi.length} terakhir • terakhir ${terakhir.action} pada ${terakhir.at}${
+              ditolak.length > 0 ? ` • ${ditolak.length} penolakan lama (sudah terlewati)` : ''
+            }`,
+        masihBermasalah
+          ? `Notifikasi SAMPAI tetapi tanda tangannya ditolak — hampir pasti MIDTRANS_SERVER_KEY di Vercel berbeda dari akun Midtrans tempat transaksi dibuat. Bandingkan 8 karakter terakhir kunci: server memakai "…${tolakTerakhir.serverKeyEkor || '?'}" (lihat dashboard Midtrans → Settings → Access Keys). Ganti MIDTRANS_SERVER_KEY lalu Redeploy.`
+          : 'Tidak ada yang perlu diperbaiki.'
+      );
+    }
+  }
+
   const summary = {
     ok: checks.filter((c) => c.status === 'ok').length,
     warn: checks.filter((c) => c.status === 'warn').length,
@@ -1138,6 +1226,7 @@ route('GET', '/api/diagnose', async () => {
     summary,
     storage: store.mode,
     checks,
+    notifikasiMidtrans: notifikasi,
     generatedAt: nowIso(),
     note:
       'Halaman ini hanya menampilkan status konfigurasi, tidak pernah menampilkan nilai kunci/password.'
@@ -1852,9 +1941,68 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
   if (!cfg.serverKey) return bad('Midtrans belum dikonfigurasi.', 503);
 
   const payload = body || {};
+
+  /*
+   * SETIAP notifikasi DICATAT — termasuk yang ditolak.
+   *
+   * Dulu hanya jalur "lunas" yang meninggalkan jejak. Akibatnya dua situasi
+   * yang sangat berbeda terlihat sama saja dari dashboard (sama-sama diam):
+   *
+   *   1. Midtrans TIDAK mengirim notifikasi → tidak ada audit sama sekali.
+   *   2. Midtrans mengirim, tetapi tanda tangannya ditolak (ServerKey kita
+   *      beda dari akun tempat transaksi dibuat) → 403, tanpa jejak.
+   *
+   * Sekarang keduanya bisa dibedakan. Untuk kasus (2), `sidikKunci` mencatat
+   * 8 karakter terakhir ServerKey kita sehingga admin bisa mencocokkannya
+   * dengan dashboard Midtrans → Settings → Access Keys.
+   *
+   * Catatan privasi: nilai kunci TIDAK pernah dicatat, hanya ekornya.
+   */
+  const sidik = sidikKunci(cfg.serverKey);
+  const catatNotifikasi = (action, detail, status = 'ok') =>
+    recordAudit(store, {
+      action,
+      actor: 'midtrans',
+      ip: 'midtrans',
+      target: String(payload.order_id || ''),
+      status,
+      detail: {
+        ...detail,
+        transaction_status: payload.transaction_status || null,
+        status_code: payload.status_code || null,
+        gross_amount: payload.gross_amount || null,
+        transaction_id: payload.transaction_id || null,
+        payment_type: payload.payment_type || null,
+        /*
+         * Nama field SENGAJA tidak mengandung "key"/"serverKey": `redact()` di
+         * security.js menyensor setiap field yang namanya cocok
+         * /password|token|secret|key/i, sehingga nilai ini akan berubah jadi
+         * "[disembunyikan]" dan sidik kunci justru hilang.
+         *
+         * Yang dicatat hanya 8 karakter TERAKHIR (lihat sidikKunci) — cukup
+         * untuk dicocokkan dengan dashboard Midtrans, tidak cukup untuk
+         * menebak kunci.
+         */
+        sidikEkor: sidik?.ekor || null,
+        sidikPanjang: sidik?.panjang || null
+      }
+    });
+
   if (!verifySignature(payload, cfg.serverKey)) {
-    // Jangan bocorkan alasan detail: cukup tolak.
-    console.warn('[midtrans] notifikasi dengan tanda tangan tidak sah ditolak');
+    /* Jangan bocorkan alasan detail ke pemanggil: cukup tolak. */
+    console.warn(
+      `[midtrans] notifikasi dengan tanda tangan tidak sah ditolak (order ${payload.order_id || '?'}, ServerKey berakhiran ${sidik?.ekor || '?'})`
+    );
+    await catatNotifikasi(
+      'pembayaran.notifikasi-ditolak-signature',
+      {
+        alasan:
+          'Tanda tangan tidak cocok. ServerKey di server berbeda dari kunci akun Midtrans tempat transaksi ini dibuat, ATAU notifikasi bukan dari Midtrans.',
+        kemungkinan:
+          'Buka dashboard Midtrans → Settings → Access Keys, bandingkan 8 karakter terakhir ServerKey dengan nilai di atas. Bila berbeda, MIDTRANS_SERVER_KEY di Vercel harus diganti lalu Redeploy.'
+      },
+      'fail'
+    );
     return bad('Tanda tangan notifikasi tidak sah.', 403);
   }
 
@@ -1863,6 +2011,10 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
   if (!order) {
     // 200 supaya Midtrans berhenti mengirim ulang pesanan yang tidak kita kenal.
     console.warn('[midtrans] notifikasi untuk pesanan tak dikenal:', midtransOrderId);
+    await catatNotifikasi('pembayaran.notifikasi-tak-dikenal', {
+      alasan: 'Tanda tangan sah, tetapi nomor pesanan ini tidak ada di database kita.',
+      kemungkinan: 'Notifikasi dari aplikasi/akun Midtrans lain, atau pesanan sudah dihapus admin.'
+    }, 'warn');
     return ok({ ignored: true, reason: 'order-tidak-dikenal' });
   }
 
@@ -1877,13 +2029,15 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
     console.error(
       `[midtrans] nominal tidak cocok untuk ${order.orderId}: dibayar ${gross}, seharusnya ${expected}`
     );
-    await recordAudit(store, {
-      action: 'pembayaran.nominal-tidak-cocok',
-      actor: 'midtrans',
-      ip: 'midtrans',
-      target: order.orderId,
-      detail: { dibayar: gross, seharusnya: expected, transaction_id: payload.transaction_id || null }
-    });
+    await catatNotifikasi(
+      'pembayaran.nominal-tidak-cocok',
+      {
+        alasan: 'Notifikasi sah, tetapi nominal yang dibayar berbeda dari total pesanan kita — pesanan TIDAK dilunaskan.',
+        dibayar: gross,
+        seharusnya: expected
+      },
+      'fail'
+    );
     return bad('Nominal pembayaran tidak cocok.', 400);
   }
 
@@ -1921,12 +2075,22 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
         const hasil = await notifySafe(settings, templatePaid(final));
         await catatStatusNotifikasi(hasil, 'pembayaran-lunas');
       }
-      await recordAudit(store, {
-        action: 'pembayaran.lunas-otomatis',
-        actor: 'midtrans',
-        ip: 'midtrans',
-        target: order.orderId,
-        detail: { via: payload.payment_type || 'midtrans', nominal: gross }
+      await catatNotifikasi('pembayaran.lunas-otomatis', {
+        via: payload.payment_type || 'midtrans',
+        nominal: gross,
+        keterangan: 'Notifikasi Midtrans diterima & verified — webhook berjalan normal.'
+      });
+    }
+
+    /*
+     * Notifikasi ulang untuk pesanan yang SUDAH lunas tetap dicatat. Ini bukti
+     * paling kuat bahwa webhook berfungsi — tanpa ini, pembayaran yang datang
+     * dua kali terlihat sama seperti webhook yang mati.
+     */
+    if (!paid.changed) {
+      await catatNotifikasi('pembayaran.notifikasi-ulang', {
+        keterangan: 'Notifikasi diterima, pesanan sudah LUNAS sebelumnya — tidak ada perubahan (idempoten).',
+        sudahLunas: sudahLunas
       });
     }
 
@@ -1976,6 +2140,10 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
     }
 
     await store.put('orders', cancelled);
+    await catatNotifikasi('pembayaran.notifikasi-batal', {
+      keterangan: 'Notifikasi Midtrans diterima — tagihan kedaluwarsa/dibatalkan, stok dikembalikan.',
+      statusPesanan: 'DIBATALKAN'
+    });
     return ok({ ok: true, orderId: order.orderId, status: 'DIBATALKAN' });
   }
 
@@ -2001,17 +2169,21 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
       ]
     };
     await store.put('orders', flagged);
-    await recordAudit(store, {
-      action: 'pembayaran.perlu-tinjau',
-      actor: 'midtrans',
-      ip: 'midtrans',
-      target: order.orderId,
-      detail: { fraud_status: payload.fraud_status || null, transaction_status: payload.transaction_status }
-    });
+    await catatNotifikasi('pembayaran.perlu-tinjau', {
+      alasan: 'Kartu ditandai berisiko (fraud_status challenge) — TIDAK dilunaskan otomatis.',
+      fraud_status: payload.fraud_status || null
+    }, 'warn');
     return ok({ ok: true, needReview: true });
   }
 
-  // 'TUNGGU' — belum lunas. Tidak ada yang perlu diubah.
+  /*
+   * 'TUNGGU' — belum lunas. Tidak ada yang perlu diubah, TETAPI tetap dicatat:
+   * inilah bukti bahwa notifikasi Midtrans benar-benar sampai ke server kita.
+   * Tanpa catatan ini, "webhook mati" dan "pembeli belum bayar" terlihat sama.
+   */
+  await catatNotifikasi('pembayaran.notifikasi-pending', {
+    keterangan: 'Notifikasi Midtrans diterima, status masih menunggu pembayaran.'
+  });
   return ok({ ok: true, pending: true });
 });
 

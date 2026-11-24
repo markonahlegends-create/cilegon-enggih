@@ -131,6 +131,36 @@ export const basicAuthHeader = (serverKey) =>
   `Basic ${Buffer.from(`${serverKey}:`, 'utf8').toString('base64')}`;
 
 /**
+ * SIDIK KUNCI — "kunci mana yang dipakai?", tanpa membocorkan kuncinya.
+ *
+ * KENAPA PERLU
+ * Gejala "pembeli sudah bayar tapi pesanan tetap menunggu" punya dua sebab yang
+ * MUSTAHIL dibedakan tanpa informasi ini:
+ *
+ *   a. Midtrans tidak mengirim notifikasi (URL notifikasi belum diisi), atau
+ *   b. Midtrans mengirim, tetapi tanda tangannya ditolak karena ServerKey kita
+ *      berbeda dari kunci akun tempat transaksi itu dibuat.
+ *
+ * Pada kasus (b) pesannya MASUK dan langsung dibuang tanpa jejak — persis
+ * kebuntuan yang membuat kasus order CE-20261124-701 butuh berjam-jam untuk
+ * dipahami. Dengan sidik kunci, admin bisa mencocokkan 8 karakter terakhir
+ * ServerKey di dashboard Midtrans → Settings → Access Keys.
+ *
+ * 8 karakter terakhir TIDAK cukup untuk menebak kunci (ServerKey ±32 karakter
+ * acak), jadi aman ditampilkan. Kunci penuh tidak pernah dikirim ke mana pun.
+ */
+export const sidikKunci = (serverKey) => {
+  const kunci = String(serverKey || '').trim();
+  if (!kunci) return null;
+  return {
+    panjang: kunci.length,
+    ekor: kunci.slice(-8),
+    /** Sandbox atau produksi menurut awalan kunci itu sendiri. */
+    mode: /^SB-/i.test(kunci) ? 'sandbox' : /^Mid-server-/i.test(kunci) ? 'produksi' : 'tidak-dikenali'
+  };
+};
+
+/**
  * Hitung tanda tangan notifikasi.
  *
  * PENTING: `grossAmount` wajib dipakai APA ADANYA seperti yang dikirim
