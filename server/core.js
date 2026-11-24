@@ -64,7 +64,8 @@ import {
   mapTransactionStatus,
   buildMidtransOrderId,
   createSnapToken,
-  fetchTransactionStatus
+  fetchTransactionStatus,
+  cancelTransaction
 } from './midtrans.js';
 import { metaProduk, buildShareHtml, TOKO_IMAGE } from './og-share.js';
 import { thumbnailProduk } from './og-image.js';
@@ -1518,6 +1519,12 @@ route('POST', '/api/orders', async ({ body, headers }) => {
     resiInputAt: null,
     customerName,
     customerPhone,
+    /*
+     * 4 digit terakhir No. WhatsApp disimpan terpisah sebagai bukti kedua
+     * untuk MEMBUKA & MEMBAYAR pesanan (cek status, batalkan). Tidak pernah
+     * dikirim ke pihak lain; hanya dikembalikan ke pemesan yang tahu nomornya.
+     */
+    phoneLast4: String(customerPhone || '').replace(/\D/g, '').slice(-4),
     customerEmail: customerEmail || '-',
     destination,
     addressDetail,
@@ -1551,14 +1558,26 @@ route('POST', '/api/orders', async ({ body, headers }) => {
         location: 'Sistem Cilegon Enggih'
       }
     ],
-    instructions: {
-      amount: totalAmount,
-      uniqueCode,
-      bank: isQris ? null : bank,
-      qris: isQris ? settings.qris : null,
-      windowHours: settings.payment.paymentWindowHours,
-      note: settings.payment.instructions
-    }
+    /*
+     * Instruksi pembayaran hanya relevan untuk jalur manual. Saat Midtrans aktif
+     * (kondisi produksi), halaman pembayaran memakai Snap, jadi jangan kirim
+     * nomor rekening/QRIS statis + narasi "kode unik" yang sudah tidak berlaku —
+     * pembeli sempat bingung harus transfer ke mana.
+     */
+    instructions: pakaiMidtrans
+      ? {
+          amount: totalAmount,
+          windowHours: settings.payment.paymentWindowHours,
+          note: settings.payment.instructions
+        }
+      : {
+          amount: totalAmount,
+          uniqueCode,
+          bank: isQris ? null : bank,
+          qris: isQris ? settings.qris : null,
+          windowHours: settings.payment.paymentWindowHours,
+          note: settings.payment.instructions
+        }
   };
 
   await store.put('orders', newOrder);
@@ -1597,6 +1616,29 @@ route('POST', '/api/orders', async ({ body, headers }) => {
 });
 
 /* ─────────────────────────── MIDTRANS ─────────────────────────── */
+
+/**
+ * Alamat publik situs untuk `finishUrl` Snap dan tautan absolut lainnya.
+ *
+ * Urutan: PUBLIC_BASE_URL (kalau pemilik toko mengisinya) → header Host
+ * permintaan → domain bawaan. Memakai header Host penting karena hasilnya
+ * mengikuti domain yang sedang dibuka pembeli (domain asli maupun domain
+ * vercel), sehingga tautan "kembali ke pesanan" tidak pernah menunjuk ke
+ * domain yang belum aktif.
+ */
+const baseUrlDari = (env, headers = {}) => {
+  const eksplisit = String(env.PUBLIC_BASE_URL || '').trim();
+  if (eksplisit) return eksplisit.replace(/\/$/, '');
+
+  const host = String(headers['x-forwarded-host'] || headers.host || '').split(',')[0].trim();
+  if (host) {
+    const proto = String(headers['x-forwarded-proto'] || '').split(',')[0].trim() || 'https';
+    return `${proto}://${host}`;
+  }
+  return 'https://cilegon-enggih.vercel.app';
+};
+
+
 
 /**
  * Cari pesanan dari `order_id` yang dikirim Midtrans.
@@ -1659,8 +1701,26 @@ route('POST', '/api/payments/midtrans/token', async ({ body, headers }) => {
   const attempt = Number(order.paymentAttempt) || 0;
   const midtransOrderId = buildMidtransOrderId(order.orderId, attempt);
 
-  const base = String(process.env.PUBLIC_BASE_URL || '').trim();
-  const finishUrl = base ? `${base.replace(/\/$/, '')}/pesanan/${encodeURIComponent(order.orderId)}` : undefined;
+  /*
+   * PENTING: `paymentAttempt` HARUS dinaikkan setiap kali token dibuat.
+   *
+   * Midtrans menolak `order_id` yang sudah pernah dipakai. Dulu nilai ini
+   * tidak pernah bertambah, sehingga pembeli yang menutup popup lalu menekan
+   * "Coba Bayar Lagi" akan ditolak dengan galat dari Midtrans — dan itu
+   * terlihat persis seperti "tombol bayar rusak".
+   */
+  const attemptBerikut = attempt + 1;
+
+  /*
+   * finishUrl WAJIB menunjuk halaman yang benar-benar ada.
+   *
+   * Dulu diarahkan ke /pesanan/<id> — rute itu tidak pernah ada di aplikasi,
+   * sehingga pembeli yang menutup popup Snap mendarat di halaman 404.
+   * Sekarang: halaman lacak pesanan, dengan nomor pesanan sudah terisi.
+   */
+  const finishUrl = `${baseUrlDari(process.env, headers)}/lacak-pesanan?q=${encodeURIComponent(
+    order.orderId
+  )}`;
 
   let snap;
   try {
@@ -1672,7 +1732,7 @@ route('POST', '/api/payments/midtrans/token', async ({ body, headers }) => {
 
   const updated = {
     ...order,
-    paymentAttempt: attempt,
+    paymentAttempt: attemptBerikut,
     midtransOrderId: snap.midtransOrderId,
     snapToken: snap.token,
     snapRedirectUrl: snap.redirectUrl || null,
@@ -1682,7 +1742,7 @@ route('POST', '/api/payments/midtrans/token', async ({ body, headers }) => {
       ...(order.timeline || []),
       {
         time: wibStamp(),
-        status: `Tagihan pembayaran otomatis dibuat (percobaan ke-${attempt + 1})`,
+        status: `Tagihan pembayaran otomatis dibuat (percobaan ke-${attemptBerikut})`,
         location: 'Midtrans'
       }
     ]
@@ -1886,12 +1946,30 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
  * yang sudah membayar bisa melihat pesanannya masih "menunggu pembayaran"
  * sampai berjam-jam.
  */
-route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
+route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query }) => {
   const cfg = midtransConfig();
   if (!cfg.ready) return bad('Midtrans belum dikonfigurasi.', 503);
 
   const order = await store.get('orders', String(params.orderId || ''));
   if (!order) return bad('Pesanan tidak ditemukan.', 404);
+
+  /*
+   * OTORISASI — dua faktor, sama seperti halaman lacak pesanan.
+   *
+   * Nomor pesanan saja TIDAK cukup. Endpoint ini bukan sekadar membaca:
+   * ia bisa MELUNASKAN pesanan dan memicu notifikasi Telegram. Tanpa
+   * pemeriksaan, siapa pun yang bisa menebak/melihat nomor pesanan
+   * (formatnya berurutan: CE-YYYYMMDD-NNN) dapat memicu aksi pada pesanan
+   * orang lain — dan Midtrans bisa dibanjiri permintaan cek status.
+   *
+   * Bukti kedua: 4 digit terakhir nomor WhatsApp pemesan, yang hanya
+   * diketahui pembeli dan admin.
+   */
+  const last4 = String(query?.phone || '').replace(/\D/g, '');
+  const phoneDigits = String(order.customerPhone || '').replace(/\D/g, '');
+  if (last4.length !== 4 || !phoneDigits.endsWith(last4)) {
+    return bad('Nomor pesanan dan 4 digit terakhir No. WhatsApp tidak cocok.', 403);
+  }
 
   if (!order.midtransOrderId) {
     return ok({ orderId: order.orderId, paymentStatus: order.paymentStatus, gateway: null });
@@ -1984,12 +2062,29 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
       }
     }
 
+    /*
+     * Tagihan yang sudah kedaluwarsa/dibatalkan harus DIKATAKAN ke pembeli.
+     *
+     * Tanpa `kedaluwarsa`, halaman hanya menampilkan "belum lunas" selamanya,
+     * dan pembeli menyimpulkan tombolnya rusak — padahal tagihannya memang
+     * sudah mati. Tombol "bayar lagi" tetap tersedia (token baru dibuat
+     * dengan order_id -R2).
+     */
+    const trx = String(res.data?.transaction_status || '');
+    const kedaluwarsa =
+      res.ok && ['expire', 'cancel', 'deny', 'failure'].includes(trx)
+        ? trx === 'expire'
+          ? 'kedaluwarsa'
+          : 'dibatalkan-midtrans'
+        : null;
+
     return ok({
       orderId: order.orderId,
       paymentStatus: order.paymentStatus,
+      kedaluwarsa,
       gateway: {
         ok: res.ok,
-        transactionStatus: res.data?.transaction_status || null,
+        transactionStatus: trx || null,
         fraudStatus: res.data?.fraud_status || null,
         paymentType: res.data?.payment_type || null
       }
@@ -1998,6 +2093,133 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
     console.error('[midtrans] gagal cek status:', err.message);
     return bad('Tidak bisa menghubungi Midtrans saat ini.', 502);
   }
+});
+
+/**
+ * POST /api/payments/midtrans/cancel
+ *
+ * Pembeli membatalkan pesanannya sendiri selama BELUM dibayar.
+ *
+ * KENAPA ADA
+ * Tokopedia dan Shopee selalu memberi jalan keluar "Batalkan Pesanan". Tanpa
+ * itu, pembeli yang berubah pikiran meninggalkan pesanan menggantung, dan
+ * stoknya tertahan sampai admin membersihkan manual — pekerjaan yang justru
+ * ingin dihilangkan.
+ *
+ * PENGAMAN
+ *  - hanya boleh kalau BELUM lunas; pesanan lunas harus lewat admin (refund)
+ *  - wajib 4 digit terakhir nomor WhatsApp, sama seperti cek status
+ *  - stok dikembalikan lewat jalur yang sama dengan pembatalan manual
+ */
+route('POST', '/api/payments/midtrans/cancel', async ({ body }) => {
+  const orderId = String(body?.orderId || '').trim();
+  if (!orderId) return bad('Nomor pesanan wajib dikirim.', 400);
+
+  const order = await store.get('orders', orderId);
+  if (!order) return bad('Pesanan tidak ditemukan.', 404);
+
+  const last4 = String(body?.phone || '').replace(/\D/g, '');
+  const phoneDigits = String(order.customerPhone || '').replace(/\D/g, '');
+  if (last4.length !== 4 || !phoneDigits.endsWith(last4)) {
+    return bad('Nomor pesanan dan 4 digit terakhir No. WhatsApp tidak cocok.', 403);
+  }
+
+  if (order.paymentStatus === 'LUNAS') {
+    return bad(
+      'Pesanan ini sudah lunas, jadi tidak bisa dibatalkan sendiri. Hubungi admin untuk pengembalian dana.',
+      409
+    );
+  }
+  if (order.status === 'DIBATALKAN') {
+    return ok({ ok: true, changed: false, order });
+  }
+  if (order.status === 'DIKIRIM' || order.status === 'SELESAI') {
+    return bad('Pesanan sudah dikirim, jadi tidak bisa dibatalkan.', 409);
+  }
+
+  /*
+   * Batalkan DULU di Midtrans, baru di database kita.
+   *
+   * Kalau urutannya dibalik dan pembatalan Midtrans gagal, akan ada tagihan
+   * yang masih hidup untuk pesanan yang sudah kita tutup: pembeli memindai
+   * QRIS lama, uang masuk, dan admin harus mengembalikannya manual.
+   *
+   * Kalau Midtrans menolak karena transaksi sudah tidak aktif (expire/cancel),
+   * itu hasil yang kita inginkan juga, jadi pembatalan tetap dilanjutkan.
+   */
+  const cfg = midtransConfig();
+  let catatanGateway = null;
+  if (order.midtransOrderId && cfg.ready) {
+    try {
+      const batal = await cancelTransaction(order.midtransOrderId, cfg);
+      catatanGateway = batal.alasan;
+      if (!batal.ok) {
+        console.error(
+          `[midtrans] gagal membatalkan transaksi ${order.midtransOrderId}: HTTP ${batal.status}`
+        );
+        return bad(
+          'Midtrans belum bisa membatalkan tagihan ini. Coba lagi sebentar, atau biarkan tagihan kedaluwarsa sendiri (stok tetap aman).',
+          502
+        );
+      }
+    } catch (err) {
+      console.error('[midtrans] galat saat membatalkan transaksi:', err.message);
+      return bad('Midtrans belum bisa dihubungi untuk membatalkan tagihan. Coba lagi.', 502);
+    }
+  }
+
+  const cancelled = {
+    ...order,
+    status: 'DIBATALKAN',
+    paymentStatus: 'DIBATALKAN',
+    midtransTransactionStatus: order.midtransTransactionStatus || 'cancel',
+    updatedAt: nowIso(),
+    timeline: [
+      ...(order.timeline || []),
+      {
+        time: wibStamp(),
+        status: 'Pesanan dibatalkan oleh pembeli (belum dibayar)',
+        location: 'Halaman pembayaran'
+      },
+      ...(order.midtransOrderId
+        ? [
+            {
+              time: wibStamp(),
+              status: 'Tagihan di Midtrans ikut dibatalkan — kode pembayaran lama tidak bisa dipakai lagi',
+              location: 'Midtrans'
+            }
+          ]
+        : [])
+    ]
+  };
+
+  /* Kembalikan stok — sama seperti pembatalan manual & kedaluwarsa Midtrans. */
+  if (order.stockAppliedAt && !order.stockReleasedAt) {
+    try {
+      const movement = await applyStockMovement(store, order.items, { direction: -1 });
+      if (movement.changed) {
+        cancelled.stockReleasedAt = nowIso();
+        cancelled.timeline.push({
+          time: wibStamp(),
+          status: `Stok dikembalikan otomatis (${movement.changed} produk)`,
+          location: 'Sistem Cilegon Enggih'
+        });
+      }
+    } catch (err) {
+      console.error('[stock] gagal mengembalikan stok (batal pembeli):', err.message);
+    }
+  }
+
+  await store.put('orders', cancelled);
+  await recordAudit(store, {
+    action: 'order.dibatalkan-pembeli',
+    actor: 'pembeli',
+    ip: 'web',
+    target: order.orderId,
+    detail: { dari: order.status, ke: 'DIBATALKAN', midtrans: catatanGateway }
+  });
+
+  return ok({ ok: true, changed: true, order: cancelled });
 });
 
 /* ───────────────────────── AKHIR MIDTRANS ───────────────────────── */

@@ -24,7 +24,7 @@ const ORDER_STEPS = [
     step: '02',
     icon: CreditCard,
     title: 'Checkout Tanpa Daftar Akun',
-    desc: 'Isi nama, WhatsApp, dan alamat — tidak perlu membuat akun. Pilih Transfer Bank / QRIS toko dan bayar sesuai nominal akhir (termasuk 3 kode unik).'
+    desc: 'Isi nama, WhatsApp, dan alamat — tidak perlu membuat akun. Pembayaran lewat Midtrans: QRIS, GoPay, OVO, DANA, ShopeePay, kartu, atau VA bank. Nominal dibayar sama persis dengan total tagihan.'
   },
   {
     step: '03',

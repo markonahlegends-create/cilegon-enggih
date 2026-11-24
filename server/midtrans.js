@@ -310,3 +310,46 @@ export const fetchTransactionStatus = async (midtransOrderId, config, { fetchImp
   }
   return { ok: res.ok, status: res.status, data };
 };
+
+/**
+ * Batalkan transaksi di sisi Midtrans.
+ *
+ * KENAPA PERLU
+ * Membatalkan pesanan hanya di database kita TIDAK cukup: kode QRIS yang sudah
+ * tampil di layar pembeli (atau tautan Snap yang masih terbuka) tetap bisa
+ * dipindai dan dibayar. Kalau itu terjadi, uang masuk untuk pesanan yang sudah
+ * kita tandai DIBATALKAN — persis kasus yang paling merepotkan admin.
+ *
+ * Jadi pembatalan lokal SELALU diikuti pembatalan di Midtrans. Kalau Midtrans
+ * menolak karena transaksinya memang sudah tidak aktif (expire/cancel), itu
+ * bukan kegagalan — hasilnya sudah sesuai keinginan kita.
+ */
+export const cancelTransaction = async (midtransOrderId, config, { fetchImpl = fetch } = {}) => {
+  if (!config?.ready) return { ok: false, status: 0, data: {}, alasan: 'belum-dikonfigurasi' };
+
+  const res = await fetchImpl(`${config.base}/v2/${encodeURIComponent(midtransOrderId)}/cancel`, {
+    method: 'POST',
+    headers: { Accept: 'application/json', Authorization: basicAuthHeader(config.serverKey) }
+  });
+
+  const text = await res.text();
+  let data = {};
+  try {
+    data = JSON.parse(text);
+  } catch {
+    /* bukan JSON — ditangani lewat status HTTP */
+  }
+
+  /*
+   * 412 = "Transaction cannot be cancelled" (sudah settle/expire/cancel).
+   * 404 = transaksi tidak dikenal Midtrans. Keduanya berarti tidak ada tagihan
+   * aktif yang menggantung, sehingga aman untuk melanjutkan pembatalan lokal.
+   */
+  const sudahTidakAktif = res.status === 412 || res.status === 404;
+  return {
+    ok: res.ok || sudahTidakAktif,
+    status: res.status,
+    data,
+    alasan: res.ok ? 'dibatalkan' : sudahTidakAktif ? 'sudah-tidak-aktif' : 'ditolak-midtrans'
+  };
+};

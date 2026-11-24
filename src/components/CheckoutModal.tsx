@@ -23,7 +23,7 @@ import { useBackClose } from '../hooks/useBackClose';
 import { ShippingCalculator } from './ShippingCalculator';
 import { InvoiceDocument } from './InvoiceDocument';
 import { createOrder, ApiError } from '../lib/api';
-import { useMidtransSnap, type SnapOutcome } from '../lib/midtransSnap';
+import { PaymentPanel } from './PaymentPanel';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -118,9 +118,12 @@ export const CheckoutModal: React.FC = () => {
    * ke jalur lama, sehingga toko tidak pernah mati total.
    */
   const midtransSiap = Boolean((settings as any).paymentGateway?.enabled);
-  const snap = useMidtransSnap();
-  const [snapOutcome, setSnapOutcome] = useState<SnapOutcome | null>(null);
-  const [memeriksaStatus, setMemeriksaStatus] = useState(false);
+  /*
+   * Status pembayaran & popup Midtrans kini ditangani PaymentPanel — komponen
+   * yang SAMA dipakai halaman lacak pesanan. Dengan begitu pembeli yang
+   * menutup popup Snap selalu bisa kembali ke tagihannya.
+   */
+  const last4Nomor = String(customerPhone || '').replace(/\D/g, '').slice(-4);
   const [voucherInput, setVoucherInput] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; discount: number } | null>(
     null
@@ -166,7 +169,6 @@ export const CheckoutModal: React.FC = () => {
       setStep('form');
       setCreatedOrder(null);
       setShowInvoice(false);
-      setSnapOutcome(null);
       setErrorMsg('');
     }
   }, [isCheckoutOpen]);
@@ -297,18 +299,11 @@ export const CheckoutModal: React.FC = () => {
       cacheOrderLocally(result.order);
       setStep('payment');
       pushToast('Pesanan Dibuat', `Nomor order ${result.order.orderId}`, 'success');
-
       /*
-       * Langsung buka popup pembayaran. Pesanan sudah tersimpan di server
-       * sebelum ini, jadi kalau pembeli menutup popup tanpa membayar,
-       * pesanannya tetap ada dan bisa dibayar lagi nanti dari halaman lacak.
+       * Popup pembayaran dibuka oleh PaymentPanel saat panelnya tampil, bukan
+       * di sini. Alasannya: kalau dibuka dari sini, pembeli yang menutup popup
+       * Snap langsung melihat layar tanpa jalan kembali ke tagihannya.
        */
-      if (midtransSiap) {
-        setSnapOutcome(null);
-        await snap.bayar(result.order.orderId, (outcome) => {
-          setSnapOutcome(outcome);
-        });
-      }
     } catch (err) {
       const message =
         err instanceof ApiError ? err.message : 'Gagal membuat pesanan. Coba lagi ya.';
@@ -548,129 +543,43 @@ export const CheckoutModal: React.FC = () => {
           )}
 
           {step === 'payment' && createdOrder && (
-            <div className="space-y-5">
-              {/* Ringkasan tagihan */}
-              <div className="rounded-2xl border-2 border-amberbrand-300 bg-amberbrand-50 p-4 text-center">
-                <div className="inline-flex items-center gap-2 text-xs font-bold text-amberbrand-900 mb-1">
-                  <Clock className="w-3.5 h-3.5" /> Selesaikan dalam {settings.payment.paymentWindowHours} jam
-                </div>
-                <div className="text-xs text-amberbrand-900">Total yang harus dibayar</div>
-                <div className="text-3xl font-extrabold text-navy-800 tracking-tight">
-                  {formatRupiah(createdOrder.totalAmount)}
-                </div>
-                <div className="text-[11px] text-amberbrand-900 mt-1">
-                  Nomor pesanan <strong>{createdOrder.orderId}</strong>
+            <div className="space-y-4">
+              <div className="text-center">
+                <div className="text-xs text-slate-500">Nomor pesanan</div>
+                <div className="text-sm font-extrabold text-navy-800 font-mono">
+                  {createdOrder.orderId}
                 </div>
               </div>
 
-              {/* Status pembayaran otomatis */}
               {midtransSiap ? (
-                <div className="rounded-2xl border border-slate-200 p-4 space-y-3">
-                  {(snapOutcome === 'success' || snapOutcome === 'pending') && (
-                    <div className="flex items-start gap-2 text-xs text-forest-800 bg-forest-50 border border-forest-200 rounded-xl p-3">
-                      <Clock className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>
-                        {snapOutcome === 'success'
-                          ? 'Pembayaran diterima Midtrans. Pesanan Anda sedang diverifikasi otomatis — status berubah menjadi LUNAS begitu konfirmasi resmi masuk, biasanya dalam hitungan detik.'
-                          : 'Menunggu Anda menyelesaikan pembayaran. Kalau sudah dibayar, status akan berubah otomatis — tidak perlu kirim bukti transfer.'}
-                      </span>
-                    </div>
-                  )}
-
-                  {snapOutcome === 'closed' && (
-                    <div className="flex items-start gap-2 text-xs text-amberbrand-900 bg-amberbrand-50 border border-amberbrand-200 rounded-xl p-3">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>
-                        Jendela pembayaran ditutup. Pesanan Anda <strong>tetap tersimpan</strong> —
-                        tekan tombol di bawah untuk membuka pembayaran lagi.
-                      </span>
-                    </div>
-                  )}
-
-                  {snapOutcome === 'error' && (
-                    <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
-                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                      <span>
-                        {snap.galat || 'Pembayaran belum berhasil.'} Anda bisa mencoba lagi.
-                      </span>
-                    </div>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setSnapOutcome(null);
-                      await snap.bayar(createdOrder.orderId, (outcome) => setSnapOutcome(outcome));
-                    }}
-                    disabled={snap.sedangMenyiapkan}
-                    className="w-full py-3.5 px-6 rounded-xl bg-forest-600 hover:bg-forest-700 disabled:opacity-60 text-white font-extrabold text-sm shadow-sm transition-colors inline-flex items-center justify-center gap-2"
-                  >
-                    <CreditCard className="w-4 h-4" />
-                    {snap.sedangMenyiapkan
-                      ? 'Membuka pembayaran...'
-                      : snapOutcome === 'closed' || snapOutcome === 'error'
-                        ? 'Coba Bayar Lagi'
-                        : 'Pilih Metode Pembayaran'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setMemeriksaStatus(true);
-                      try {
-                        const hasil = await snap.checkStatus(createdOrder.orderId);
-                        if (hasil.paymentStatus === 'LUNAS') {
-                          setCreatedOrder({ ...createdOrder, paymentStatus: 'LUNAS' });
-                          pushToast('Pembayaran Lunas', 'Pesanan Anda sudah lunas.', 'success');
-                        } else {
-                          pushToast(
-                            'Belum Lunas',
-                            'Pembayaran belum kami terima. Kalau Anda baru saja membayar, tunggu beberapa saat lalu periksa lagi.',
-                            'info'
-                          );
-                        }
-                      } catch {
-                        pushToast('Gagal Memeriksa', 'Coba lagi beberapa saat lagi.', 'warning');
-                      } finally {
-                        setMemeriksaStatus(false);
-                      }
-                    }}
-                    disabled={memeriksaStatus}
-                    className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-60 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5"
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    {memeriksaStatus ? 'Memeriksa...' : 'Saya Sudah Bayar — Periksa Status'}
-                  </button>
-
-                  <p className="text-[10px] text-slate-500 text-center leading-relaxed">
-                    Pembayaran diproses oleh <strong>Midtrans</strong> — QRIS, GoPay, ShopeePay,
-                    Virtual Account, atau kartu. Status pesanan berubah otomatis tanpa perlu
-                    konfirmasi manual.
-                  </p>
-                </div>
+                <PaymentPanel
+                  orderId={createdOrder.orderId}
+                  totalAmount={createdOrder.totalAmount}
+                  autoOpen
+                  phoneLast4={createdOrder.phoneLast4 || last4Nomor}
+                  windowHours={settings.payment.paymentWindowHours}
+                  createdAt={createdOrder.createdAt}
+                  pushToast={pushToast}
+                  onStatusChange={(status) =>
+                    setCreatedOrder((prev: any) => (prev ? { ...prev, paymentStatus: status } : prev))
+                  }
+                  onCancelled={() => {
+                    setCreatedOrder((prev: any) =>
+                      prev ? { ...prev, paymentStatus: 'DIBATALKAN', status: 'DIBATALKAN' } : prev
+                    );
+                  }}
+                />
               ) : (
-                /*
-                 * JALUR CADANGAN — hanya tampil kalau kunci Midtrans belum diisi.
-                 *
-                 * Tanpa panel ini, pembeli yang checkout sebelum Midtrans aktif
-                 * tidak melihat cara membayar sama sekali. Rekening tetap
-                 * ditampilkan (bukan tautan pemesanan via WhatsApp) supaya
-                 * pesanan yang sudah masuk tetap bisa diselesaikan.
-                 */
                 <div className="space-y-3">
                   <div className="rounded-2xl border border-amberbrand-300 bg-amberbrand-50 p-3 text-[11px] text-amberbrand-900">
                     Pembayaran otomatis belum aktif. Silakan transfer ke rekening di bawah, lalu
                     simpan nomor pesanan Anda untuk konfirmasi ke admin.
                   </div>
-
                   {(createdOrder.bankAccount
                     ? [createdOrder.bankAccount]
                     : settings.banks.filter((b) => !b.isPlaceholder)
-                  ).map((bank) => (
-                    <div
-                      key={bank.id}
-                      className="rounded-2xl border border-slate-200 overflow-hidden"
-                    >
+                  ).map((bank: any) => (
+                    <div key={bank.id} className="rounded-2xl border border-slate-200 overflow-hidden">
                       <div
                         className="px-4 py-2 text-white text-xs font-extrabold flex items-center justify-between"
                         style={{ backgroundColor: bank.color || '#1B365D' }}
@@ -697,29 +606,22 @@ export const CheckoutModal: React.FC = () => {
                       </div>
                     </div>
                   ))}
-
-                  <button
-                    type="button"
-                    onClick={() => copyText(String(createdOrder.totalAmount), 'Nominal transfer')}
-                    className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5"
-                  >
-                    <Copy className="w-4 h-4" /> Salin Nominal: {formatRupiah(createdOrder.totalAmount)}
-                  </button>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleFinish();
-                    setTimeout(() => navigate(`/lacak-pesanan?q=${createdOrder.orderId}`), 150);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
-                >
-                  Lacak Status Pesanan
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  handleFinish();
+                  setTimeout(
+                    () => navigate(`/lacak-pesanan?q=${createdOrder.orderId}`),
+                    150
+                  );
+                }}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold"
+              >
+                Lacak Status Pesanan
+              </button>
             </div>
           )}
 
@@ -819,17 +721,6 @@ export const CheckoutModal: React.FC = () => {
               </div>
               <div className="text-base sm:text-lg font-extrabold text-navy-800">
                 Total Tagihan: {formatRupiah(estimatedTotal)}
-                {/*
-                 * Kode unik hanya berlaku di jalur transfer manual (supaya admin
-                 * bisa mencocokkan nominal di mutasi bank). Dengan Midtrans,
-                 * pencocokan itu tidak lagi manual, jadi tidak ada kode unik —
-                 * dan total bayar kembali ke angka bulat.
-                 */}
-                {!midtransSiap && (
-                  <span className="text-[10px] font-semibold text-slate-500 ml-1">
-                    (termasuk kode unik 3 digit)
-                  </span>
-                )}
               </div>
             </div>
 

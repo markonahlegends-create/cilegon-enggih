@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { PaymentPanel } from '../components/PaymentPanel';
 import {
   PackageSearch,
   Search,
@@ -60,9 +61,7 @@ const PaymentStatusCard: React.FC<{ order: any; settings: any }> = ({ order, set
     ? 'Pesanan Dibatalkan'
     : lunas
       ? 'Pembayaran Lunas'
-      : buktiAda
-        ? 'Bukti Pembayaran Diterima'
-        : 'Menunggu Pembayaran';
+      : 'Menunggu Pembayaran';
 
   return (
     <div className={`rounded-2xl border p-3.5 ${tone}`}>
@@ -103,16 +102,11 @@ const PaymentStatusCard: React.FC<{ order: any; settings: any }> = ({ order, set
             </p>
           ) : (
             <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-              Belum ada bukti transfer yang kami terima. Setelah membayar, unggah bukti dari halaman
-              checkout atau kirim ke WhatsApp admin agar pesanan segera diproses.
+              Pembayaran belum kami terima. Gunakan panel pembayaran di bawah untuk membayar —
+              status di halaman ini berubah otomatis begitu pembayaran masuk. Tidak perlu
+              mengirim bukti transfer ke admin.
             </p>
           )}
-
-          {order.uniqueCode ? (
-            <div className="mt-1.5 text-[10.5px] text-slate-500">
-              Kode unik pembayaran: <strong className="text-navy-800">{order.uniqueCode}</strong>
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
@@ -492,12 +486,6 @@ export const TrackOrderPage: React.FC = () => {
                         <span>-{formatRupiah(order.voucherDiscount)}</span>
                       </div>
                     )}
-                    {(order.uniqueCodeValue || 0) > 0 && (
-                      <div className="flex justify-between text-amberbrand-700">
-                        <span>Kode Unik:</span>
-                        <span>{order.uniqueCodeValue}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between text-sm font-extrabold text-navy-800 pt-1">
                       <span>Total:</span>
                       <span>{formatRupiah(order.totalAmount)}</span>
@@ -514,6 +502,30 @@ export const TrackOrderPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
+
+                {/*
+                  PANEL PEMBAYARAN DI HALAMAN PESANAN.
+                  Setara "Lanjutkan Pembayaran" di Tokopedia/Shopee. Tanpa ini,
+                  pembeli yang menutup popup Midtrans tidak punya jalan kembali
+                  ke tagihannya — pesanan menggantung dan stok tertahan.
+                  Hanya tampil selama pesanan belum lunas dan belum dibatalkan.
+                */}
+                {order.paymentStatus !== 'LUNAS' &&
+                  order.status !== 'DIBATALKAN' &&
+                  order.status !== 'DIKIRIM' &&
+                  order.status !== 'SELESAI' &&
+                  phoneLast4.replace(/\D/g, '').length === 4 && (
+                    <PaymentPanel
+                      orderId={order.orderId}
+                      totalAmount={order.totalAmount}
+                      phoneLast4={phoneLast4}
+                      windowHours={settings.payment.paymentWindowHours}
+                      createdAt={order.createdAt}
+                      pushToast={pushToast}
+                      onStatusChange={() => runTracking(query, phoneLast4, { silent: true })}
+                      onCancelled={() => runTracking(query, phoneLast4, { silent: true })}
+                    />
+                  )}
 
                 <button
                   type="button"

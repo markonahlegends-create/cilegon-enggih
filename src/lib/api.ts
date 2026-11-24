@@ -147,17 +147,38 @@ export const createSnapToken = (orderId: string) =>
  * Jaring pengaman kalau webhook telat masuk — tanpa ini pembeli yang sudah
  * membayar bisa melihat pesanannya masih "menunggu pembayaran".
  */
-export const checkMidtransStatus = (orderId: string) =>
+export const checkMidtransStatus = (orderId: string, phoneLast4: string) =>
   apiRequest<{
     orderId: string;
     paymentStatus: string;
+    nominalTidakCocok?: boolean;
+    /** 'kedaluwarsa' | 'dibatalkan-midtrans' — tagihan sudah mati. */
+    kedaluwarsa?: 'kedaluwarsa' | 'dibatalkan-midtrans' | null;
     gateway: {
       ok: boolean;
       transactionStatus: string | null;
       fraudStatus: string | null;
       paymentType: string | null;
     } | null;
-  }>(`/api/payments/midtrans/status/${encodeURIComponent(orderId)}`);
+  }>(
+    // 4 digit terakhir nomor WhatsApp wajib dikirim: endpoint ini bisa
+    // MELUNASKAN pesanan, jadi nomor pesanan saja tidak cukup sebagai bukti.
+    `/api/payments/midtrans/status/${encodeURIComponent(orderId)}?phone=${encodeURIComponent(
+      phoneLast4
+    )}`
+  );
+
+/**
+ * Batalkan pesanan sendiri selama belum dibayar.
+ *
+ * Setara "Batalkan Pesanan" di marketplace. Tanpa ini, pembeli yang berubah
+ * pikiran meninggalkan pesanan menggantung dan stoknya tertahan.
+ */
+export const cancelUnpaidOrder = (orderId: string, phoneLast4: string) =>
+  apiRequest<{ ok: boolean; order: any }>('/api/payments/midtrans/cancel', {
+    method: 'POST',
+    body: { orderId, phone: phoneLast4 }
+  });
 
 export const uploadPaymentProof = (
   orderId: string,
