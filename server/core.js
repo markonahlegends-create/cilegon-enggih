@@ -440,6 +440,7 @@ const readSettings = async () => {
       ...(saved.telegram || {})
     },
     preOrder: { ...DEFAULT_SETTINGS.preOrder, ...(saved.preOrder || {}) },
+    ongkir: { ...DEFAULT_SETTINGS.ongkir, ...(saved.ongkir || {}) },
     banks: normalizeBanks(
       Array.isArray(saved.banks) && saved.banks.length ? saved.banks : DEFAULT_BANKS
     ),
@@ -498,6 +499,16 @@ const publicSettings = (settings) => ({
   developerUrl: settings.developerUrl,
   banks: settings.banks,
   qris: settings.qris,
+  /*
+   * Aturan gratis ongkir dikirim ke browser supaya checkout bisa menampilkan
+   * "GRATIS" dan menghitung total yang SAMA dengan server. Server tetap
+   * menghitung ulang saat pesanan dibuat — nilai dari browser tidak pernah
+   * dipercaya.
+   */
+  ongkir: {
+    promoGratisOngkir: Math.max(0, Math.round(Number(settings.ongkir?.promoGratisOngkir) || 0)),
+    gratisOngkirSelalu: settings.ongkir?.gratisOngkirSelalu === true
+  },
   payment: publicPayment(settings),
   /**
    * Status pembayaran otomatis untuk browser.
@@ -707,6 +718,51 @@ export const SHIPPING_ZONES = [
     etaReg: '4 - 9 Hari'
   }
 ];
+
+/** Zona tujuan yang dikenal, mis. saat pesanan harus divalidasi ulang. */
+export const daftarZonaOngkir = () => SHIPPING_ZONES;
+
+/** "Rp 8.000" — untuk pesan yang dibaca pembeli/admin. */
+const rupiahRingkas = (nilai) =>
+  `Rp ${Math.round(Number(nilai) || 0).toLocaleString('id-ID')}`;
+
+/**
+ * Tarif zona terdekat dari nominal yang dikirim browser.
+ *
+ * Dipakai saat nominal kiriman tidak cocok tarif mana pun: pilih tarif SAH
+ * yang paling dekat, bukan sekadar percaya angka dari browser.
+ */
+const pilihTarifZona = (diminta, tarifSah, beratKg) => {
+  const daftar = [...tarifSah].sort((a, b) => a - b);
+  if (!daftar.length) return 0;
+  if (!diminta) {
+    /* Tidak ada kiriman yang bisa dipakai — pakai tarif termurah. */
+    return daftar[0];
+  }
+  return daftar.reduce((dekat, t) => (Math.abs(t - diminta) < Math.abs(dekat - diminta) ? t : dekat));
+};
+
+/**
+ * Apakah pesanan ini berhak GRATIS ONGKIR?
+ *
+ * Dua sumber, dan keduanya harus eksplisit diatur admin:
+ *   1. `settings.ongkir.promoGratisOngkir` > 0 → gratis bila subtotal mencapai
+ *      angka itu (0 = promo dimatikan).
+ *   2. `settings.ongkir.gratisOngkirSelalu` → gratis tanpa syarat (dipakai
+ *      untuk masa uji coba atau kampanye).
+ *
+ * KENAPA DIBUAT: supaya pembeli bisa menguji pembayaran dengan produk murah
+ * (mis. Rp 1.000) tanpa ikut membayar ongkir Rp 8.000. Tanpa ini, satu-satunya
+ * cara adalah mengirim `shippingCost: 0` dari browser — yang justru celah
+ * keamanan yang baru saja ditutup.
+ */
+const kalkulasiGratisOngkir = (settings, subtotal) => {
+  const o = settings.ongkir || {};
+  const minBelanja = Math.max(0, Math.round(Number(o.promoGratisOngkir) || 0));
+  if (o.gratisOngkirSelalu === true) return { gratis: true, aktif: true, minBelanja: 0 };
+  if (minBelanja > 0 && subtotal >= minBelanja) return { gratis: true, aktif: true, minBelanja };
+  return { gratis: false, aktif: minBelanja > 0, minBelanja };
+};
 
 const calcShipping = ({ destinationId = 'cilegon-pusat', weightGrams = 500 }) => {
   const zone = SHIPPING_ZONES.find((z) => z.id === destinationId) || SHIPPING_ZONES[0];
@@ -1164,7 +1220,11 @@ route('GET', '/api/diagnose', async () => {
           status: d.status || 'ok',
           alasan: d.detail?.alasan || d.detail?.keterangan || null,
           transactionStatus: d.detail?.transaction_status || null,
-          serverKeyEkor: d.detail?.sidikEkor || null
+          serverKeyEkor: d.detail?.sidikEkor || null,
+          /* Bentuk nilai yang dipakai menyusun tanda tangan — untuk diagnosa. */
+          grossAmount: d.detail?.grossAmountDiterima || d.detail?.gross_amount || null,
+          grossAmountTanpaDesimal: d.detail?.grossAmountTanpaDesimal ?? null,
+          serverKeyAdaSpasi: d.detail?.serverKeyAdaSpasi ?? null
         }));
     } catch (err) {
       console.error('[diagnose] gagal membaca riwayat notifikasi:', err.message);
@@ -1624,6 +1684,20 @@ route('POST', '/api/orders', async ({ body, headers }) => {
 
   const subtotal = pricedItems.reduce((sum, it) => sum + it.price * it.qty, 0);
 
+  /*
+   * BERAT TOTAL pesanan — dasar perhitungan ongkir.
+   *
+   * Berat diambil dari katalog (bukan dari browser), sama seperti harga.
+   * Produk tanpa berat dianggap 0 gram, lalu TOTAL-nya dinaikkan ke minimum
+   * 1 kg oleh `beratKg` — supaya produk digital/ringan tidak mendapat ongkir
+   * Rp 0 hanya karena beratnya belum diisi admin.
+   */
+  const beratPeta = new Map(catalog.map((prod) => [String(prod.id), Number(prod.weightGrams) || 0]));
+  const totalBeratGram = pricedItems.reduce(
+    (sum, it) => sum + (beratPeta.get(String(it.productId)) || 0) * it.qty,
+    0
+  );
+
   // Cek stok SEBELUM order disimpan — menolak pesanan yang melebihi stok
   // (kecuali produk pre-order, yang memang diproduksi sesuai pesanan).
   const stockCheck = checkStock(
@@ -1639,9 +1713,109 @@ route('POST', '/api/orders', async ({ body, headers }) => {
     });
   }
 
-  const safeShipping = Math.max(0, Math.min(Number(shippingCost) || 0, 500000));
-  const safeDiscount = Math.max(0, Math.min(Number(voucherDiscount) || 0, subtotal));
-  const totalBeforeCode = Math.max(0, subtotal + safeShipping - safeDiscount);
+  /*
+   * VOUCHER DIVALIDASI DI SERVER — bukan dipercaya dari browser.
+   *
+   * Celah yang ditutup di sini: dulu `voucherDiscount` dari browser dipakai
+   * apa adanya (hanya dibatasi ≤ subtotal), dan `voucherCode` disimpan tanpa
+   * pernah dicocokkan ke daftar voucher. Terbukti lewat uji: pesanan Rp 1.500
+   * + ongkir Rp 8.000 dengan kode karangan "KODEPALSU" menghasilkan diskon
+   * yang diklaim sendiri, dan pesanan tetap dibuat (HTTP 201).
+   *
+   * Aturan sekarang: hanya kode voucher AKTIF yang dikenal yang dihormati,
+   * nominal diskon diambil dari definisinya (bukan dari kiriman browser), dan
+   * minimal belanja diperiksa.
+   *
+   * Untuk rilis ini sengaja TIDAK ada penolakan keras (400) saat kode tidak
+   * dikenal: kalau daftar voucher admin berubah, pesanan yang sudah tampil di
+   * layar checkout tidak boleh mendadak gagal. Diskonnya saja yang diabaikan,
+   * dan alasannya dikembalikan supaya pembeli tahu.
+   */
+  const voucherCatatan = [];
+  let safeDiscount = 0;
+  let voucherTerpakai = null;
+  const kodeVoucher = String(voucherCode || '').trim().toUpperCase();
+
+  if (kodeVoucher) {
+    const daftar = (settings.vouchers || []).filter((v) => v.active !== false);
+    const ketemu = daftar.find((v) => String(v.code || '').toUpperCase() === kodeVoucher);
+
+    if (!ketemu) {
+      voucherCatatan.push(`Kode "${kodeVoucher}" tidak berlaku lagi, jadi tidak dipakai.`);
+    } else if (Number(ketemu.minPurchase) > 0 && subtotal < Number(ketemu.minPurchase)) {
+      voucherCatatan.push(
+        `Kode "${kodeVoucher}" butuh belanja minimal ${rupiahRingkas(ketemu.minPurchase)}, jadi belum bisa dipakai.`
+      );
+    } else {
+      /* Nominal dari DEFINISI voucher, bukan dari browser. */
+      safeDiscount = Math.max(0, Math.min(Math.round(Number(ketemu.discountAmount) || 0), subtotal));
+      voucherTerpakai = ketemu.code;
+    }
+  }
+
+  /*
+   * ONGKIR TIDAK BOLEH DIKIRIM SEBAGAI 0 SEMAU PEMBELI.
+   *
+   * Dulu `shippingCost` dari browser dipakai apa adanya (dibatasi ≤ Rp 500.000),
+   * jadi pembeli bisa mengubah total tagihannya sendiri menjadi jauh lebih
+   * kecil — terbukti lewat uji: ongkir 0 menghasilkan total Rp 1.825 untuk
+   * pesanan yang seharusnya Rp 10.374.
+   *
+   * Ongkir yang SAH sekarang hanya salah satu dari:
+   *   a. salah satu tarif zona yang benar-benar dihitung server (cocok persis),
+   *   b. 0, bila admin menandai pesanan ini sebagai Gratis Ongkir, atau
+   *   c. 0, bila promo Gratis Ongkir sedang aktif dan minimal belanjanya
+   *      terpenuhi.
+   * Selain itu, tarif zona TERDEKAT dipakai dan pembeli diberi tahu.
+   */
+  const beratKg = Math.max(1, Math.ceil(totalBeratGram / 1000));
+  const ongkirDiminta = Math.max(0, Math.min(Math.round(Number(shippingCost) || 0), 500000));
+
+  /* Semua tarif sah = baseReg setiap zona × berat, sesuai calcShipping. */
+  const tarifSah = new Set(
+    SHIPPING_ZONES.map((z) => Math.round(Number(z.baseReg) || 0) * beratKg)
+  );
+
+  const promo = kalkulasiGratisOngkir(settings, subtotal);
+
+  /*
+   * Urutan keputusan (dari yang paling menguntungkan-dan-sah ke yang menolak):
+   *   1. Promo gratis ongkir aktif & minimal belanja terpenuhi → 0.
+   *      Ini juga yang membuat pembeli bisa memesan produk murah tanpa ongkir.
+   *   2. Kiriman browser cocok PERSIS dengan salah satu tarif zona → dipakai.
+   *   3. Selain itu, tarif zona terdekat dipakai dan pembeli diberi tahu.
+   *
+   * Catatan: kasus "pembeli mengirim 0" masuk ke langkah 3, KECUALI promo
+   * aktif di langkah 1. Itulah penutup celah ongkir gratis tanpa hak.
+   */
+  let safeShipping;
+  let ongkirCatatan = null;
+  let ongkirGratis = false;
+
+  if (promo.gratis) {
+    safeShipping = 0;
+    ongkirGratis = true;
+  } else if (ongkirDiminta === 0 && promo.aktif) {
+    /*
+     * Pengganti yang dikirim 0 padahal promo aktif tetapi minimal belanja
+     * belum tercapai. Jangan diam-diam dibebani tarif penuh tanpa penjelasan:
+     * beri tahu selisih minimal belanjanya.
+     */
+    safeShipping = Math.min(pilihTarifZona(ongkirDiminta, tarifSah, beratKg), 500000);
+    ongkirCatatan =
+      `Gratis ongkir berlaku mulai belanja ${rupiahRingkas(promo.minBelanja)}, jadi ongkir tetap dihitung ` +
+      `(${rupiahRingkas(safeShipping)}). Tambah ${rupiahRingkas(Math.max(0, promo.minBelanja - subtotal))} lagi untuk mendapatkannya.`;
+  } else if (tarifSah.has(ongkirDiminta)) {
+    safeShipping = ongkirDiminta;
+  } else {
+    safeShipping = Math.min(pilihTarifZona(ongkirDiminta, tarifSah, beratKg), 500000);
+    ongkirCatatan =
+      `Ongkir yang dikirim tidak sesuai tarif kurir, jadi kami memakai tarif resmi ` +
+      `(${rupiahRingkas(safeShipping)}).`;
+  }
+
+  const safeDiscountFinal = Math.max(0, Math.min(safeDiscount, subtotal));
+  const totalBeforeCode = Math.max(0, subtotal + safeShipping - safeDiscountFinal);
 
   /*
    * Kode unik 3 digit HANYA untuk jalur transfer manual.
@@ -1704,8 +1878,8 @@ route('POST', '/api/orders', async ({ body, headers }) => {
       : '',
     subtotal,
     shippingCost: safeShipping,
-    voucherCode: voucherCode || null,
-    voucherDiscount: safeDiscount,
+    voucherCode: voucherTerpakai,
+    voucherDiscount: safeDiscountFinal,
     totalBeforeCode,
     totalAmount,
     notes,
@@ -1713,6 +1887,14 @@ route('POST', '/api/orders', async ({ body, headers }) => {
     createdAt: created.toISOString(),
     updatedAt: created.toISOString(),
     items: pricedItems,
+    /*
+     * Penyesuaian yang dilakukan server DICERITAKAN, tidak disembunyikan.
+     * Pembeli berhak tahu kalau diskonnya tidak dipakai atau ongkirnya
+     * disesuaikan — supaya total di layar dan total di tagihan bisa
+     * dipertanggungjawabkan.
+     */
+    ongkirGratis,
+    penyesuaian: [...voucherCatatan, ...(ongkirCatatan ? [ongkirCatatan] : [])],
     priceAudit: priceIssues.length ? priceIssues : undefined,
     timeline: [
       {
@@ -1989,19 +2171,37 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
     });
 
   if (!verifySignature(payload, cfg.serverKey)) {
-    /* Jangan bocorkan alasan detail ke pemanggil: cukup tolak. */
-    console.warn(
-      `[midtrans] notifikasi dengan tanda tangan tidak sah ditolak (order ${payload.order_id || '?'}, ServerKey berakhiran ${sidik?.ekor || '?'})`
-    );
+    /*
+     * DIAGNOSTIK TANDA TANGAN — urutan "kenapa cocok/tidak cocok".
+     *
+     * Saat 5 notifikasi sungguhan ditolak, tidak ada cara membedakan:
+     *   - kunci server salah akun,
+     *   - ada spasi/baris baru di nilai env,
+     *   - Midtrans mengirim `gross_amount` dengan format berbeda (mis. "8000"
+     *     vs "8000.00"), yang membuat SHA512 tidak pernah cocok.
+     *
+     * Jejak ini menjawabnya tanpa perlu menebak, dan TIDAK membocorkan kunci:
+     * hanya panjang, ekor, keberadaan spasi, dan bentuk gross_amount.
+     */
+    const formatAmount = String(payload.gross_amount ?? '');
+    const cocokTanpaDesimal = /^\d+$/.test(formatAmount);
     await catatNotifikasi(
       'pembayaran.notifikasi-ditolak-signature',
       {
         alasan:
           'Tanda tangan tidak cocok. ServerKey di server berbeda dari kunci akun Midtrans tempat transaksi ini dibuat, ATAU notifikasi bukan dari Midtrans.',
         kemungkinan:
-          'Buka dashboard Midtrans → Settings → Access Keys, bandingkan 8 karakter terakhir ServerKey dengan nilai di atas. Bila berbeda, MIDTRANS_SERVER_KEY di Vercel harus diganti lalu Redeploy.'
+          'Buka dashboard Midtrans → Settings → Access Keys, bandingkan 8 karakter terakhir ServerKey dengan nilai di atas. Bila berbeda, MIDTRANS_SERVER_KEY di Vercel harus diganti lalu Redeploy.',
+        /* Bentuk nilai yang dipakai menyusun tanda tangan. */
+        grossAmountDiterima: formatAmount || null,
+        grossAmountTanpaDesimal: cocokTanpaDesimal,
+        signatureDiterima: String(payload.signature_key || '').length || null,
+        serverKeyAdaSpasi: String(cfg.serverKey || '') !== String(cfg.serverKey || '').trim()
       },
       'fail'
+    );
+    console.warn(
+      `[midtrans] notifikasi dengan tanda tangan tidak sah ditolak (order ${payload.order_id || '?'}, ServerKey berakhiran ${sidik?.ekor || '?'})`
     );
     return bad('Tanda tangan notifikasi tidak sah.', 403);
   }
@@ -4495,6 +4695,17 @@ route('PUT', '/api/admin/settings', async ({ headers, body }) => {
     invoice: { ...current.invoice, ...(payload.invoice || {}) },
     telegram: { ...current.telegram, ...(payload.telegram || {}) },
     preOrder: { ...current.preOrder, ...(payload.preOrder || {}) },
+    /*
+     * Aturan gratis ongkir. Disanitasi di sini (bukan hanya di browser):
+     * nilai negatif atau bukan angka akan membuat total tagihan kacau.
+     */
+    ongkir: {
+      promoGratisOngkir: Math.max(0, Math.round(Number(payload.ongkir?.promoGratisOngkir ?? current.ongkir?.promoGratisOngkir) || 0)),
+      gratisOngkirSelalu:
+        payload.ongkir?.gratisOngkirSelalu !== undefined
+          ? payload.ongkir.gratisOngkirSelalu === true
+          : current.ongkir?.gratisOngkirSelalu === true
+    },
     banks: normalizeBanks(Array.isArray(payload.banks) ? payload.banks : current.banks),
     vouchers: Array.isArray(payload.vouchers) ? payload.vouchers : current.vouchers,
     /*

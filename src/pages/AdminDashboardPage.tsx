@@ -2363,6 +2363,49 @@ const SettingsPanel: React.FC<{
         </Field>
       </Section>
 
+      {/*
+        * GRATIS ONGKIR — diatur di sini, TIDAK di browser.
+        *
+        * KENAPA PENTING: ongkir adalah bagian dari total tagihan. Sebelum ini,
+        * satu-satunya cara membuat pesanan uji murah (mis. produk Rp 1.000)
+        * tanpa ongkir adalah mengirim `shippingCost: 0` dari browser — yang
+        * justru celah keamanan (pembeli bisa menghapus ongkir sendiri).
+        * Dengan saklar di server, gratis ongkir menjadi keputusan admin yang
+        * sah dan tetap tercatat di total pesanan.
+        */}
+      <Section title="Ongkir & Gratis Ongkir" icon={Truck}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Gratis ongkir mulai belanja (Rp)">
+            <input
+              type="number"
+              min={0}
+              step={1000}
+              value={value?.ongkir?.promoGratisOngkir ?? 0}
+              onChange={(e) =>
+                set('ongkir', { ...(value.ongkir || {}), promoGratisOngkir: Number(e.target.value) || 0 })
+              }
+              className="input-admin"
+            />
+          </Field>
+          <Field label="Gratis ongkir selalu (tanpa minimal)">
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-slate-700 py-2">
+              <input
+                type="checkbox"
+                checked={value?.ongkir?.gratisOngkirSelalu === true}
+                onChange={(e) =>
+                  set('ongkir', { ...(value.ongkir || {}), gratisOngkirSelalu: e.target.checked })
+                }
+              />
+              Aktifkan — semua pesanan bebas ongkir
+            </label>
+          </Field>
+        </div>
+        <p className="text-[10px] text-slate-500 leading-relaxed">
+          Isi <strong>0</strong> pada kolom minimal untuk mematikan promo. Aturan ini dihitung ulang
+          oleh server saat pesanan dibuat, jadi ongkir tidak bisa dihapus dari browser pembeli.
+        </p>
+      </Section>
+
       {/* Vouchers */}
       <Section title="Voucher Promo" icon={Ticket}>
         <div className="space-y-2">

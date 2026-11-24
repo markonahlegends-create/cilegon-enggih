@@ -100,7 +100,22 @@ export const DEFAULT_VOUCHERS = [
   }
 ];
 
+/*
+ * PENGATURAN ONGKIR.
+ *
+ * `promoGratisOngkir` = minimal belanja untuk gratis ongkir (0 = promo mati).
+ * `gratisOngkirSelalu` = gratis ongkir tanpa syarat.
+ *
+ * KENAPA DIATUR DI SINI, BUKAN DI BROWSER: ongkir adalah bagian dari total
+ * tagihan. Kalau keputusannya diserahkan ke browser, pembeli bisa mengirim
+ * `shippingCost: 0` dan membayar jauh lebih sedikit daripada seharusnya —
+ * celah yang sudah ditutup di server.
+ */
 export const DEFAULT_SETTINGS = {
+  ongkir: {
+    promoGratisOngkir: 0,
+    gratisOngkirSelalu: false
+  },
   storeName: STORE.name,
   legalName: STORE.legalName,
   tagline: STORE.tagline,

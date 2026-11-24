@@ -26,6 +26,11 @@ interface NotifikasiMidtrans {
   alasan: string | null;
   transactionStatus: string | null;
   serverKeyEkor: string | null;
+  /** Bentuk gross_amount yang dipakai menyusun tanda tangan. */
+  grossAmount?: string | null;
+  grossAmountTanpaDesimal?: boolean | null;
+  /** true bila nilai env kunci punya spasi/baris baru di ujung. */
+  serverKeyAdaSpasi?: boolean | null;
 }
 
 interface DiagnoseResult {
@@ -241,9 +246,27 @@ export const HealthCheckPanel: React.FC = () => {
                       {n.alasan && (
                         <p className="text-[10px] text-slate-600 mt-0.5 leading-snug">{n.alasan}</p>
                       )}
-                      {n.serverKeyEkor && (
-                        <p className="text-[9px] text-slate-500 mt-0.5">
-                          ServerKey server berakhiran <code className="font-mono">{n.serverKeyEkor}</code>
+                      {(n.serverKeyEkor || n.grossAmount || n.serverKeyAdaSpasi != null) && (
+                        <p className="text-[9px] text-slate-500 mt-0.5 space-x-2">
+                          {n.serverKeyEkor && (
+                            <span>
+                              ServerKey server berakhiran{' '}
+                              <code className="font-mono">{n.serverKeyEkor}</code>
+                            </span>
+                          )}
+                          {n.grossAmount && <span>gross_amount: {n.grossAmount}</span>}
+                          {/*
+                            * Dua petunjuk yang paling sering menjelaskan
+                            * penolakan tanda tangan, jadi ditampilkan apa adanya.
+                            */}
+                          {n.grossAmountTanpaDesimal === true && (
+                            <span className="text-red-700 font-bold">tanpa desimal</span>
+                          )}
+                          {n.serverKeyAdaSpasi === true && (
+                            <span className="text-red-700 font-bold">
+                              nilai env kunci ada spasi di ujung
+                            </span>
+                          )}
                         </p>
                       )}
                     </div>
