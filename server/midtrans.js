@@ -31,8 +31,26 @@
 
 import crypto from 'node:crypto';
 
-const SANDBOX_BASE = 'https://app.sandbox.midtrans.com';
-const PRODUCTION_BASE = 'https://app.midtrans.com';
+/*
+ * MIDTRANS PUNYA DUA HOST, BUKAN SATU.
+ *
+ *   Snap (membuat tagihan + snap.js di browser) : app.midtrans.com
+ *   Core API (cek status, batalkan transaksi)    : api.midtrans.com
+ *
+ * Sandbox: app.sandbox.midtrans.com / api.sandbox.midtrans.com
+ *
+ * KENAPA DIPISAH — pernah menjadi bug produksi nyata:
+ * seluruh panggilan memakai `app.midtrans.com`, termasuk
+ * `GET /v2/{order_id}/status`. Host `app.*` tidak melayani Core API, jadi
+ * jawabannya selalu 404. Akibatnya jaring pengaman webhook ("Saya Sudah
+ * Bayar — Periksa Status") tidak pernah bisa melunaskan apa pun, dan
+ * pembatalan pesanan mengira transaksi "sudah tidak aktif" padahal kode
+ * QRIS-nya masih hidup dan bisa dibayar.
+ */
+const SNAP_SANDBOX_BASE = 'https://app.sandbox.midtrans.com';
+const SNAP_PRODUCTION_BASE = 'https://app.midtrans.com';
+const API_SANDBOX_BASE = 'https://api.sandbox.midtrans.com';
+const API_PRODUCTION_BASE = 'https://api.midtrans.com';
 
 /**
  * Baca konfigurasi dari environment.
@@ -73,11 +91,22 @@ export const midtransConfig = (env = process.env) => {
   /* Dicatat supaya diagnosa bisa memberi tahu kalau flag dan kunci bertentangan. */
   const konflik = modeDariKunci != null && modeDariKunci !== modeDariFlag;
 
+  /*
+   * `snapBase` untuk membuat tagihan & memuat snap.js; `apiBase` untuk Core
+   * API (cek status, cancel). `base` dipertahankan sebagai alias snapBase
+   * supaya kode lama tidak pecah — tetapi JANGAN dipakai untuk /v2/*.
+   */
+  const snapBase = isProduction ? SNAP_PRODUCTION_BASE : SNAP_SANDBOX_BASE;
+  const apiBase = isProduction ? API_PRODUCTION_BASE : API_SANDBOX_BASE;
+
   return {
     serverKey,
     clientKey,
     isProduction,
-    base: isProduction ? PRODUCTION_BASE : SANDBOX_BASE,
+    snapBase,
+    apiBase,
+    /** @deprecated alias snapBase; panggilan /v2/* wajib memakai apiBase. */
+    base: snapBase,
     /** true kalau MIDTRANS_IS_PRODUCTION bertentangan dengan kunci. */
     konflik,
     /** Lingkungan yang ditunjukkan oleh kunci itu sendiri (null = tak dikenali). */
@@ -92,7 +121,7 @@ export const midtransConfig = (env = process.env) => {
  * ClientKey aman dikirim ke browser (memang sifatnya publik); ServerKey tidak.
  */
 export const snapScriptUrl = (isProduction) =>
-  `${isProduction ? PRODUCTION_BASE : SANDBOX_BASE}/snap/snap.js`;
+  `${isProduction ? SNAP_PRODUCTION_BASE : SNAP_SANDBOX_BASE}/snap/snap.js`;
 
 /**
  * Header otorisasi Midtrans: Basic base64(ServerKey + ":").
@@ -255,7 +284,7 @@ export const createSnapToken = async (order, config, { fetchImpl = fetch, finish
   const body = buildSnapPayload(order, { finishUrl });
   delete body.__items;
 
-  const res = await fetchImpl(`${config.base}/snap/v1/transactions`, {
+  const res = await fetchImpl(`${config.snapBase}/snap/v1/transactions`, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -296,7 +325,7 @@ export const createSnapToken = async (order, config, { fetchImpl = fetch, finish
 export const fetchTransactionStatus = async (midtransOrderId, config, { fetchImpl = fetch } = {}) => {
   if (!config?.ready) throw new Error('Midtrans belum dikonfigurasi.');
 
-  const res = await fetchImpl(`${config.base}/v2/${encodeURIComponent(midtransOrderId)}/status`, {
+  const res = await fetchImpl(`${config.apiBase}/v2/${encodeURIComponent(midtransOrderId)}/status`, {
     method: 'GET',
     headers: { Accept: 'application/json', Authorization: basicAuthHeader(config.serverKey) }
   });
@@ -308,7 +337,48 @@ export const fetchTransactionStatus = async (midtransOrderId, config, { fetchImp
   } catch {
     /* bukan JSON — biarkan kosong, ditangani di bawah */
   }
-  return { ok: res.ok, status: res.status, data };
+
+  /*
+   * `alasan` ADA SUPAYA KEGAGALAN BISA DIKATAKAN, BUKAN DITEBAK.
+   *
+   * Dulu kegagalan hanya menghasilkan `ok:false` tanpa keterangan, sehingga
+   * pembeli melihat "memeriksa status..." yang tidak pernah selesai dan admin
+   * tidak punya petunjuk apa pun. Kasus nyata: host Core API salah (memakai
+   * app.midtrans.com) → selalu 404 → tidak ada satu pun pesan yang
+   * menjelaskannya.
+   */
+  return {
+    ok: res.ok,
+    status: res.status,
+    data,
+    alasan: res.ok ? null : jelaskanGagalStatus(res.status, data, text)
+  };
+};
+
+/**
+ * Terjemahkan kegagalan GET /v2/{order_id}/status menjadi kalimat yang bisa
+ * ditindaklanjuti admin/pembeli.
+ */
+export const jelaskanGagalStatus = (httpStatus, data = {}, rawText = '') => {
+  const pesanMidtrans = String(data?.status_message || '').trim();
+  if (httpStatus === 404) {
+    return (
+      'Midtrans tidak mengenal tagihan ini (404). Kemungkinan: pembeli belum memilih ' +
+      'metode pembayaran, atau transaksi terjadi di akun/lingkungan Midtrans yang berbeda ' +
+      'dari kunci yang terpasang.'
+    );
+  }
+  if (httpStatus === 401 || httpStatus === 403) {
+    return `Kunci Midtrans ditolak (HTTP ${httpStatus}). Periksa MIDTRANS_SERVER_KEY di Vercel.`;
+  }
+  if (httpStatus >= 500) {
+    return `Midtrans sedang bermasalah (HTTP ${httpStatus}). Coba lagi beberapa saat.`;
+  }
+  if (pesanMidtrans) return `Midtrans menolak (HTTP ${httpStatus}): ${pesanMidtrans}`;
+  const potongan = String(rawText || '').slice(0, 120);
+  return potongan
+    ? `Midtrans mengirim balasan tak terduga (HTTP ${httpStatus}): ${potongan}`
+    : `Midtrans mengirim balasan kosong (HTTP ${httpStatus}).`;
 };
 
 /**
@@ -327,7 +397,7 @@ export const fetchTransactionStatus = async (midtransOrderId, config, { fetchImp
 export const cancelTransaction = async (midtransOrderId, config, { fetchImpl = fetch } = {}) => {
   if (!config?.ready) return { ok: false, status: 0, data: {}, alasan: 'belum-dikonfigurasi' };
 
-  const res = await fetchImpl(`${config.base}/v2/${encodeURIComponent(midtransOrderId)}/cancel`, {
+  const res = await fetchImpl(`${config.apiBase}/v2/${encodeURIComponent(midtransOrderId)}/cancel`, {
     method: 'POST',
     headers: { Accept: 'application/json', Authorization: basicAuthHeader(config.serverKey) }
   });
@@ -342,14 +412,52 @@ export const cancelTransaction = async (midtransOrderId, config, { fetchImpl = f
 
   /*
    * 412 = "Transaction cannot be cancelled" (sudah settle/expire/cancel).
-   * 404 = transaksi tidak dikenal Midtrans. Keduanya berarti tidak ada tagihan
-   * aktif yang menggantung, sehingga aman untuk melanjutkan pembatalan lokal.
+   * Status itu jelas: tagihan memang tidak aktif lagi, jadi pembatalan lokal
+   * aman dilanjutkan.
+   *
+   * 404 TIDAK BOLEH diperlakukan begitu saja.
+   *
+   * Dulu 404 dianggap "sudah tidak aktif". Padahal 404 juga muncul kalau
+   * transaksinya ADA dan masih bisa dibayar tetapi ditanyakan ke host/akun
+   * yang salah — dan itu pernah benar-benar terjadi (host Core API keliru),
+   * sehingga pesanan ditutup di toko sementara kode QRIS-nya masih hidup.
+   * Sekarang 404 diverifikasi dulu: kalau tidak ada bukti bahwa tagihan sudah
+   * mati, pembatalan DITOLAK agar tidak ada uang masuk untuk pesanan yang
+   * sudah dibatalkan.
    */
-  const sudahTidakAktif = res.status === 412 || res.status === 404;
+  let sudahTidakAktif = res.status === 412;
+  let alasan = res.ok ? 'dibatalkan' : 'ditolak-midtrans';
+
+  if (!res.ok && res.status === 404) {
+    const bukti = await verifikasiTidakAktif(midtransOrderId, config, { fetchImpl });
+    sudahTidakAktif = bukti;
+    alasan = res.ok ? 'dibatalkan' : bukti ? 'sudah-tidak-aktif' : 'tidak-terverifikasi-404';
+  }
+
   return {
     ok: res.ok || sudahTidakAktif,
     status: res.status,
     data,
-    alasan: res.ok ? 'dibatalkan' : sudahTidakAktif ? 'sudah-tidak-aktif' : 'ditolak-midtrans'
+    alasan
   };
+};
+
+/**
+ * Pembatalan dibalas 404. Apakah tagihannya benar-benar sudah mati?
+ *
+ * Hanya percaya 404 kalau GET status (host Core API yang benar) menjawab dan
+ * menyatakan status yang memang sudah tidak bisa dibayar lagi. Kalau GET status
+ * sendiri 404, artinya transaksi tidak dikenal akun ini — mematikan pesanan
+ * lokal tetap TIDAK aman kalau-uang bisa masuk lewat akun lain, jadi jawab
+ * false dan biarkan admin memeriksa.
+ */
+const verifikasiTidakAktif = async (midtransOrderId, config, { fetchImpl = fetch } = {}) => {
+  const mati = ['expire', 'cancel', 'deny', 'failure'];
+  try {
+    const res = await fetchTransactionStatus(midtransOrderId, config, { fetchImpl });
+    if (!res.ok) return false;
+    return mati.includes(String(res.data?.transaction_status || ''));
+  } catch {
+    return false;
+  }
 };

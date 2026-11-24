@@ -156,6 +156,10 @@ export const checkMidtransStatus = (orderId: string, phoneLast4: string) =>
     kedaluwarsa?: 'kedaluwarsa' | 'dibatalkan-midtrans' | null;
     gateway: {
       ok: boolean;
+      /** Kode HTTP dari Midtrans — 404 = tagihan tak dikenal akun/lingkungan ini. */
+      httpStatus?: number | null;
+      /** Kalimat siap tampil yang menjelaskan kenapa cek status gagal. */
+      alasan?: string | null;
       transactionStatus: string | null;
       fraudStatus: string | null;
       paymentType: string | null;

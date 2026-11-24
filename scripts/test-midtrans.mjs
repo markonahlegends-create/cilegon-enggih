@@ -18,7 +18,10 @@ import {
   buildMidtransOrderId,
   buildSnapPayload,
   basicAuthHeader,
-  snapScriptUrl
+  snapScriptUrl,
+  fetchTransactionStatus,
+  cancelTransaction,
+  jelaskanGagalStatus
 } from '../server/midtrans.js';
 
 let gagal = 0;
@@ -41,8 +44,8 @@ const nota = {
 /* ---------- 1. Konfigurasi ---------- */
 const cfgKosong = midtransConfig({});
 cek('config: kosong = belum siap', cfgKosong.ready, false);
-cek('config: kosong = sandbox', [cfgKosong.isProduction, cfgKosong.base],
-  [false, 'https://app.sandbox.midtrans.com']);
+cek('config: kosong = sandbox', [cfgKosong.isProduction, cfgKosong.snapBase, cfgKosong.apiBase],
+  [false, 'https://app.sandbox.midtrans.com', 'https://api.sandbox.midtrans.com']);
 cek('config: kosong = tanpa konflik', cfgKosong.konflik, false);
 
 /* --- Mode ditebak dari awalan kunci, dan KUNCI MENANG atas flag --- */
@@ -53,8 +56,8 @@ const cfgProduksi = midtransConfig({
 });
 cek(
   'config: kunci Mid-* = PRODUKSI walau flag false',
-  [cfgProduksi.isProduction, cfgProduksi.base],
-  [true, 'https://app.midtrans.com']
+  [cfgProduksi.isProduction, cfgProduksi.snapBase, cfgProduksi.apiBase],
+  [true, 'https://app.midtrans.com', 'https://api.midtrans.com']
 );
 cek('config: konflik flag dilaporkan', cfgProduksi.konflik, true);
 
@@ -65,8 +68,8 @@ const cfgSandbox = midtransConfig({
 });
 cek(
   'config: kunci SB-* = SANDBOX walau flag true',
-  [cfgSandbox.isProduction, cfgSandbox.base],
-  [false, 'https://app.sandbox.midtrans.com']
+  [cfgSandbox.isProduction, cfgSandbox.snapBase, cfgSandbox.apiBase],
+  [false, 'https://app.sandbox.midtrans.com', 'https://api.sandbox.midtrans.com']
 );
 cek('config: konflik arah sebaliknya juga dilaporkan', cfgSandbox.konflik, true);
 
@@ -224,6 +227,101 @@ cek(
   'https://app.sandbox.midtrans.com/snap/snap.js'
 );
 cek('snap.js: produksi', snapScriptUrl(true), 'https://app.midtrans.com/snap/snap.js');
+
+/*
+ * ---------- 8. HOST CORE API ----------
+ *
+ * REGRESI BUG PRODUKSI NYATA (order CE-20261124-701, Rp 8.000 settlement):
+ * cek status dan cancel dulu memakai `app.midtrans.com`, host yang hanya
+ * melayani Snap. Core API menjawab 404, sehingga:
+ *   - "Saya Sudah Bayar — Periksa Status" tidak pernah bisa melunaskan,
+ *   - pembatalan pesanan mengira tagihan sudah mati padahal masih bisa dibayar.
+ * Uji ini mengunci host yang benar supaya tidak bisa kembali.
+ */
+const cfgUji = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'Mid-server-Uji',
+  MIDTRANS_CLIENT_KEY: 'Mid-client-Uji',
+  MIDTRANS_IS_PRODUCTION: 'true'
+});
+const rekam = [];
+const fetchPalsu = async (url) => {
+  rekam.push(String(url));
+  return { ok: false, status: 404, text: async () => '{"status_code":"404","status_message":"The requested resource is not found"}' };
+};
+
+rekam.length = 0;
+await fetchTransactionStatus('CE-1', cfgUji, { fetchImpl: fetchPalsu });
+cek('status: memakai api.midtrans.com (bukan app.)', rekam[0], 'https://api.midtrans.com/v2/CE-1/status');
+
+rekam.length = 0;
+await cancelTransaction('CE-1', cfgUji, { fetchImpl: fetchPalsu });
+cek('cancel: memakai api.midtrans.com (bukan app.)', rekam[0], 'https://api.midtrans.com/v2/CE-1/cancel');
+
+const cfgUjiSandbox = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'SB-Mid-server-Uji',
+  MIDTRANS_CLIENT_KEY: 'SB-Mid-client-Uji'
+});
+rekam.length = 0;
+await fetchTransactionStatus('CE-1', cfgUjiSandbox, { fetchImpl: fetchPalsu });
+cek('status sandbox: api.sandbox.midtrans.com', rekam[0], 'https://api.sandbox.midtrans.com/v2/CE-1/status');
+
+/* Tidak ada satu pun panggilan Core API yang boleh menyentuh app.* */
+const semuaApi = rekam.every((u) => u.startsWith('https://api.'));
+cek('core API tidak pernah ke app.*', semuaApi, true);
+
+/*
+ * ---------- 9. KEGAGALAN HARUS DIKATAKAN ----------
+ * Sebelumnya kegagalan hanya `ok:false` tanpa sebab, sehingga pembeli melihat
+ * "Memeriksa status..." tanpa akhir dan admin tidak punya petunjuk.
+ */
+const gagal404 = await fetchTransactionStatus('CE-2', cfgUji, { fetchImpl: fetchPalsu });
+cek('gagal 404: httpStatus ikut dikirim', gagal404.status, 404);
+cek('gagal 404: ada alasan yang bisa dibaca', /404/.test(gagal404.alasan || ''), true);
+cek(
+  'gagal 404: alasan menyebut kemungkinan akun/lingkungan berbeda',
+  /akun\/lingkungan|berbeda/i.test(gagal404.alasan || ''),
+  true
+);
+cek(
+  'gagal 401: alasan menyebut kunci',
+  /kunci/i.test(jelaskanGagalStatus(401, { status_message: 'Unauthorized' }) || ''),
+  true
+);
+
+/* Sukses tidak boleh punya alasan (biar UI tidak menampilkan peringatan palsu) */
+const sukses = await fetchTransactionStatus('CE-3', cfgUji, {
+  fetchImpl: async () => ({
+    ok: true,
+    status: 200,
+    text: async () => '{"transaction_status":"settlement","gross_amount":"8000.00"}'
+  })
+});
+cek('sukses: tanpa alasan', sukses.alasan, null);
+cek('sukses: status 200', sukses.status, 200);
+
+/*
+ * ---------- 10. 404 SAAT CANCEL TIDAK BOLEH DIPERCAYA BEGITU SAJA ----------
+ * Setelah cek status diarahkan ke host yang benar, 404 pada cancel tetap harus
+ * diverifikasi: hanya boleh dianggap "sudah mati" kalau GET status menyatakan
+ * expire/cancel/deny/failure.
+ */
+const cancel404StatusHidup = await cancelTransaction('CE-4', cfgUji, {
+  fetchImpl: async (url) => {
+    const u = String(url);
+    if (u.includes('/cancel')) return { ok: false, status: 404, text: async () => '{}' };
+    return { ok: true, status: 200, text: async () => '{"transaction_status":"settlement"}' };
+  }
+});
+cek('cancel 404 + transaksi settlement → DITOLAK', cancel404StatusHidup.ok, false);
+
+const cancel404StatusMati = await cancelTransaction('CE-5', cfgUji, {
+  fetchImpl: async (url) => {
+    const u = String(url);
+    if (u.includes('/cancel')) return { ok: false, status: 404, text: async () => '{}' };
+    return { ok: true, status: 200, text: async () => '{"transaction_status":"expire"}' };
+  }
+});
+cek('cancel 404 + transaksi expire → boleh lanjut', cancel404StatusMati.ok, true);
 
 console.log(gagal === 0 ? '\nSEMUA UJI MIDTRANS LULUS' : `\n${gagal} UJI GAGAL`);
 process.exit(gagal === 0 ? 0 : 1);

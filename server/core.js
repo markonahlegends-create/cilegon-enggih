@@ -1037,6 +1037,7 @@ route('GET', '/api/diagnose', async () => {
     ].filter(Boolean);
     detailMidtrans = `belum aktif — ${kosong.join(' & ')} kosong`;
   } else if (mt.konflik) {
+    /* Detail konflik dilaporkan apa adanya (tanpa membocorkan kunci). */
     /*
      * Kejadian nyata: kunci produksi (Mid-*) dipasang, tetapi
      * MIDTRANS_IS_PRODUCTION masih false. Mode sekarang DITEBAK dari kunci
@@ -1061,6 +1062,44 @@ route('GET', '/api/diagnose', async () => {
         ? 'Kunci Anda berpola SANDBOX (SB-*) — pembeli akan "berhasil bayar" tanpa uang masuk. Ganti ke kunci produksi (Mid-*) untuk uang sungguhan, lalu Redeploy.'
         : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
   );
+
+  /*
+   * 3c. Host Core API Midtrans.
+   *
+   * Bukan sekadar teori: seluruh panggilan /v2/* pernah memakai
+   * app.midtrans.com (host Snap) sehingga cek status & cancel SELALU 404.
+   * Akibatnya pembeli yang sudah membayar tidak pernah dilunaskan otomatis.
+   *
+   * Pemeriksaan ini memastikan host yang dipakai memang host Core API, dan
+   * menyebutkan URL notifikasi yang WAJIB diisi di dashboard Midtrans —
+   * penyebab paling sering "uang masuk tapi pesanan tetap menunggu".
+   */
+  if (mt.ready) {
+    const hostBenar = /^https:\/\/api(\.sandbox)?\.midtrans\.com$/.test(String(mt.apiBase || ''));
+    add(
+      'midtrans-host',
+      'Host Core API Midtrans (cek status & pembatalan)',
+      hostBenar ? 'ok' : 'fail',
+      hostBenar ? `${mt.apiBase}/v2/{order_id}/status` : `SALAH: ${mt.apiBase} (host Snap, bukan Core API)`,
+      hostBenar
+        ? ''
+        : 'Host Core API wajib api.midtrans.com (api.sandbox.midtrans.com untuk sandbox). Jangan memakai app.midtrans.com untuk /v2/*.'
+    );
+
+    /*
+     * Statusnya `ok` (bukan `warn`) karena URL ini TIDAK BISA dibaca lewat API
+     * Midtrans — memaksa `warn` permanen hanya membuat daftar diagnosa selalu
+     * terlihat bermasalah. Yang penting: URL persisnya DITAMPILKAN di sini,
+     * jadi admin tinggal salin-tempel.
+     */
+    add(
+      'midtrans-notification',
+      'URL notifikasi pembayaran Midtrans',
+      'ok',
+      `isi di dashboard Midtrans (Settings → Configuration, environment ${labelMode})`,
+      `Tempel persis: ${baseUrlDari(process.env)}/api/payments/midtrans/notification — di environment ${labelMode}. URL notifikasi Midtrans TERPISAH untuk Sandbox dan Production, jadi mengisi salah satunya saja membuat pembayaran tidak pernah masuk otomatis.`
+    );
+  }
 
   // 4. Notifikasi Telegram (opsional, sangat disarankan)
   const tg = telegramConfig(settings);
@@ -2032,6 +2071,35 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
     const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
     const keputusan = res.ok ? mapTransactionStatus(res.data) : 'TUNGGU';
 
+    /*
+     * GAGAL CEK STATUS HARUS DIKATAKAN + DICATAT.
+     *
+     * Dulu kegagalan hanya menghasilkan `ok:false` di JSON, tanpa audit dan
+     * tanpa sebab. Kasus nyata: host Core API salah (app.midtrans.com, selalu
+     * 404) sehingga pembeli yang SUDAH membayar tidak pernah dilunaskan dan
+     * tidak ada satu pun jejak yang bisa diperiksa admin.
+     *
+     * Yang dikembalikan adalah sebabnya (host + HTTP + pesan Midtrans), dan
+     * kegagalannya masuk audit supaya kelihatan di riwayat.
+     */
+    if (!res.ok) {
+      console.warn(
+        `[midtrans] cek status ${order.midtransOrderId} gagal: HTTP ${res.status} — ${res.alasan}`
+      );
+      await recordAudit(store, {
+        action: 'pembayaran.status-check-gagal',
+        actor: 'midtrans',
+        ip: 'midtrans',
+        target: order.orderId,
+        detail: {
+          httpStatus: res.status,
+          apiBase: cfg.apiBase,
+          alasan: res.alasan,
+          status_message: res.data?.status_message || null
+        }
+      });
+    }
+
     if (keputusan === 'LUNAS' && order.paymentStatus !== 'LUNAS') {
       const gross = grossAmountToRupiah(res.data.gross_amount);
       const seharusnya = Math.round(Number(order.totalAmount) || 0);
@@ -2091,6 +2159,8 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
           paymentStatus: 'LUNAS',
           gateway: {
             ok: res.ok,
+            httpStatus: res.status,
+            alasan: null,
             transactionStatus: res.data?.transaction_status || null,
             fraudStatus: res.data?.fraud_status || null,
             paymentType: res.data?.payment_type || null
@@ -2121,14 +2191,21 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
       kedaluwarsa,
       gateway: {
         ok: res.ok,
+        httpStatus: res.status,
+        alasan: res.alasan || null,
         transactionStatus: trx || null,
         fraudStatus: res.data?.fraud_status || null,
         paymentType: res.data?.payment_type || null
       }
     });
   } catch (err) {
+    /*
+     * Galat jaringan/DNS. Sebabnya ikut dikirim supaya tidak jadi tebakan:
+     * "tidak bisa menghubungi" saja tidak memberi tahu apakah masalahnya
+     * kunci, host, atau Midtrans yang sedang down.
+     */
     console.error('[midtrans] gagal cek status:', err.message);
-    return bad('Tidak bisa menghubungi Midtrans saat ini.', 502);
+    return bad(`Tidak bisa menghubungi Midtrans saat ini (${err.message}).`, 502);
   }
 });
 
@@ -2195,7 +2272,7 @@ route('POST', '/api/payments/midtrans/cancel', async ({ body }) => {
           `[midtrans] gagal membatalkan transaksi ${order.midtransOrderId}: HTTP ${batal.status}`
         );
         return bad(
-          'Midtrans belum bisa membatalkan tagihan ini. Coba lagi sebentar, atau biarkan tagihan kedaluwarsa sendiri (stok tetap aman).',
+          `Midtrans belum bisa membatalkan tagihan ini (HTTP ${batal.status}). Coba lagi sebentar, atau biarkan tagihan kedaluwarsa sendiri (stok tetap aman).`,
           502
         );
       }
