@@ -33,6 +33,7 @@ import {
   isSelectionComplete,
   isValueAvailable,
   resolveSelection,
+  unitPriceFor,
   type SelectedOptions
 } from '../lib/variantPricing';
 import { useStore } from '../context/StoreContext';
@@ -193,10 +194,20 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
   }, [lightboxIndex, gallery.length]);
 
   const baseUnitPrice = selection ? selection.price : selectedVariant?.price ?? product.price;
-  const isWholesaleActive = qty >= product.minWholesaleQty;
-  const effectiveUnitPrice = isWholesaleActive
-    ? Math.min(baseUnitPrice, product.wholesalePrice)
-    : baseUnitPrice;
+  /*
+   * Harga grosir hanya berlaku bila admin MEMANG mengisi minimal grosir
+   * (> 0). Dulu syaratnya cuma `qty >= minWholesaleQty`, sehingga produk baru
+   * (bawaan editor: minimal 0) langsung tampil seharga grosir untuk 1 pcs.
+   */
+  const effectiveUnitPrice = unitPriceFor({
+    price: product.price,
+    wholesalePrice: product.wholesalePrice,
+    minWholesaleQty: product.minWholesaleQty,
+    variantPrice: selectedVariant?.price,
+    optionPrice: selection ? selection.price : undefined,
+    qty
+  });
+  const isWholesaleActive = effectiveUnitPrice < baseUnitPrice;
   const subtotal = effectiveUnitPrice * qty;
 
   const isWishlisted = wishlist.includes(product.id);
@@ -468,13 +479,21 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             <div className="text-xs text-slate-500">
               Kisaran Harga Rekomendasi Retail: <strong>{product.priceRangeText}</strong>
             </div>
-            <div className="pt-1 flex items-center gap-1.5 text-xs font-semibold text-forest-700">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>
-                Harga Grosir Otomatis ≥ {product.minWholesaleQty} pcs:{' '}
-                <strong>{formatRupiah(product.wholesalePrice)} / pcs</strong>
-              </span>
-            </div>
+            {/*
+              * Banner grosir hanya muncul bila admin MEMANG mengisi minimal
+              * grosir (> 0). Produk baru dibuat dengan minimal 0; dulu banner
+              * tetap tampil "≥ 0 pcs" dengan harga grosir, sehingga pembeli
+              * mengira harga 1 pcs = harga grosir.
+              */}
+            {Number(product.minWholesaleQty) > 0 && Number(product.wholesalePrice) > 0 && (
+              <div className="pt-1 flex items-center gap-1.5 text-xs font-semibold text-forest-700">
+                <Building2 className="w-3.5 h-3.5" />
+                <span>
+                  Harga Grosir Otomatis ≥ {product.minWholesaleQty} pcs:{' '}
+                  <strong>{formatRupiah(product.wholesalePrice)} / pcs</strong>
+                </span>
+              </div>
+            )}
           </div>
 
           {/*
@@ -792,8 +811,8 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
               </span>
             </div>
 
-            {/* Quick Wholesale Trigger */}
-            {!isWholesaleActive ? (
+            {/* Quick Wholesale Trigger — disembunyikan bila grosir tidak diaktifkan */}
+            {Number(product.minWholesaleQty) > 0 && !isWholesaleActive ? (
               <button
                 type="button"
                 onClick={() => setQty(product.minWholesaleQty)}
@@ -802,12 +821,12 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                 💡 Beli <strong>{product.minWholesaleQty} pcs</strong> otomatis dapat Harga Grosir{' '}
                 <strong>{formatRupiah(product.wholesalePrice)}/pcs</strong> (Klik untuk set)
               </button>
-            ) : (
+            ) : isWholesaleActive ? (
               <div className="px-3 py-2 rounded-xl bg-forest-50 border border-forest-200 text-[11px] text-forest-800 font-bold">
                 ✓ Harga Grosir Aktif! Anda hemat{' '}
                 {formatRupiah((baseUnitPrice - effectiveUnitPrice) * qty)}
               </div>
-            )}
+            ) : null}
 
             {/* Optional Note */}
             <div>

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { useStore, cacheOrderLocally } from '../context/StoreContext';
 import { formatRupiah } from '../data/products';
-import { resolveSelection } from '../lib/variantPricing';
+import { resolveSelection, unitPriceFor } from '../lib/variantPricing';
 import { useBackClose } from '../hooks/useBackClose';
 import { ShippingCalculator } from './ShippingCalculator';
 import { InvoiceDocument } from './InvoiceDocument';
@@ -243,13 +243,16 @@ export const CheckoutModal: React.FC = () => {
          * pilihan. resolveSelection() sama persis dengan yang dipakai server,
          * jadi harga di checkout = harga yang ditagih.
          */
-        const unitPrice = item.options
-          ? resolveSelection(item.product, item.options).price
-          : item.variant?.price ?? item.product.price;
-        const effectivePrice =
-          item.product.minWholesaleQty > 0 && item.qty >= item.product.minWholesaleQty
-            ? Math.min(unitPrice, item.product.wholesalePrice || unitPrice)
-            : unitPrice;
+        const effectivePrice = unitPriceFor({
+          price: item.product.price,
+          wholesalePrice: item.product.wholesalePrice,
+          minWholesaleQty: item.product.minWholesaleQty,
+          variantPrice: item.variant?.price,
+          optionPrice: item.options
+            ? resolveSelection(item.product, item.options).price
+            : undefined,
+          qty: item.qty
+        });
         return {
           // ID dikirim supaya server bisa memverifikasi & menghitung harga sendiri.
           productId: item.product.id,
@@ -297,6 +300,21 @@ export const CheckoutModal: React.FC = () => {
 
       setCreatedOrder(result.order);
       cacheOrderLocally(result.order);
+      /*
+       * KOSONGKAN KERANJANG SEKARANG, bukan hanya saat pembeli menekan
+       * "Lacak Status Pesanan".
+       *
+       * Dulu clearCart() hanya berjalan di handleFinish(). Pembeli yang
+       * menutup modal setelah pesanan dibuat (atau sekadar melanjutkan
+       * belanja) mendapati barang yang SAMA masih di keranjang — lalu
+       * menambahkannya lagi, sehingga pesanan berikutnya berisi barang lama +
+       * barang baru dan totalnya terlihat "salah".
+       *
+       * Pesanan sudah tersimpan di server pada titik ini, jadi aman
+       * dikosongkan. Kalau pembeli tetap ingin barangnya, ia bisa
+       * menambahkannya lagi — atau membuka pesanan lewat halaman lacak.
+       */
+      clearCart();
       setStep('payment');
       pushToast('Pesanan Dibuat', `Nomor order ${result.order.orderId}`, 'success');
       /*
@@ -711,6 +729,40 @@ export const CheckoutModal: React.FC = () => {
           <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 pb-safe">
             <div className="text-xs sm:text-sm space-y-0.5 w-full sm:w-auto">
               <div className="text-slate-500">
+                {/*
+                  * RINCIAN PER BARIS, bukan hanya subtotal gabungan.
+                  *
+                  * Keluhan "5.000 x 10 seharusnya 5.000 tapi jadi 9.000" tidak
+                  * bisa dijawab oleh satu angka total: pembeli tidak tahu ada
+                  * barang lain di keranjang. Dengan qty x harga satuan per
+                  * baris, selisih seperti itu langsung terlihat.
+                  */}
+                {cart.map((item) => {
+                  const unit = unitPriceFor({
+                    price: item.product.price,
+                    wholesalePrice: item.product.wholesalePrice,
+                    minWholesaleQty: item.product.minWholesaleQty,
+                    variantPrice: item.variant?.price,
+                    optionPrice: item.options
+                      ? resolveSelection(item.product, item.options).price
+                      : undefined,
+                    qty: item.qty
+                  });
+                  return (
+                    <div key={item.key} className="flex justify-between gap-2 text-[11px]">
+                      <span className="truncate">
+                        {item.qty} × {formatRupiah(unit)}{' '}
+                        <span className="text-slate-400">
+                          {item.product.shortName}
+                          {item.optionsLabel ? ` · ${item.optionsLabel}` : ''}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-semibold text-slate-600">
+                        {formatRupiah(unit * item.qty)}
+                      </span>
+                    </div>
+                  );
+                })}
                 Produk {formatRupiah(cartSubtotal)} + Ongkir {formatRupiah(selectedCourier.cost)}
                 {voucherDiscount > 0 && (
                   <span className="text-forest-700 font-bold">
