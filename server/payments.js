@@ -27,7 +27,7 @@ const wibStamp = (date = new Date()) =>
  *
  * @param {object} order          pesanan yang tersimpan
  * @param {object} opts
- * @param {'admin'|'telegram'|'sistem'} opts.via  jalur verifikasi (masuk audit)
+ * @param {'admin'|'telegram'|'sistem'|'midtrans'} opts.via  jalur verifikasi (masuk audit)
  * @param {string} [opts.actor]   nama pelaku, mis. "admin" / "admin@telegram"
  * @param {number} [opts.verifiedAmount] jumlah yang benar-benar diterima
  * @param {Function} [opts.persist] pengganti penyimpanan (dipakai uji otomatis)
@@ -50,11 +50,13 @@ export const markOrderPaid = async (order, opts = {}) => {
   const via = opts.via || 'admin';
   const actor = opts.actor || via;
   const labelJalur =
-    via === 'telegram'
-      ? 'via Telegram'
-      : via === 'sistem'
-        ? 'otomatis oleh sistem'
-        : 'oleh Admin';
+    via === 'midtrans'
+      ? 'otomatis via Midtrans'
+      : via === 'telegram'
+        ? 'via Telegram'
+        : via === 'sistem'
+          ? 'otomatis oleh sistem'
+          : 'oleh Admin';
 
   const amountLine =
     opts.verifiedAmount != null
@@ -73,7 +75,11 @@ export const markOrderPaid = async (order, opts = {}) => {
         time: wibStamp(),
         status: `Pembayaran diverifikasi LUNAS ${labelJalur}${amountLine}`,
         location:
-          via === 'telegram' ? 'Bot Telegram Admin' : 'Dashboard Admin Cilegon Enggih'
+          via === 'midtrans'
+            ? 'Midtrans (webhook terverifikasi)'
+            : via === 'telegram'
+              ? 'Bot Telegram Admin'
+              : 'Dashboard Admin Cilegon Enggih'
       }
     ]
   };
