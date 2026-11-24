@@ -130,6 +130,13 @@ import {
   esc
 } from './notify.js';
 import {
+  kirimWhatsAppAman,
+  isWhatsAppReady,
+  templateOtpPembeli,
+  templatePengingatPembayaran
+} from './whatsapp.js';
+import { perluPengingatLengkap, sisaWaktuTeks, dalamJamTenang } from './pengingat.js';
+import {
   STORE,
   DEFAULT_SETTINGS,
   SEED_ORDERS,
@@ -549,6 +556,14 @@ const publicSettings = (settings) => ({
   invoice: settings.invoice,
   announcement: settings.announcement,
   preOrder: settings.preOrder,
+  /**
+   * Status gateway WhatsApp untuk browser: BOLEH status, TIDAK BOLEH token.
+   * Token hanya lewat endpoint admin.
+   */
+  whatsappApi: {
+    enabled: Boolean((settings.whatsappApi || {}).token),
+    reminderEnabled: (settings.whatsappApi || {}).reminderEnabled !== false
+  },
   /**
    * Telegram untuk browser: JANGAN kirim botToken/chatId.
    * Hanya status supaya UI bisa menampilkan "sudah terhubung".
@@ -3450,10 +3465,16 @@ const publicTrackingView = (order) => ({
    * membuat riwayat otomatis lengkap tanpa meminta pembeli mengingat password
    * baru — dan tanpa menambah data pribadi yang harus dijaga.
    *
-   * Kode dikirim ke admin lewat Telegram karena toko belum punya kanal SMS/
-   * WhatsApp Business API. Admin meneruskan kode itu ke pembeli. Ini tetap
-   * aman: kode tetap 6 digit acak, berlaku 10 menit, dan hangus setelah 5 kali
-   * salah — jadi admin tidak bisa "menebak" kode milik pembeli.
+   * KEMANA KODE DIKIRIM
+   *
+   * Utamanya: LANGSUNG ke nomor WhatsApp pembeli (whatsapp.js). Ini yang
+   * seharusnya terjadi — kode verifikasi adalah bukti kepemilikan nomor, jadi
+   * kalau kode melewati admin dulu, gunanya hilang: admin bisa masuk ke akun
+   * pembeli mana pun, dan pembeli harus menunggu admin bangun.
+   *
+   * Telegram-ke-admin hanya CADANGAN ketika WhatsApp belum dikonfigurasi.
+   * Toko tanpa token Fonnte tetap bisa melayani pembeli seperti sebelumnya,
+   * tetapi jawabannya jujur menyebutkan lewat jalur mana kode dikirim.
    */
   route('POST', '/api/buyer/otp', async ({ body, headers }) => {
     const ip = clientIp(headers);
@@ -3484,30 +3505,103 @@ const publicTrackingView = (order) => ({
      * Kode TIDAK dikembalikan ke browser dalam bentuk apa pun — kalau
      * dikembalikan, verifikasi ini tidak ada gunanya.
      */
-    const pesan = [
-      '🔐 <b>Kode verifikasi akun pembeli</b>',
-      `Nomor: <code>${nomor}</code>`,
-      `Kode: <b>${kode}</b>`,
-      `Berlaku ${OTP_TTL_MS / 60000} menit, hangus setelah ${OTP_MAX_ATTEMPTS} kali salah.`,
-      '',
-      'Teruskan kode ini <b>hanya</b> kepada pemilik nomor tersebut di atas.',
-      'Petugas toko tidak pernah meminta kode ini untuk keperluan lain.'
-    ].join('\n');
-    const terkirim = await notifySafe(settings, pesan);
-    await catatStatusNotifikasi(terkirim, 'kode-verifikasi-pembeli');
+    const nomorMasked = `${nomor.slice(0, 4)}${'*'.repeat(
+      Math.max(0, nomor.length - 7)
+    )}${nomor.slice(-3)}`;
+
+    /*
+     * ---- JALUR UTAMA: WhatsApp pembeli ----
+     *
+     * Nomor yang dipakai adalah nomor yang SAMA dengan yang diminta kodenya.
+     * Tidak ada jalur lain: kalau nomornya salah ketik, kode tidak akan
+     * pernah sampai — dan itu memang seharusnya, karena kode itu bukti
+     * kepemilikan nomor tersebut.
+     */
+    let jalur = 'tidak-ada';
+    let terkirim = false;
+    let alasan = '';
+
+    if (isWhatsAppReady(settings)) {
+      const hasilWa = await kirimWhatsAppAman(
+        settings,
+        nomor,
+        templateOtpPembeli({
+          kode,
+          menit: OTP_TTL_MS / 60000,
+          namaToko: settings.storeName || 'Cilegon Enggih'
+        })
+      );
+      terkirim = Boolean(hasilWa.sent);
+      jalur = terkirim ? 'whatsapp' : 'whatsapp-gagal';
+      alasan = hasilWa.reason || '';
+
+      /*
+       * Kegagalan WhatsApp WAJIB terlihat admin. Tanpa ini, pembeli melapor
+       * "kode tidak pernah masuk" dan tidak ada yang tahu sebabnya token
+       * sudah mati atau perangkatnya terputus.
+       */
+      if (!terkirim) {
+        await catatStatusNotifikasi(
+          { sent: false, reason: alasan },
+          'kode-verifikasi-pembeli-whatsapp'
+        );
+        await notifySafe(
+          settings,
+          [
+            '⚠️ <b>Kode verifikasi gagal dikirim via WhatsApp</b>',
+            `Nomor: <code>${nomor}</code>`,
+            `Sebab: ${esc(alasan || 'tidak diketahui')}`,
+            '',
+            'Periksa token Fonnte & status perangkat di dashboard gateway.'
+          ].join('\n')
+        );
+      }
+    }
+
+    /*
+     * ---- CADANGAN: Telegram ke admin ----
+     *
+     * Hanya kalau WhatsApp tidak terkirim. Admin meneruskan ke pembeli.
+     * Ini bukan jalur ideal, tetapi jauh lebih baik daripada membiarkan
+     * pembeli di depan layar tanpa kode apa pun.
+     */
+    if (!terkirim) {
+      const pesanAdmin = [
+        '🔐 <b>Kode verifikasi akun pembeli</b>',
+        `Nomor: <code>${nomor}</code>`,
+        `Kode: <b>${kode}</b>`,
+        `Berlaku ${OTP_TTL_MS / 60000} menit, hangus setelah ${OTP_MAX_ATTEMPTS} kali salah.`,
+        '',
+        'Teruskan kode ini <b>hanya</b> kepada pemilik nomor tersebut di atas.',
+        'Petugas toko tidak pernah meminta kode ini untuk keperluan lain.'
+      ].join('\n');
+      const viaTelegram = await notifySafe(settings, pesanAdmin);
+      await catatStatusNotifikasi(viaTelegram, 'kode-verifikasi-pembeli');
+      if (viaTelegram?.sent) {
+        terkirim = true;
+        jalur = jalur === 'whatsapp-gagal' ? 'whatsapp-gagal-telegram' : 'telegram-admin';
+      }
+    }
 
     return ok({
       ok: true,
-      nomorMasked: `${nomor.slice(0, 4)}${'*'.repeat(Math.max(0, nomor.length - 7))}${nomor.slice(-3)}`,
+      nomorMasked,
       berlakuDetik: OTP_TTL_MS / 1000,
-      /*
-       * Kalau Telegram belum dikonfigurasi, pembeli tidak boleh dibiarkan
-       * menunggu kode yang tidak akan pernah datang. Katakan apa adanya.
-       */
-      terkirim: Boolean(terkirim?.sent),
-      pesan: terkirim?.sent
-        ? 'Kode dikirim ke admin toko. Hubungi admin untuk menerima kode Anda.'
-        : 'Admin belum mengaktifkan pengiriman kode. Hubungi admin toko lewat menu Bantuan.'
+      /* Lewat jalur apa kode dikirim — ditampilkan apa adanya di UI. */
+      jalur,
+      terkirim,
+      pesan: (() => {
+        if (jalur === 'whatsapp') {
+          return `Kode dikirim ke WhatsApp ${nomorMasked}. Periksa pesan masuk.`;
+        }
+        if (jalur === 'telegram-admin') {
+          return 'Pengiriman WhatsApp belum aktif, jadi kode dikirim ke admin toko. Hubungi admin untuk menerima kode Anda.';
+        }
+        if (jalur === 'whatsapp-gagal-telegram') {
+          return 'WhatsApp sedang tidak bisa mengirim, jadi kode dikirim ke admin toko. Hubungi admin untuk menerima kode Anda.';
+        }
+        return 'Kode belum bisa dikirim. Hubungi admin toko lewat WhatsApp pada menu Bantuan.';
+      })()
     });
   });
 
@@ -3687,6 +3781,43 @@ route('GET', '/api/orders/track', async ({ query, headers }) => {
       'Data pesanan tidak ditemukan. Periksa nomor pesanan/resi dan 4 digit terakhir nomor WhatsApp Anda.',
       404
     );
+  }
+
+  /*
+   * ------------------------------------------------------------------
+   * PEMICU PENGINGAT SAAT HALAMAN PESANAN DIBUKA.
+   * ------------------------------------------------------------------
+   *
+   * Ini yang menutupi kelemahan cron harian di plan Hobby (sekali sehari,
+   * geseran ±1 jam). Momen pembeli membuka pesanannya adalah momen paling
+   * tepat untuk mengingatkan: ia sedang melihat pesanan itu, dan tagihannya
+   * masih mungkin dibayar.
+   *
+   * Sengaja TIDAK menunggu hasilnya (fire-and-forget): respons pelacakan
+   * tidak boleh melambat hanya karena pengiriman WhatsApp. Kegagalan tetap
+   * tercatat lewat catatNotifikasi di dalam sapuPengingat.
+   */
+  const settingsPengingat = await readSettings();
+  if (settingsPengingat?.whatsappApi?.reminderEnabled !== false) {
+    sapuPengingat(settingsPengingat, { batas: 10 }).catch(async (err) => {
+      /*
+       * Kegagalan di sini TIDAK boleh hilang diam-diam. Dulu pola seperti ini
+       * menyembunyikan ReferenceError yang membuat seluruh pengingat tidak
+       * pernah jalan — tanpa satu pun tanda di dashboard.
+       */
+      console.error('[pengingat] gagal saat pelacakan:', err.message);
+      try {
+        await recordAudit(store, {
+          action: 'pembayaran.pengingat-galat',
+          actor: 'sistem',
+          ip: 'internal',
+          status: 'fail',
+          detail: { alasan: err.message }
+        });
+      } catch {
+        /* audit sendiri gagal — sudah dicatat di console */
+      }
+    });
   }
 
   return ok({ order: publicTrackingView(found) });
@@ -6100,10 +6231,185 @@ route('POST', '/api/admin/backups/restore', async ({ headers, body }) => {
 });
 
 /**
+ * ------------------------------------------------------------------
+ * PENGINGAT TAGIHAN BELUM DIBAYAR.
+ * ------------------------------------------------------------------
+ *
+ * Dipakai oleh tiga pemicu: cron harian, pembukaan halaman pesanan, dan
+ * tombol manual admin. Semuanya lewat fungsi ini supaya aturannya SATU dan
+ * penanda `pengingatTerkirimAt` di pesanan mencegah pesan ganda.
+ *
+ * Kenapa tidak mengandalkan cron saja: plan Vercel Hobby hanya boleh
+ * menjalankan cron sekali sehari dengan geseran sampai ±1 jam, sehingga
+ * pengingat "3 jam sebelum kedaluwarsa" tidak mungkin dijamin tepat.
+ * Pemicu saat pembeli membuka halamannya sendiri yang menutup celah itu.
+ */
+const sapuPengingat = async (settings, { sekarang = Date.now(), batas = 50 } = {}) => {
+  const hasil = { diperiksa: 0, terkirim: 0, dilewati: 0, gagal: 0, alasan: {} };
+
+  if (!settings?.whatsappApi || settings.whatsappApi.reminderEnabled === false) {
+    return { ...hasil, dilewati: 0, alasan: { sistem: 'pengingat-dimatikan' } };
+  }
+  if (!isWhatsAppReady(settings)) {
+    return { ...hasil, alasan: { sistem: 'whatsapp-belum-dikonfigurasi' } };
+  }
+  if (dalamJamTenang(sekarang)) {
+    /* Jangan kirim WhatsApp tengah malam. Cron besok akan menyapunya. */
+    return { ...hasil, alasan: { sistem: 'jam-tenang' } };
+  }
+
+  const windowHours = Number(settings?.payment?.paymentWindowHours) || 24;
+  const cfgWa = settings.whatsappApi || {};
+  const opsi = {
+    sekarang,
+    windowHours,
+    beforeHours: Number(cfgWa.reminderHoursBefore) || 3,
+    afterHours: Number(cfgWa.reminderAfterHours) || 6
+  };
+
+  const pesanan = await store.list('orders');
+
+  for (const order of pesanan) {
+    if (hasil.terkirim >= batas) break;
+    const putusan = perluPengingatLengkap(order, opsi);
+    if (!putusan.kirim) {
+      hasil.alasan[putusan.alasan] = (hasil.alasan[putusan.alasan] || 0) + 1;
+      continue;
+    }
+    hasil.diperiksa++;
+
+    const kedaluwarsa = new Date(order.createdAt).getTime() + windowHours * 3_600_000;
+    const baseUrl = (process.env.PUBLIC_BASE_URL || 'https://cilegon-enggih.vercel.app').replace(/\/$/, '');
+
+    const kirim = await kirimWhatsAppAman(
+      settings,
+      order.customerPhone,
+      templatePengingatPembayaran({
+        namaToko: settings.storeName,
+        namaPembeli: String(order.customerName || '').split(' ')[0],
+        orderId: order.orderId,
+        totalText: `Rp ${Math.round(Number(order.totalAmount) || 0).toLocaleString('id-ID')}`,
+        sisaText: sisaWaktuTeks(kedaluwarsa, sekarang),
+        /*
+         * Tautan tagihan hanya dipakai bila ada. Inilah yang membuat pembeli
+         * bisa langsung membayar tanpa mencari kode apa pun.
+         */
+        tautanBayar: order.snapRedirectUrl || '',
+        tautanLacak: `${baseUrl}/lacak-pesanan?q=${encodeURIComponent(order.orderId)}`,
+        tahap: putusan.tahap
+      })
+    );
+
+    if (kirim.sent) {
+      hasil.terkirim++;
+      const baru = {
+        ...order,
+        pengingatTerkirimAt: new Date(sekarang).toISOString(),
+        /*
+         * Tahap TERAKHIR yang terkirim. Dipakai `perluPengingatLengkap`
+         * supaya maksimal dua pesan per pesanan, dan supaya tahap 1 yang
+         * terlewat tidak dikirim terlambat bersama tahap 2.
+         */
+        pengingatKe: putusan.tahap,
+        updatedAt: nowIso(),
+        timeline: [
+          ...(order.timeline || []),
+          {
+            time: wibStamp(),
+            status: 'Pengingat pembayaran dikirim via WhatsApp',
+            location: 'Sistem Cilegon Enggih'
+          }
+        ]
+      };
+      await store.put('orders', baru);
+      /*
+       * CATATAN: `catatNotifikasi` di webhook Midtrans adalah closure LOKAL di
+       * dalam route itu — tidak bisa dipakai di sini. Memakainya membuat
+       * ReferenceError yang tertelan dan audit pengingat tidak pernah
+       * tersimpan. `recordAudit` adalah fungsi tingkat modul yang benar.
+       */
+      await recordAudit(store, {
+        action: 'pembayaran.pengingat-terkirim',
+        actor: 'sistem',
+        ip: 'internal',
+        status: 'ok',
+        target: order.orderId,
+        detail: { tahap: putusan.tahap, nominal: order.totalAmount }
+      });
+    } else {
+      hasil.gagal++;
+      /*
+       * Gagal kirim TIDAK menandai pesanan sebagai terkirim, sehingga
+       * percobaan berikutnya masih mungkin. Sebabnya dicatat supaya admin
+       * bisa memperbaiki token gateway, bukan menebak.
+       */
+      await recordAudit(store, {
+        action: 'pembayaran.pengingat-gagal',
+        actor: 'sistem',
+        ip: 'internal',
+        status: 'fail',
+        target: order.orderId,
+        detail: { tahap: putusan.tahap, alasan: kirim.reason || 'tidak diketahui' }
+      });
+    }
+  }
+
+  return hasil;
+};
+
+/**
  * Endpoint cron untuk backup harian.
  * Vercel Cron memanggil ini dengan header `Authorization: Bearer $CRON_SECRET`.
  * Sengaja TIDAK memakai sesi admin — cron tidak punya cookie.
  */
+/**
+ * Cron harian pengingat pembayaran.
+ *
+ * Sekali sehari saja — itu batas plan Hobby. Pesanan yang jendelanya pendek
+ * tetap tertangani lewat pemicu saat pembeli membuka halaman pesanannya.
+ */
+route('GET', '/api/cron/pengingat', async ({ headers }) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    return bad('CRON_SECRET belum diisi di environment.', 503);
+  }
+  const provided = bearer(headers);
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(secret));
+  if (!(a.length === b.length && crypto.timingSafeEqual(a, b))) {
+    return bad('Tidak diizinkan.', 401);
+  }
+
+  const settings = await readSettings();
+  const hasil = await sapuPengingat(settings);
+  await recordAudit(store, {
+    action: 'pembayaran.pengingat-harian',
+    actor: 'cron',
+    ip: clientIp(headers),
+    status: hasil.gagal > 0 ? 'warn' : 'ok',
+    detail: hasil
+  });
+  return ok({ ok: true, ...hasil });
+});
+
+/**
+ * Kirim pengingat sekarang, dipicu admin dari dashboard.
+ * Berguna untuk menguji tanpa menunggu jadwal.
+ */
+route('POST', '/api/admin/pengingat/kirim', async ({ headers }) => {
+  if (!isAdmin(headers)) return bad('Akses admin diperlukan.', 401);
+  const settings = await readSettings();
+  const hasil = await sapuPengingat(settings, { batas: 25 });
+  await recordAudit(store, {
+    action: 'pembayaran.pengingat-manual',
+    actor: 'admin',
+    ip: clientIp(headers),
+    status: hasil.gagal > 0 ? 'warn' : 'ok',
+    detail: hasil
+  });
+  return ok({ ok: true, ...hasil });
+});
+
 route('GET', '/api/cron/backup', async ({ headers }) => {
   const secret = process.env.CRON_SECRET;
   if (!secret) {

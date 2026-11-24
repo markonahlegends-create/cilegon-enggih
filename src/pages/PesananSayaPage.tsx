@@ -304,8 +304,9 @@ const FormMasuk: React.FC<{ onMasuk: () => void }> = ({ onMasuk }) => {
               {sibuk ? 'Mengirim…' : 'Kirim kode verifikasi'}
             </button>
             <p className="text-xs text-slate-500">
-              Kami tidak meminta password. Kode 6 digit dikirim ke admin toko untuk diteruskan ke Anda lewat
-              WhatsApp. Nomor ini juga yang dipakai untuk melacak pesanan, jadi riwayat lama Anda langsung muncul.
+              Kami tidak meminta password. Kode 6 digit dikirim <strong>langsung ke WhatsApp</strong> nomor
+              yang Anda masukkan — tidak lewat admin, jadi tidak ada yang bisa membacanya selain Anda.
+              Nomor ini juga yang dipakai untuk melacak pesanan, jadi riwayat lama Anda langsung muncul.
             </p>
           </form>
         ) : (
@@ -313,6 +314,12 @@ const FormMasuk: React.FC<{ onMasuk: () => void }> = ({ onMasuk }) => {
             <p className="text-sm text-slate-600">
               Kode dikirim untuk nomor <strong>{nomorMasked}</strong>.
             </p>
+            {/*
+              Jalur pengiriman ditampilkan apa adanya.
+              Kalau gateway WhatsApp belum diatur, pembeli harus tahu kodenya
+              lewat admin — bukan menunggu pesan WhatsApp yang tidak akan datang.
+            */}
+            {info ? <p className="text-xs text-slate-500">{info}</p> : null}
             <label className="block">
               <span className="text-sm font-medium text-slate-700">6 digit kode</span>
               <input

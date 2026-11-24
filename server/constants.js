@@ -170,6 +170,28 @@ export const DEFAULT_SETTINGS = {
     notifyShipped: true,
     notifyB2B: true
   },
+  /**
+   * GATEWAY WHATSAPP — mengirim pesan ke PEMBELI (kode OTP, pengingat tagihan).
+   *
+   * Berbeda dari `telegram` di atas yang mengabari ADMIN. Tanpa gateway ini,
+   * kode verifikasi harus diteruskan manual oleh admin — lambat, dan membuat
+   * verifikasi kehilangan maknanya karena kode melewati pihak ketiga.
+   *
+   * `token` diisi admin dari panel Dashboard (bukan dari chat, bukan dari
+   * environment yang ditempel di mana pun). Token tidak pernah dikirim ke
+   * browser: `publicSettings()` hanya meneruskan statusnya.
+   */
+  whatsappApi: {
+    enabled: false,
+    token: '',
+    endpoint: 'https://api.fonnte.com/send',
+    /** Pengingat tagihan belum dibayar — fitur yang diminta pemilik toko. */
+    reminderEnabled: true,
+    /** Berapa jam sebelum kedaluwarsa pengingat pertama dikirim. */
+    reminderHoursBefore: 3,
+    /** Berapa jam setelah pesanan dibuat bila pengingat pertama terlewat. */
+    reminderAfterHours: 6
+  },
   /** Pengaturan umum produk pre-order (dipakai sebagai teks default). */
   preOrder: {
     enabled: true,
