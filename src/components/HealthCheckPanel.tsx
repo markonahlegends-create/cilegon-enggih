@@ -18,11 +18,23 @@ interface Check {
   fix: string;
 }
 
+interface NotifikasiMidtrans {
+  at: string;
+  action: string;
+  target: string;
+  status: string;
+  alasan: string | null;
+  transactionStatus: string | null;
+  serverKeyEkor: string | null;
+}
+
 interface DiagnoseResult {
   ready: boolean;
   summary: { ok: number; warn: number; fail: number };
   storage: string;
   checks: Check[];
+  /** Jejak notifikasi Midtrans terakhir — bukti webhook sampai atau tidak. */
+  notifikasiMidtrans?: NotifikasiMidtrans[];
   generatedAt: string;
   note: string;
 }
@@ -185,6 +197,61 @@ export const HealthCheckPanel: React.FC = () => {
               );
             })}
           </div>
+
+          {/*
+            * RIWAYAT NOTIFIKASI MIDTRANS.
+            *
+            * Inilah bukti yang selama ini tidak ada: apakah Midtrans benar-benar
+            * mengirim notifikasi ke server ini? Tanpa daftar ini, "webhook mati"
+            * dan "notifikasi ditolak karena kunci berbeda" terlihat sama-sama
+            * diam di dashboard.
+            */}
+          {data.notifikasiMidtrans && data.notifikasiMidtrans.length > 0 && (
+            <div className="pt-2 border-t border-slate-100">
+              <div className="text-[10px] font-extrabold uppercase text-slate-500 mb-1.5">
+                Riwayat notifikasi Midtrans ({data.notifikasiMidtrans.length} terakhir)
+              </div>
+              <div className="space-y-1">
+                {data.notifikasiMidtrans.map((n, i) => {
+                  const buruk = n.status === 'fail' || n.action.includes('ditolak');
+                  return (
+                    <div
+                      key={`${n.at}-${i}`}
+                      className={`rounded-lg border px-2 py-1.5 ${
+                        buruk
+                          ? 'bg-red-50 border-red-200'
+                          : n.status === 'warn'
+                            ? 'bg-amberbrand-50 border-amberbrand-200'
+                            : 'bg-forest-50 border-forest-200'
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-extrabold ${
+                            buruk ? 'text-red-800' : n.status === 'warn' ? 'text-amberbrand-900' : 'text-forest-800'
+                          }`}
+                        >
+                          {n.action.replace('pembayaran.', '')}
+                        </span>
+                        {n.target && <span className="text-[10px] text-slate-600">{n.target}</span>}
+                        <span className="text-[9px] text-slate-500 ml-auto">
+                          {new Date(n.at).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      {n.alasan && (
+                        <p className="text-[10px] text-slate-600 mt-0.5 leading-snug">{n.alasan}</p>
+                      )}
+                      {n.serverKeyEkor && (
+                        <p className="text-[9px] text-slate-500 mt-0.5">
+                          ServerKey server berakhiran <code className="font-mono">{n.serverKeyEkor}</code>
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
             <a
