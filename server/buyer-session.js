@@ -83,6 +83,32 @@ export const empatTerakhir = (nomor) => {
   return n ? n.slice(-4) : '';
 };
 
+/**
+ * Apakah dua nomor ini ORANG YANG SAMA?
+ *
+ * KENAPA BUKAN `empatTerakhir` SAJA
+ * Halaman Lacak Pesanan memang memakai 4 digit terakhir, dan di sana itu
+ * memadai karena pembeli juga harus mengetik nomor pesanan yang panjang dan
+ * sulit ditebak. Di sini keadaannya jauh berbeda: sesi pembeli memberi akses
+ * ke SELURUH riwayat nomor itu — termasuk nama barang, nominal, dan alamat
+ * pengiriman lengkap — hanya dengan sekali verifikasi OTP.
+ *
+ * Kalau pencocokan tetap memakai 4 digit terakhir, siapa pun yang bisa
+ * menerima satu kode OTP untuk nomornya sendiri dapat membaca pesanan orang
+ * lain yang kebetulan berakhiran sama. Dengan 10.000 kemungkinan dan awalan
+ * operator Indonesia yang berulang, tabrakan seperti itu bukan hal langka —
+ * dan sudah dibuktikan bisa terjadi (lihat scripts/test-buyer-account.mjs).
+ *
+ * Jadi di sini nomor harus cocok PERSIS setelah dinormalisasi: '0812…',
+ * '+62 812…', dan '62812…' dianggap sama, tetapi '…7890' dan '…7890' dari
+ * nomor yang berbeda TIDAK.
+ */
+export const nomorSama = (a, b) => {
+  const na = normalisasiNomor(a);
+  const nb = normalisasiNomor(b);
+  return Boolean(na) && Boolean(nb) && na === nb;
+};
+
 export const createBuyerToken = ({ nomor, nama = '', ttlMs = BUYER_SESSION_TTL_MS }) => {
   const now = Date.now();
   const payload = b64url(

@@ -63,6 +63,7 @@ import {
   OTP_MAX_ATTEMPTS,
   normalisasiNomor,
   empatTerakhir,
+  nomorSama,
   createBuyerToken,
   verifyBuyerToken,
   buyerCookie,
@@ -3451,8 +3452,14 @@ const publicTrackingView = (order) => ({
 
     /* Nama diambil dari pesanan terakhir nomor ini (kalau ada) supaya terasa akrab. */
     const pesanan = await readOrders();
+    /*
+     * Pencocokan PERSIS, bukan 4 digit terakhir.
+     *
+     * Halaman lacak boleh memakai 4 digit karena nomor pesanan ikut diminta.
+     * Di sini tidak: sekali masuk, seluruh riwayat nomor itu terbuka.
+     */
     const milik = pesanan
-      .filter((o) => empatTerakhir(o.customerPhone) === empatTerakhir(nomor))
+      .filter((o) => nomorSama(o.customerPhone, nomor))
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
     const nama = milik[0]?.customerName || '';
 
@@ -3492,10 +3499,9 @@ const publicTrackingView = (order) => ({
     const klaim = sesiPembeli(headers);
     if (!klaim) return bad('Masuk dulu untuk melihat riwayat pesanan Anda.', 401);
 
-    const tail = empatTerakhir(klaim.wa);
     const semua = await readOrders();
     const milik = semua
-      .filter((o) => empatTerakhir(o.customerPhone) === tail)
+      .filter((o) => nomorSama(o.customerPhone, klaim.wa))
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 
     /*
@@ -3527,7 +3533,7 @@ const publicTrackingView = (order) => ({
     if (!klaim) return bad('Masuk dulu untuk melihat pesanan Anda.', 401);
 
     const order = await store.get('orders', String(params.orderId || ''));
-    if (!order || empatTerakhir(order.customerPhone) !== empatTerakhir(klaim.wa)) {
+    if (!order || !nomorSama(order.customerPhone, klaim.wa)) {
       return bad('Pesanan tidak ditemukan.', 404);
     }
     return ok({ order: ringkasPesananSaya(order) });

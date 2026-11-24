@@ -169,6 +169,61 @@ cek('pesanannya tidak bocor di respons', !JSON.stringify(pesananOrang.body).incl
 const tanpaCookie = await kirim('GET', '/api/buyer/orders');
 cek('tanpa login → 401', tanpaCookie.status === 401, String(tanpaCookie.status));
 
+/*
+ * SERANGAN NYATA: nomor BERBEDA dengan 4 digit terakhir SAMA.
+ *
+ * Ini bukan skenario teoretis. Versi pertama halaman ini mencocokkan pesanan
+ * hanya lewat 4 digit terakhir. Akibatnya siapa pun yang bisa menerima satu
+ * kode OTP untuk nomornya sendiri dapat membaca SELURUH pesanan orang lain
+ * yang kebetulan berakhiran sama — termasuk alamat pengiriman lengkap.
+ *
+ * Cocok 4 digit ITU MEMANG BENAR untuk halaman lacak, karena di sana pembeli
+ * juga harus mengetik nomor pesanan yang panjang. Di sini tidak ada penghalang
+ * tambahan, jadi pencocokannya harus PERSIS.
+ */
+console.log('\n▶ 5b. Serangan: nomor beda, 4 digit terakhir sama');
+const KORBAN = '081298761234';
+const PENYERANG = '085712341234'; /* perhatikan: sama-sama berakhiran 1234 */
+await buatPesanan(`UJI-BYR-KORBAN-${Date.now()}`, KORBAN, {
+  paymentStatus: 'LUNAS',
+  addressDetail: 'Jl. Rahasia No. 1'
+});
+
+const { createBuyerToken } = await import('../server/buyer-session.js');
+const tokenPenyerang = createBuyerToken({ nomor: PENYERANG, nama: 'Penyerang' }).token;
+const cookiePenyerang = `ce_buyer=${encodeURIComponent(tokenPenyerang)}`;
+
+const lihat = await kirim('GET', '/api/buyer/orders', { headers: { cookie: cookiePenyerang } });
+const bocor = (lihat.body?.orders || []).filter((o) => String(o.orderId).startsWith('UJI-BYR-KORBAN'));
+cek('penyerang TIDAK melihat pesanan korban', bocor.length === 0, `terlihat ${bocor.length} pesanan`);
+cek('alamat korban tidak bocor', !JSON.stringify(lihat.body).includes('Jl. Rahasia'));
+
+const detailKorban = await kirim('GET', `/api/buyer/orders/${(await store.list('orders')).find((o) => String(o.orderId).startsWith('UJI-BYR-KORBAN'))?.orderId}`, {
+  headers: { cookie: cookiePenyerang }
+});
+cek('detail pesanan korban → 404', detailKorban.status === 404, String(detailKorban.status));
+
+/* Kebalikannya: pemilik nomor ASLI tetap melihat pesanannya sendiri. */
+const kodeKorban = buatKodeOtp();
+await store.put('buyer_otp', {
+  id: (await import('../server/buyer-session.js')).otpDocId(KORBAN),
+  nomor: KORBAN,
+  hash: hashOtp(KORBAN, kodeKorban),
+  dibuatAt: nowIso(),
+  kedaluwarsaAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+  percobaan: 0
+});
+const loginKorban = await kirim('POST', '/api/buyer/verify', { body: { nomor: KORBAN, kode: kodeKorban } });
+cek('pemilik nomor asli tetap bisa masuk', loginKorban.status === 200, String(loginKorban.status));
+const lihatSendiri = await kirim('GET', '/api/buyer/orders', {
+  headers: { cookie: loginKorban.headers?.['Set-Cookie'] || '' }
+});
+cek(
+  'pemilik melihat pesanannya sendiri',
+  (lihatSendiri.body?.orders || []).some((o) => String(o.orderId).startsWith('UJI-BYR-KORBAN')),
+  `dapat ${(lihatSendiri.body?.orders || []).length}`
+);
+
 /* ---------------------------------------------------------------- */
 console.log('\n▶ 6. Kode hangus setelah batas percobaan');
 let kodeUji = buatKodeOtp();
@@ -199,6 +254,7 @@ for (const o of semua.filter((x) => String(x.orderId).startsWith('UJI-BYR-'))) {
   await store.remove('orders', o.id);
 }
 await store.remove('buyer_otp', idUji);
+await store.remove('buyer_otp', (await import('../server/buyer-session.js')).otpDocId(KORBAN));
 
 console.log(gagal === 0 ? '\n✅ SEMUA UJI AKUN PEMBELI LULUS\n' : `\n❌ ${gagal} asersi gagal\n`);
 process.exit(gagal === 0 ? 0 : 1);
