@@ -135,7 +135,7 @@ const FALLBACK_SETTINGS: StoreSettings = {
     codEnabled: false,
     paymentWindowHours: 24,
     instructions:
-      'Transfer sesuai NOMINAL AKHIR (termasuk 3 angka unik) agar pesanan terverifikasi tanpa biaya gateway.'
+      'Pembayaran diproses otomatis lewat Midtrans (QRIS, GoPay, OVO, DANA, ShopeePay, kartu, atau virtual account). Nominal dibayar sama persis dengan total tagihan — tidak ada biaya layanan tambahan.'
   },
   invoice: {
     prefix: 'CE',

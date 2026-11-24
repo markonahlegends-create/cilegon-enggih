@@ -117,9 +117,11 @@ export const LegalPage: React.FC = () => {
             <div className="space-y-2">
               <h3 className="font-extrabold text-navy-800">2. Harga & Pembayaran</h3>
               <p>
-                Seluruh harga produk tercantum dalam mata uang Rupiah (IDR). Pesanan eceran
-                diproses setelah pembayaran <strong>transfer bank atau QRIS toko</strong>{' '}
-                terverifikasi oleh admin (termasuk 3 digit kode unik pada nominal transfer).
+                Seluruh harga produk tercantum dalam mata uang Rupiah (IDR) dan sudah termasuk
+                biaya transaksi — tidak ada biaya layanan tambahan saat checkout. Pesanan eceran
+                diproses setelah pembayaran <strong>Midtrans</strong>{' '}
+                (QRIS, GoPay, OVO, DANA, ShopeePay, kartu, atau virtual account){' '}
+                terkonfirmasi otomatis oleh sistem.
                 Untuk pemesanan Custom &amp; Korporat (B2B), produksi dimulai setelah
                 konfirmasi mockup dan pembayaran uang muka (DP) minimal 50%.
               </p>

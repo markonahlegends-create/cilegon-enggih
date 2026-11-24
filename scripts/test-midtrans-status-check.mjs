@@ -55,6 +55,7 @@ for (const id of Object.keys(TABEL)) {
     invoiceNumber: `INV/${id}`,
     customerName: 'Uji',
     customerPhone: '082249879873',
+    phoneLast4: '9873',
     customerEmail: '-',
     items: [],
     totalAmount: total[id],
@@ -67,12 +68,16 @@ for (const id of Object.keys(TABEL)) {
   });
 }
 
-const periksa = (id) =>
+/*
+ * 4 digit terakhir No. WhatsApp wajib dikirim: endpoint ini bisa MELUNASKAN
+ * pesanan, jadi nomor pesanan saja tidak cukup sebagai bukti kepemilikan.
+ */
+const periksa = (id, phone = '9873') =>
   core.dispatch({
     method: 'GET',
     path: `/api/payments/midtrans/status/${id}`,
     headers: {},
-    query: {}
+    query: phone ? { phone } : {}
   });
 
 /* 1. Settlement -> dilunaskan */
@@ -105,7 +110,11 @@ await periksa('CE-ST-1');
 o1 = await store.get('orders', 'CE-ST-1');
 cek('idempoten: timeline tidak bertambah', (o1.timeline || []).length, panjang);
 
-/* 6. Pesanan tidak dikenal -> 404 */
+/* 6. Tanpa bukti -> 403 (jangan bisa melunaskan milik orang lain) */
+cek('tanpa 4 digit: 403', (await periksa('CE-ST-1', '')).status, 403);
+cek('4 digit salah: 403', (await periksa('CE-ST-1', '1234')).status, 403);
+
+/* 7. Pesanan tidak dikenal -> 404 */
 cek('pesanan tidak ada: 404', (await periksa('TIDAK-ADA')).status, 404);
 
 globalThis.fetch = asli;
