@@ -128,6 +128,16 @@ export interface SnapTokenPayload {
   clientKey: string;
   isProduction: boolean;
   snapScriptUrl: string;
+  /**
+   * true = tagihan yang SAMA dengan sebelumnya dipakai ulang.
+   *
+   * Server tidak membuat tagihan baru selama tagihan lama masih berlaku,
+   * supaya pembeli yang menunda pembayaran lalu kembali tidak membayar dua
+   * kali dan tidak kehilangan QRIS yang mungkin sudah ia simpan.
+   */
+  reused?: boolean;
+  /** Waktu kedaluwarsa tagihan menurut Midtrans (ISO), bila diketahui. */
+  expiresAt?: string | null;
 }
 
 /**

@@ -2089,12 +2089,116 @@ route('POST', '/api/payments/midtrans/token', async ({ body, headers }) => {
   }
 
   /*
+   * ------------------------------------------------------------------
+   * PAKAI ULANG TAGIHAN YANG MASIH HIDUP — JANGAN BUAT YANG BARU.
+   * ------------------------------------------------------------------
+   *
+   * Skenario nyata yang ditanyakan pemilik toko: pembeli membuka popup,
+   * melihat QRIS, lalu ada kebutuhan mendesak dan menutupnya. Beberapa jam
+   * kemudian ia ingin membayar. Kalau setiap kali tombol ditekan kita
+   * membuat tagihan baru, terjadi dua hal buruk:
+   *
+   *   1. Pembeli yang sudah menyimpan/memotret QRIS lama kehilangan
+   *      rujukannya — begitu halaman dibuka lagi, yang tampil QR berbeda.
+   *   2. Lebih berbahaya: QRIS lama TIDAK ikut mati saat tagihan baru
+   *      dibuat. Dua tagihan bisa aktif bersamaan, dan pembeli bisa
+   *      membayar DUA KALI untuk satu pesanan.
+   *
+   * Karena itu: selama tagihan sebelumnya masih berlaku di Midtrans,
+   * kembalikan token yang sama. Tagihan baru hanya dibuat kalau yang lama
+   * benar-benar sudah kedaluwarsa/dibatalkan.
+   *
+   * Pemeriksaan ke Midtrans sengaja tidak menggagalkan permintaan bila
+   * jaringan bermasalah — dalam kasus itu kita lanjut membuat tagihan baru
+   * seperti sebelumnya, karena pembeli tetap harus bisa membayar.
+   */
+  if (order.snapToken && order.midtransOrderId) {
+    try {
+      const cek = await fetchTransactionStatus(order.midtransOrderId, cfg);
+      const status = String(cek.data?.transaction_status || '').toLowerCase();
+      const masihHidup = cek.ok && (status === 'pending' || status === 'authorize');
+
+      if (masihHidup) {
+        await recordAudit(store, {
+          action: 'pembayaran.tagihan-dipakai-ulang',
+          actor: 'pembeli',
+          ip: clientIp(headers) || 'unknown',
+          target: order.orderId,
+          detail: {
+            midtransOrderId: order.midtransOrderId,
+            status,
+            keterangan:
+              'Tagihan lama masih berlaku — token yang sama dikembalikan supaya pembeli tidak membayar dua kali.'
+          }
+        });
+
+        return ok({
+          token: order.snapToken,
+          redirectUrl: order.snapRedirectUrl || null,
+          clientKey: cfg.clientKey,
+          isProduction: cfg.isProduction,
+          snapScriptUrl: snapScriptUrl(cfg.isProduction),
+          /* Ditandai supaya UI bisa memberi tahu: ini tagihan yang SAMA. */
+          reused: true,
+          expiresAt: cek.data?.expiry_time || null
+        });
+      }
+    } catch (err) {
+      console.warn('[midtrans] gagal memeriksa tagihan lama:', err.message);
+    }
+  }
+
+  /*
    * Percobaan ke berapa untuk pesanan ini. Midtrans menolak order_id yang
    * sudah pernah dipakai, jadi pembeli yang membiarkan tagihan kedaluwarsa
    * lalu mencoba lagi harus mendapat order_id baru (-R2, -R3, dst).
    */
   const attempt = Number(order.paymentAttempt) || 0;
   const midtransOrderId = buildMidtransOrderId(order.orderId, attempt);
+
+  /*
+   * ------------------------------------------------------------------
+   * MATIKAN TAGIHAN LAMA SEBELUM MEMBUAT YANG BARU.
+   * ------------------------------------------------------------------
+   *
+   * Sampai di sini tagihan lama sudah diketahui TIDAK dipakai ulang (sudah
+   * kedaluwarsa, dibatalkan, atau Midtrans tidak bisa dihubungi). Tetapi
+   * "tidak dipakai ulang" belum berarti "mati": kalau pembeli menutup popup
+   * lalu menekan "Coba Bayar Lagi" selagi tagihan pertama masih berjalan,
+   * dua QRIS bisa aktif bersamaan. Pembeli yang memotret QR pertama, lalu
+   * kembali ke halaman dan melihat QR kedua, bisa membayar DUA KALI untuk
+   * satu pesanan — dan mengembalikan uangnya merepotkan semua pihak.
+   *
+   * Jadi tagihan lama dibatalkan lebih dulu. Kegagalannya TIDAK
+   * menggagalkan pembuatan tagihan baru (Midtrans bisa menolak membatalkan
+   * transaksi yang sudah settlement — dan itu justru kabar baik), tetapi
+   * selalu dicatat supaya admin bisa memeriksanya.
+   */
+  if (order.midtransOrderId && order.midtransOrderId !== midtransOrderId) {
+    try {
+      const batal = await cancelTransaction(order.midtransOrderId, cfg);
+      if (!batal.ok) {
+        console.warn(
+          `[midtrans] tagihan lama ${order.midtransOrderId} tidak bisa dibatalkan: HTTP ${batal.status}`
+        );
+        await recordAudit(store, {
+          action: 'pembayaran.tagihan-lama-gagal-dibatalkan',
+          actor: 'sistem',
+          ip: 'midtrans',
+          target: order.orderId,
+          detail: {
+            midtransOrderId: order.midtransOrderId,
+            httpStatus: batal.status,
+            alasan: batal.alasan || null,
+            keterangan:
+              'Tagihan lama mungkin masih bisa dibayar. Periksa dashboard Midtrans bila pembeli mengaku sudah membayar tagihan sebelumnya.'
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('[midtrans] gagal membatalkan tagihan lama:', err.message);
+    }
+  }
 
   /*
    * PENTING: `paymentAttempt` HARUS dinaikkan setiap kali token dibuat.
