@@ -120,6 +120,45 @@ export const createOrder = (payload: Record<string, unknown>) =>
     body: payload
   });
 
+/* ------------------------- Midtrans Snap --------------------------- */
+
+export interface SnapTokenPayload {
+  token: string;
+  redirectUrl: string | null;
+  clientKey: string;
+  isProduction: boolean;
+  snapScriptUrl: string;
+}
+
+/**
+ * Minta token pembayaran untuk pesanan yang baru dibuat.
+ *
+ * Server yang menentukan nominalnya (dari database), bukan browser — jadi
+ * angka yang dibayar pembeli tidak bisa diubah dari sisi klien.
+ */
+export const createSnapToken = (orderId: string) =>
+  apiRequest<SnapTokenPayload>('/api/payments/midtrans/token', {
+    method: 'POST',
+    body: { orderId }
+  });
+
+/**
+ * Tanyakan status langsung ke Midtrans.
+ * Jaring pengaman kalau webhook telat masuk — tanpa ini pembeli yang sudah
+ * membayar bisa melihat pesanannya masih "menunggu pembayaran".
+ */
+export const checkMidtransStatus = (orderId: string) =>
+  apiRequest<{
+    orderId: string;
+    paymentStatus: string;
+    gateway: {
+      ok: boolean;
+      transactionStatus: string | null;
+      fraudStatus: string | null;
+      paymentType: string | null;
+    } | null;
+  }>(`/api/payments/midtrans/status/${encodeURIComponent(orderId)}`);
+
 export const uploadPaymentProof = (
   orderId: string,
   payload: { paymentProofNote?: string; paymentProofImage?: string }

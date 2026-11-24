@@ -1,7 +1,8 @@
 # Skema Migrasi: WhatsApp Manual → Midtrans Otomatis
 
-Status: **tahap 1–2 SELESAI** (modul + endpoint + uji otomatis).
-Tahap 3–5 belum: checkout masih memakai jalur lama sampai tahap 3 dikerjakan.
+Status: **tahap 1–3 SELESAI** (modul, endpoint, checkout Snap).
+Tahap 4–5 belum: jalur manual di server dan tombol pesan WhatsApp masih ada,
+dan baru dihapus setelah Midtrans terbukti jalan di produksi.
 Tanggal: 16 November 2026
 
 > **Catatan kemajuan.** Modul `server/midtrans.js` dan tiga endpoint
@@ -288,15 +289,17 @@ tertulis di halaman checkout. Dengan Midtrans, setiap transaksi dipotong biaya
 (QRIS sekitar 0,7%, kartu kredit & e-wallet lebih tinggi, plus biaya tetap per
 transaksi). Angkanya tergantung kontrak Anda dengan Midtrans.
 
-Pilihannya:
+**KEPUTUSAN PEMILIK TOKO: diserap ke harga.**
 
-- **Diserap ke harga** — harga naik tipis, pembeli tidak melihat biaya. Paling
-  rapi dari sisi pengalaman belanja.
-- **Ditambahkan sebagai biaya layanan** — pembeli melihat baris "biaya
-  pemrosesan". Jujur, tapi terbukti menurunkan konversi.
+Tidak ada baris "biaya pemrosesan" di checkout. Konsekuensinya:
 
-Rekomendasi saya: **serap ke harga.** Selisihnya kecil (Rp 3.000–8.000 untuk
-rata-rata keranjang Anda) dan lebih baik tidak terlihat.
+- Harga produk di katalog perlu dinaikkan tipis saat Anda sudah tahu angka
+  pasti dari kontrak Midtrans (untuk keranjang rata-rata toko ini, biaya
+  berkisar Rp 3.000–8.000 per transaksi).
+- Penyesuaian harga dilakukan **di dashboard admin** (Produk → harga), bukan
+  di kode — supaya Anda bisa mengubahnya sendiri kapan saja.
+- Janji lama *"tanpa biaya admin gateway"* di halaman checkout **sudah
+  dihapus**, karena tidak lagi benar.
 
 ### b. Apa yang terjadi pada pelanggan yang tidak punya e-wallet
 
