@@ -202,6 +202,19 @@ cek(
   true
 );
 
+/*
+ * Data dashboard tidak boleh basi: dulu loadAll() hanya berjalan sekali saat
+ * halaman dibuka, sehingga admin yang membiarkan tab terbuka melihat
+ * "Pesanan (0)" sepanjang hari walau pembeli terus masuk.
+ */
+cek('dashboard menyegarkan saat tab kembali aktif', /visibilitychange/.test(dash), true);
+cek('dashboard menyegarkan berkala (interval)', /setInterval\(/.test(dash), true);
+cek(
+  'membuka tab Pesanan memuat data terbaru',
+  /tab === 'orders'\) loadAll\(/.test(dash),
+  true
+);
+
 /* ------------------------------------------------------------------ */
 /* 5. Server: harga sama dengan klien, dan menolak kombinasi ngawur    */
 /* ------------------------------------------------------------------ */

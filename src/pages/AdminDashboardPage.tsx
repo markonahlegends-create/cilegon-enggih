@@ -291,9 +291,10 @@ export const AdminDashboardPage: React.FC = () => {
    * yang berhasil tetap ditampilkan, dan yang gagal disebutkan namanya supaya
    * bisa ditindaklanjuti.
    */
-  const loadAll = useCallback(async () => {
+  const loadAll = useCallback(
+    async ({ senyap = false } = {}) => {
     if (!authed) return;
-    setLoading(true);
+    if (!senyap) setLoading(true);
     const hasil = await Promise.allSettled([
       adminAnalytics(),
       adminOrders(),
@@ -340,11 +341,52 @@ export const AdminDashboardPage: React.FC = () => {
       );
     }
     setLoading(false);
-  }, [authed, pushToast]);
+    },
+    [authed, pushToast]
+  );
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  /*
+   * DATA DASHBOARD TIDAK BOLEH BASI.
+   *
+   * Dulu `loadAll()` hanya berjalan sekali saat halaman dibuka. Admin yang
+   * membuka dashboard pagi hari lalu membiarkannya terbuka melihat
+   * "Pesanan (0)" sepanjang hari walau pembeli terus masuk — datanya ADA di
+   * server, layarnya saja tidak pernah bertanya lagi.
+   *
+   * Tiga pemicu penyegaran:
+   *   1. saat tab browser kembali aktif (paling sering: admin pindah tab lalu
+   *      kembali ke dashboard)
+   *   2. saat tab "Pesanan" dibuka
+   *   3. otomatis tiap 60 detik selama tab terlihat
+   *
+   * Semua pemicu memakai `{ senyap: true }` supaya spinner besar tidak
+   * berkedip setiap menit; yang gagal tetap dilaporkan lewat toast.
+   */
+  useEffect(() => {
+    if (!authed) return;
+    const segarkan = () => {
+      if (document.visibilityState === 'visible') loadAll({ senyap: true });
+    };
+    document.addEventListener('visibilitychange', segarkan);
+    window.addEventListener('focus', segarkan);
+    const timer = window.setInterval(segarkan, 60_000);
+    return () => {
+      document.removeEventListener('visibilitychange', segarkan);
+      window.removeEventListener('focus', segarkan);
+      window.clearInterval(timer);
+    };
+  }, [authed, loadAll]);
+
+  /* Membuka tab Pesanan selalu mengambil data terbaru. */
+  useEffect(() => {
+    if (authed && tab === 'orders') loadAll({ senyap: true });
+    // sengaja hanya saat tab berubah
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
 
   /* ---------------------------- actions ---------------------------- */
   const deleteOrder = async (orderId: string) => {
@@ -822,7 +864,7 @@ export const AdminDashboardPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={loadAll}
+              onClick={() => loadAll()}
               disabled={loading}
               aria-label="Muat ulang data"
               className="px-2.5 sm:px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold inline-flex items-center gap-1.5"
