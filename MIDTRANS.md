@@ -319,9 +319,32 @@ mengaktifkannya kecuali Anda memang sering dapat pelanggan seperti itu.
 
 | Risiko | Dampak | Mitigasi |
 |---|---|---|
-| Webhook tidak masuk | Pesanan sudah dibayar tapi status masih menunggu | Endpoint `status/:orderId` + tombol "cek ulang" di dashboard |
+| Webhook tidak masuk | Pesanan sudah dibayar tapi status masih menunggu | Endpoint `status/:orderId` **melunaskan sendiri** saat dipanggil tombol "Saya Sudah Bayar — Periksa Status" |
 | Tanda tangan tidak dicek | Siapa pun bisa melunaskan pesanan | Wajib `SHA512` + fail-closed kalau `SERVER_KEY` kosong |
 | `gross_amount` tidak dicocokkan | Pesanan mahal dilunaskan transaksi recehan | Bandingkan dengan `totalAmount` di database |
 | Notifikasi ganda | Timeline ganda, stok terpotong dua kali | Idempoten sejak awal |
 | Server key bocor ke browser | Orang bisa membuat transaksi atas nama Anda | Server key hanya di server; `clientKey` saja yang publik |
 | Sandbox terpakai di produksi | Pembeli "berhasil bayar" tapi uang tidak masuk | `MIDTRANS_IS_PRODUCTION` dicek di `preflight` |
+
+---
+
+## 12. Catatan plan Vercel: kenapa TIDAK memakai cron
+
+Rencana awal memakai cron `*/15 * * * *` untuk menambal webhook yang gagal
+masuk. **Itu membuat deploy GAGAL.** Plan Hobby membatasi maksimal **2 cron
+per proyek** dan **minimal sekali sehari**; jadwal lebih sering dari harian
+ditolak saat deploy, sebelum aplikasi sempat dibangun.
+
+Solusi yang dipakai: endpoint `GET /api/payments/midtrans/status/:orderId`
+tidak hanya *melaporkan* status, tetapi **ikut melunaskan** kalau Midtrans
+menyatakan settlement — dengan nominal tetap dicocokkan.
+
+Endpoint itu dipanggil justru saat paling dibutuhkan, yaitu ketika pembeli
+menekan **"Saya Sudah Bayar — Periksa Status"**. Artinya tidak ada cron yang
+perlu diandalkan: jaring pengamannya aktif tepat pada saat ada orang yang
+menunggu jawaban.
+
+Konsekuensinya yang perlu diketahui: pesanan yang ditinggalkan pembeli tanpa
+pernah menekan tombol itu **tidak akan otomatis terlacak** kalau webhook gagal.
+Untuk kasus seperti itu, admin bisa menandai lunas manual dari dashboard —
+jalur itu sengaja tetap ada.

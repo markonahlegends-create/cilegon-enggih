@@ -984,6 +984,34 @@ route('GET', '/api/diagnose', async () => {
     'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 082249879873.'
   );
 
+  /*
+   * 3b. Midtrans — pembayaran otomatis.
+   *
+   * Pemeriksaan ini HANYA melaporkan terisi/tidak dan mode sandbox/produksi.
+   * Nilai kuncinya tidak pernah dikembalikan, sehingga endpoint diagnosa tetap
+   * aman dibuka tanpa login (sudah begitu sejak awal untuk kenyamanan admin).
+   *
+   * Gunanya: memastikan env var benar-benar terbaca DI DALAM Vercel. Env yang
+   * baru diubah tidak berlaku pada deploy lama, dan gejalanya persis sama
+   * dengan "kunci belum diisi" — mudah tertukar.
+   */
+  const mt = midtransConfig();
+  add(
+    'midtrans',
+    'Pembayaran otomatis (Midtrans)',
+    mt.ready ? (mt.isProduction ? 'ok' : 'warn') : 'warn',
+    mt.ready
+      ? mt.isProduction
+        ? `aktif • mode PRODUKSI • clientKey ${mt.clientKey.slice(0, 12)}…`
+        : `aktif • mode SANDBOX • clientKey ${mt.clientKey.slice(0, 12)}…`
+      : `belum aktif — ${!mt.serverKey ? 'MIDTRANS_SERVER_KEY kosong' : ''}${
+          !mt.serverKey && !mt.clientKey ? ' & ' : ''
+        }${!mt.clientKey ? 'MIDTRANS_CLIENT_KEY kosong' : ''}`,
+    mt.ready && !mt.isProduction
+      ? 'MIDTRANS_IS_PRODUCTION masih false — pembeli akan "berhasil bayar" tanpa uang masuk. Set true untuk uang sungguhan, lalu Redeploy.'
+      : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
+  );
+
   // 4. Notifikasi Telegram (opsional, sangat disarankan)
   const tg = telegramConfig(settings);
   add(
@@ -1849,8 +1877,93 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
     return ok({ orderId: order.orderId, paymentStatus: order.paymentStatus, gateway: null });
   }
 
+  /*
+   * JARING PENGAMAN WEBHOOK — sekaligus penambal, bukan sekadar pelapor.
+   *
+   * Skenario yang ditangani: webhook gagal masuk (Midtrans gangguan, deploy
+   * baru sedang berjalan, galat sesaat di serverless). Pembeli sudah membayar
+   * tetapi pesanan tetap "menunggu pembayaran", dan pembeli akan menghubungi
+   * admin — persis beban manual yang ingin dihilangkan.
+   *
+   * Kenapa di sini, bukan lewat cron: plan Vercel Hobby hanya mengizinkan
+   * 2 cron dan minimal sekali sehari (cron tiap 15 menit membuat deploy
+   * GAGAL). Endpoint ini dipanggil justru saat paling dibutuhkan — ketika
+   * pembeli menekan "Saya Sudah Bayar — Periksa Status".
+   *
+   * Kalau Midtrans menyatakan settlement, pesanan DILUNASKAN di sini juga.
+   * Tidak ada cron yang perlu diandalkan.
+   */
   try {
     const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
+    const keputusan = res.ok ? mapTransactionStatus(res.data) : 'TUNGGU';
+
+    if (keputusan === 'LUNAS' && order.paymentStatus !== 'LUNAS') {
+      const gross = grossAmountToRupiah(res.data.gross_amount);
+      const seharusnya = Math.round(Number(order.totalAmount) || 0);
+
+      if (gross !== seharusnya) {
+        /*
+         * Tanda tangan dan status sudah sah, tetapi nominalnya beda. Jangan
+         * pernah melunaskan: ini persis kasus "pesanan Rp 300.000 dibayar
+         * Rp 1.000" yang harus ditolak.
+         */
+        console.error(
+          `[midtrans] status LUNAS tapi nominal tidak cocok untuk ${order.orderId}: ${gross} vs ${seharusnya}`
+        );
+        await recordAudit(store, {
+          action: 'pembayaran.nominal-tidak-cocok',
+          actor: 'midtrans',
+          ip: 'midtrans',
+          target: order.orderId,
+          detail: { dibayar: gross, seharusnya }
+        });
+        return ok({
+          orderId: order.orderId,
+          paymentStatus: order.paymentStatus,
+          nominalTidakCocok: true,
+          gateway: { ok: res.ok, transactionStatus: res.data?.transaction_status || null }
+        });
+      }
+
+      const paid = await markOrderPaid(order, {
+        via: 'midtrans',
+        actor: 'midtrans:status-check',
+        verifiedAmount: gross
+      });
+
+      if (paid.ok && paid.changed) {
+        const final = {
+          ...paid.order,
+          midtransTransactionStatus: res.data?.transaction_status || null,
+          midtransPaymentType: res.data?.payment_type || null
+        };
+        await store.put('orders', final);
+
+        const settings = await readSettings();
+        if (telegramConfig(settings).notifyPaid !== false) {
+          await notifySafe(settings, templatePaid(final));
+        }
+        await recordAudit(store, {
+          action: 'pembayaran.lunas-via-status-check',
+          actor: 'midtrans',
+          ip: 'midtrans',
+          target: order.orderId,
+          detail: { nominal: gross }
+        });
+
+        return ok({
+          orderId: order.orderId,
+          paymentStatus: 'LUNAS',
+          gateway: {
+            ok: res.ok,
+            transactionStatus: res.data?.transaction_status || null,
+            fraudStatus: res.data?.fraud_status || null,
+            paymentType: res.data?.payment_type || null
+          }
+        });
+      }
+    }
+
     return ok({
       orderId: order.orderId,
       paymentStatus: order.paymentStatus,
