@@ -468,6 +468,25 @@ const publicSettings = (settings) => ({
   banks: settings.banks,
   qris: settings.qris,
   payment: settings.payment,
+  /**
+   * Status pembayaran otomatis untuk browser.
+   *
+   * Hanya `enabled` dan `clientKey` yang dikirim — clientKey memang publik
+   * (dipakai snap.js di peramban). serverKey TIDAK PERNAH ikut di sini.
+   *
+   * Dipakai checkout untuk memutuskan: tampilkan tombol Midtrans, atau
+   * kembali ke jalur lama kalau kuncinya belum diisi. Dengan begitu toko
+   * tidak pernah mati total gara-gara konfigurasi yang belum lengkap.
+   */
+  paymentGateway: (() => {
+    const mt = midtransConfig();
+    return {
+      enabled: mt.ready,
+      provider: 'midtrans',
+      clientKey: mt.ready ? mt.clientKey : '',
+      isProduction: mt.isProduction
+    };
+  })(),
   invoice: settings.invoice,
   announcement: settings.announcement,
   preOrder: settings.preOrder,
@@ -1409,7 +1428,24 @@ route('POST', '/api/orders', async ({ body, headers }) => {
   const safeShipping = Math.max(0, Math.min(Number(shippingCost) || 0, 500000));
   const safeDiscount = Math.max(0, Math.min(Number(voucherDiscount) || 0, subtotal));
   const totalBeforeCode = Math.max(0, subtotal + safeShipping - safeDiscount);
-  const uniqueCode = settings.payment.uniqueCodeEnabled === false ? 0 : makeUniqueCode(existing, totalBeforeCode);
+
+  /*
+   * Kode unik 3 digit HANYA untuk jalur transfer manual.
+   *
+   * Fungsinya supaya admin bisa mencocokkan nominal di mutasi bank. Dengan
+   * Midtrans, pencocokan itu dilakukan webhook — dan kode unik justru merusak
+   * alurnya: server membandingkan `gross_amount` Midtrans dengan `totalAmount`,
+   * jadi kalau total digelembungi kode unik, pembayaran yang benar pun akan
+   * ditolak sebagai "nominal tidak cocok".
+   *
+   * Selama Midtrans belum dikonfigurasi, perilaku lama dipertahankan supaya
+   * toko yang masih memakai transfer manual tidak berubah.
+   */
+  const pakaiMidtrans = midtransConfig().ready;
+  const uniqueCode =
+    pakaiMidtrans || settings.payment.uniqueCodeEnabled === false
+      ? 0
+      : makeUniqueCode(existing, totalBeforeCode);
   const totalAmount = totalBeforeCode + uniqueCode;
 
   const isQris = String(paymentMethod).toLowerCase().includes('qris');
