@@ -2649,6 +2649,82 @@ const SettingsPanel: React.FC<{
             )}
           </div>
         )}
+        {/*
+          WHATSAPP KE PEMBELI — kanal yang berbeda dari Telegram di atas.
+          Telegram mengabari ADMIN. WhatsApp ini mengabari PEMBELI: kode
+          verifikasi akun dan pengingat tagihan. Tanpa ini, kode OTP harus
+          diteruskan admin secara manual dan verifikasi kehilangan maknanya.
+        */}
+        <div className="rounded-xl border border-slate-200 p-3 space-y-2">
+          <div className="text-[11.5px] font-extrabold text-navy-900 flex items-center gap-1.5">
+            <span>💬 WhatsApp ke Pembeli</span>
+            {value.whatsappApi?.token ? (
+              <span className="text-[10px] font-bold text-forest-700 bg-forest-50 px-1.5 py-0.5 rounded">
+                ✓ Terkonfigurasi
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
+                Belum diatur
+              </span>
+            )}
+          </div>
+          <p className="text-[10.5px] leading-snug text-slate-600">
+            Dipakai untuk mengirim <strong>kode verifikasi akun</strong> langsung ke WhatsApp pembeli
+            (bukan lewat admin) dan <strong>pengingat tagihan</strong> yang belum dibayar. Isi token
+            dari dashboard penyedia gateway (mis. Fonnte). Token tidak pernah dikirim ke browser
+            pembeli.
+          </p>
+          <Field label="Token Gateway WhatsApp">
+            <input
+              type="password"
+              value={value.whatsappApi?.token || ''}
+              onChange={(e) => setNested('whatsappApi', 'token', e.target.value)}
+              placeholder="token rahasia dari dashboard gateway"
+              className="input-admin font-mono !text-[11px]"
+              autoComplete="new-password"
+            />
+          </Field>
+          <Field label="Endpoint">
+            <input
+              value={value.whatsappApi?.endpoint || 'https://api.fonnte.com/send'}
+              onChange={(e) => setNested('whatsappApi', 'endpoint', e.target.value)}
+              className="input-admin font-mono !text-[11px]"
+            />
+          </Field>
+          <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-700">
+            <input
+              type="checkbox"
+              checked={value.whatsappApi?.reminderEnabled !== false}
+              onChange={(e) => setNested('whatsappApi', 'reminderEnabled', e.target.checked)}
+              className="rounded border-slate-300"
+            />
+            Kirim pengingat otomatis untuk tagihan yang belum dibayar
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Pengingat ke-1 (jam setelah pesanan)">
+              <input
+                type="number"
+                min={1}
+                value={value.whatsappApi?.reminderAfterHours ?? 6}
+                onChange={(e) => setNested('whatsappApi', 'reminderAfterHours', Number(e.target.value))}
+                className="input-admin !text-[11px]"
+              />
+            </Field>
+            <Field label="Pengingat ke-2 (jam sebelum kedaluwarsa)">
+              <input
+                type="number"
+                min={1}
+                value={value.whatsappApi?.reminderHoursBefore ?? 3}
+                onChange={(e) => setNested('whatsappApi', 'reminderHoursBefore', Number(e.target.value))}
+                className="input-admin !text-[11px]"
+              />
+            </Field>
+          </div>
+          <p className="text-[10px] text-slate-500">
+            Pengingat tidak dikirim antara pukul 22.00–07.00 WIB, dan maksimal dua kali per pesanan.
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
           {[
             ['notifyNewOrder', 'Pesanan baru masuk'],
