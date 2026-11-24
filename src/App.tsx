@@ -15,6 +15,7 @@ import { CustomCorporatePage } from './pages/CustomCorporatePage';
 import { AboutPage } from './pages/AboutPage';
 import { HowToOrderFaqPage } from './pages/HowToOrderFaqPage';
 import { TrackOrderPage } from './pages/TrackOrderPage';
+import PesananSayaPage from './pages/PesananSayaPage';
 import { LegalPage } from './pages/LegalPage';
 import { AdminDashboardPage } from './pages/AdminDashboardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
@@ -63,6 +64,7 @@ export const App: React.FC = () => {
               <Route path="/tentang-kami" element={<AboutPage />} />
               <Route path="/cara-order-faq" element={<HowToOrderFaqPage />} />
               <Route path="/lacak-pesanan" element={<TrackOrderPage />} />
+              <Route path="/pesanan-saya" element={<PesananSayaPage />} />
               <Route path="/legalitas" element={<LegalPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
               {/* 404 sungguhan — jangan arahkan ke beranda agar Google tidak

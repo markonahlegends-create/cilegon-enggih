@@ -154,6 +154,14 @@ export const checkMidtransStatus = (orderId: string, phoneLast4: string) =>
     nominalTidakCocok?: boolean;
     /** 'kedaluwarsa' | 'dibatalkan-midtrans' — tagihan sudah mati. */
     kedaluwarsa?: 'kedaluwarsa' | 'dibatalkan-midtrans' | null;
+    /**
+     * Apakah ServerKey server sama dengan kunci akun Midtrans pemilik transaksi
+     * ini. Dihitung dari `signature_key` yang Midtrans kirim di respons status.
+     * `false` = pembayaran masuk tetapi tidak akan pernah terverifikasi
+     * otomatis; `null` = Midtrans tidak mengirim tanda tangan, tidak bisa
+     * disimpulkan (JANGAN dianggap gagal).
+     */
+    kunciCocok?: boolean | null;
     gateway: {
       ok: boolean;
       /** Kode HTTP dari Midtrans — 404 = tagihan tak dikenal akun/lingkungan ini. */
@@ -197,6 +205,63 @@ export const trackOrder = (code: string, phoneLast4: string) =>
   apiRequest<{ order: any }>(
     `/api/orders/track?q=${encodeURIComponent(code)}&phone=${encodeURIComponent(phoneLast4)}`
   );
+
+/* ------------------- Akun pembeli (opsional) ---------------------- */
+
+/**
+ * Akun pembeli TIDAK PERNAH wajib.
+ *
+ * Checkout tetap jalan sebagai tamu; akun hanya dipakai bila pembeli ingin
+ * riwayat pesanannya terkumpul rapi di satu tempat dan bisa dibuka dari
+ * perangkat lain. Verifikasi memakai kode 6 digit ke nomor WhatsApp yang
+ * sudah dipakai saat memesan, jadi tidak ada password baru untuk diingat.
+ */
+export const buyerSession = () =>
+  apiRequest<{ loggedIn: boolean; nama?: string; nomorMasked?: string }>('/api/buyer/session');
+
+export const buyerRequestOtp = (nomor: string) =>
+  apiRequest<{ ok: boolean; nomorMasked: string; berlakuDetik: number; terkirim: boolean; pesan: string }>(
+    '/api/buyer/otp',
+    { method: 'POST', body: { nomor } }
+  );
+
+export const buyerVerifyOtp = (nomor: string, kode: string) =>
+  apiRequest<{ ok: boolean; jumlahPesanan: number; nama: string }>('/api/buyer/verify', {
+    method: 'POST',
+    body: { nomor, kode }
+  });
+
+export const buyerLogout = () => apiRequest<{ ok: boolean }>('/api/buyer/logout', { method: 'POST' });
+
+export interface BuyerOrder {
+  orderId: string;
+  invoiceNumber: string;
+  createdAt: string;
+  status: string;
+  paymentStatus: string;
+  refund: 'tidak-ada' | 'diproses' | 'selesai';
+  courier?: string;
+  resi?: string | null;
+  trackingLinks?: Record<string, string>;
+  totalAmount: number;
+  items: { name: string; qty: number; price: number; optionsLabel?: string }[];
+  paymentMethod?: string;
+  destination?: string;
+  paidAt?: string | null;
+  timeline?: { at: string; note: string }[];
+}
+
+export interface BuyerOrderSummary {
+  total: number;
+  perluDibayar: number;
+  dikirim: number;
+  selesai: number;
+  refundDiproses: number;
+  totalBelanjaLunas: number;
+}
+
+export const buyerOrders = () =>
+  apiRequest<{ ringkasan: BuyerOrderSummary; orders: BuyerOrder[] }>('/api/buyer/orders');
 
 export const submitB2B = (payload: Record<string, unknown>) =>
   apiRequest<{ inquiry: any }>('/api/b2b', { method: 'POST', body: payload });

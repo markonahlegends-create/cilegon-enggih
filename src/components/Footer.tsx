@@ -140,6 +140,11 @@ export const Footer: React.FC = () => {
               </Link>
             </li>
             <li>
+              <Link to="/pesanan-saya" className="hover:text-amberbrand-300 transition-colors">
+                Pesanan Saya (riwayat)
+              </Link>
+            </li>
+            <li>
               <Link to="/legalitas?tab=privasi" className="hover:text-amberbrand-300 transition-colors">
                 Kebijakan Privasi
               </Link>
@@ -187,7 +192,7 @@ export const Footer: React.FC = () => {
             <li className="flex items-center gap-2.5">
               <Phone className="w-4 h-4 text-amberbrand-400 shrink-0" />
               <a
-                href={buildWhatsAppUrl('Halo Admin Cilegon Enggih! Saya ingin bertanya tentang produk.')}
+                href={buildWhatsAppUrl('Halo Admin Cilegon Enggih! Saya butuh BANTUAN (bukan pemesanan). Pesanan saya: ')}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="hover:text-white font-semibold text-forest-300"

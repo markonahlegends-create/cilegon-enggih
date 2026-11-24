@@ -149,6 +149,23 @@ export const PaymentPanel: React.FC<Props> = ({
           if (!otomatis) {
             pushToast?.('Status Belum Bisa Dipastikan', alasan, 'warning');
           }
+        } else if (hasil.kunciCocok === false) {
+          /*
+           * Midtrans MENJAWAB, tetapi kunci di server bukan kunci akun tempat
+           * transaksi ini dibuat — jadi notifikasi pembayaran akan selalu
+           * ditolak dan pesanan tidak akan pernah lunas otomatis.
+           *
+           * Pembeli tidak bisa memperbaiki ini, dan tidak boleh dibiarkan
+           * menekan tombol berulang kali. Yang bisa ia lakukan: hubungi admin
+           * lewat Bantuan. Sebabnya ikut ditampilkan supaya admin langsung
+           * tahu apa yang harus diganti.
+           */
+          const alasan =
+            'Pembayaran Anda sudah masuk di Midtrans, tetapi sistem toko belum bisa memverifikasinya karena kunci pembayaran di server tidak cocok dengan akun Midtrans toko. Ini masalah di sisi toko, BUKAN pada pembayaran Anda — tidak perlu membayar ulang. Hubungi admin lewat tombol Bantuan dan sebutkan nomor pesanan ini.';
+          setAlasanGagal(alasan);
+          if (!otomatis) {
+            pushToast?.('Perlu Bantuan Admin', alasan, 'warning');
+          }
         } else if (hasil.nominalTidakCocok) {
           pushToast?.(
             'Nominal Tidak Cocok',

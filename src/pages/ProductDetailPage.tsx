@@ -6,7 +6,6 @@ import { productShareUrl } from '../lib/share';
 import {
   Star,
   ShoppingCart,
-  MessageCircle,
   Heart,
   ShieldCheck,
   Ruler,
@@ -24,7 +23,6 @@ import {
 import {
   KAOS_SIZE_CHART,
   formatRupiah,
-  buildWhatsAppUrl,
   ProductVariant,
   Product
 } from '../data/products';
@@ -225,17 +223,6 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
    * `productShareUrl()` menormalkannya menjadi <domain-toko>/produk/<slug>.
    */
   const shareUrl = useMemo(() => productShareUrl(product.slug), [product.slug]);
-
-  const handleOrderWhatsApp = () => {
-    const msg = `Halo Admin Cilegon Enggih! Saya tertarik memesan:\n\n• Produk: *${
-      product.name
-    }*\n• Varian: ${
-      selection?.label || (selectedVariant ? selectedVariant.label : 'Standar')
-    }\n• Jumlah: *${qty} pcs*\n• Harga Estimasi: *${formatRupiah(
-      subtotal
-    )}*${note ? `\n• Catatan: ${note}` : ''}\n\nMohon info ketersediaan stok & pengiriman. Terima kasih!`;
-    window.open(buildWhatsAppUrl(msg), '_blank', 'noopener,noreferrer');
-  };
 
   /**
    * Tambah ke keranjang, satu pintu untuk produk biasa maupun multi-dimensi.
@@ -869,15 +856,6 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                 <span>Beli Langsung (QRIS / VA)</span>
               </button>
 
-              {/* 2. Pesan via WhatsApp */}
-              <button
-                type="button"
-                onClick={handleOrderWhatsApp}
-                className="w-full py-2.5 px-4 rounded-xl bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Pesan via WhatsApp</span>
-              </button>
             </div>
 
             {/* Wishlist & Share */}

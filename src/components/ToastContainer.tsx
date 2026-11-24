@@ -82,7 +82,7 @@ export const FloatingWhatsApp: React.FC = () => {
   return (
     <a
       href={buildWhatsAppUrl(
-        'Halo Admin Cilegon Enggih! Saya ingin bertanya seputar produk merchandise / pesanan grosir.'
+        'Halo Admin Cilegon Enggih! Saya butuh BANTUAN (bukan pemesanan): '
       )}
       target="_blank"
       rel="noreferrer"

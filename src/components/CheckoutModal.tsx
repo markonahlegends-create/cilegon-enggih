@@ -8,13 +8,17 @@ import {
   Ticket,
   ShieldCheck,
   Copy,
+  History,
   PackageCheck,
   ArrowRight,
   Printer,
   MessageCircle,
   Clock,
   AlertTriangle,
-  Smartphone
+  Smartphone,
+  Minus,
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { useStore, cacheOrderLocally } from '../context/StoreContext';
 import { formatRupiah } from '../data/products';
@@ -69,6 +73,8 @@ export const CheckoutModal: React.FC = () => {
     cartSubtotal,
     cartWeightGrams,
     clearCart,
+    updateCartQty,
+    removeFromCart,
     pushToast,
     vouchers,
     settings
@@ -464,6 +470,83 @@ export const CheckoutModal: React.FC = () => {
                 </div>
               </div>
 
+              {/*
+                * UBAH JUMLAH & HAPUS DI SINI — bukan hanya di keranjang.
+                *
+                * Keluhan nyata: pembeli sudah masuk checkout, berubah pikiran
+                * ingin menambah/mengurangi jumlah, dan harus menutup modal,
+                * membuka keranjang, lalu checkout ulang. Tokopedia/Shopee
+                * membiarkan perubahan qty tepat di halaman checkout, dan
+                * ringkasan di bawah ikut berubah seketika.
+                *
+                * Batas stok dihormati supaya pembeli tidak menambah melebihi
+                * stok lalu ditolak server di langkah terakhir.
+                */}
+              <div className="rounded-2xl border border-slate-200 p-4">
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                  Produk Dipesan ({cart.length} jenis)
+                </h4>
+                <div className="space-y-2">
+                  {cart.map((item) => {
+                    const stok = Number(item.product.stock) || 0;
+                    const maks = stok > 0 ? stok : 9999;
+                    return (
+                      <div
+                        key={item.key}
+                        className="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-[12px] font-bold text-navy-800 truncate">
+                            {item.product.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {item.optionsLabel || item.variant?.label || 'Standar'}
+                            {stok > 0 ? ` • stok ${stok}` : ''}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <div className="inline-flex items-center rounded-lg border border-slate-200">
+                            <button
+                              type="button"
+                              onClick={() => updateCartQty(item.key, item.qty - 1)}
+                              className="p-1 text-slate-600 hover:text-navy-800"
+                              aria-label={`Kurangi jumlah ${item.product.name}`}
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="px-2 text-[11px] font-bold text-slate-800 min-w-[20px] text-center">
+                              {item.qty}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={item.qty >= maks}
+                              onClick={() => updateCartQty(item.key, Math.min(item.qty + 1, maks))}
+                              className="p-1 text-slate-600 hover:text-navy-800 disabled:opacity-30"
+                              aria-label={`Tambah jumlah ${item.product.name}`}
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFromCart(item.key)}
+                            className="p-1 text-slate-400 hover:text-rose-600"
+                            aria-label={`Hapus ${item.product.name}`}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {cart.length === 0 && (
+                  <p className="text-[11px] text-slate-500">
+                    Keranjang kosong. Tutup halaman ini untuk memilih produk.
+                  </p>
+                )}
+              </div>
+
               {/* Shipping Calculator */}
               <ShippingCalculator
                 weightGrams={cartWeightGrams || 350}
@@ -723,6 +806,30 @@ export const CheckoutModal: React.FC = () => {
                   className="px-3 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5"
                 >
                   Lacak <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/*
+                Undangan, BUKAN syarat. Checkout sudah selesai di titik ini —
+                pesanan tersimpan tanpa akun apa pun. Tawaran ini hanya untuk
+                pembeli yang ingin riwayatnya terkumpul dan bisa dibuka dari
+                perangkat lain (keluhan "pesan 5 barang, bagaimana memantaunya").
+              */}
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-3 text-left">
+                <p className="text-[11px] sm:text-xs text-slate-600">
+                  <strong className="text-navy-800">Ingin riwayat pesanan tersimpan?</strong> Simpan nomor
+                  pesanan ini, atau aktifkan riwayat permanen (opsional) — semua pesanan dengan nomor WhatsApp
+                  Anda akan terkumpul di satu halaman.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    navigate('/pesanan-saya');
+                  }}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100"
+                >
+                  <History className="w-3.5 h-3.5" /> Buka Pesanan Saya
                 </button>
               </div>
 

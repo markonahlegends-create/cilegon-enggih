@@ -57,6 +57,22 @@ import { sendDailyDigest } from './digest.js';
 import { summarizeSales, salesOrders } from './reports.js';
 import { markOrderPaid } from './payments.js';
 import {
+  BUYER_COOKIE,
+  BUYER_SESSION_TTL_MS,
+  OTP_TTL_MS,
+  OTP_MAX_ATTEMPTS,
+  normalisasiNomor,
+  empatTerakhir,
+  createBuyerToken,
+  verifyBuyerToken,
+  buyerCookie,
+  clearBuyerCookie,
+  buatKodeOtp,
+  otpDocId,
+  hashOtp,
+  otpCocok
+} from './buyer-session.js';
+import {
   midtransConfig,
   snapScriptUrl,
   verifySignature,
@@ -265,7 +281,7 @@ const guardRevokedSession = async (method, path, headers, result) => {
 const activeSessions = async () => {
   const docs = await store.list('sessions').catch(() => []);
   return docs
-    .filter((d) => !d.revokedAt)
+    .filter((d) => d.sid && !d.revokedAt)
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
     .slice(0, 20)
     .map((d) => ({
@@ -2557,10 +2573,71 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
           : 'dibatalkan-midtrans'
         : null;
 
+    /*
+     * UJI TANDA TANGAN MANDIRI — jawaban pasti, bukan tebakan.
+     *
+     * Masalah yang diselesaikan: 8 notifikasi pembayaran ditolak karena
+     * "tanda tangan tidak cocok", dan sampai sekarang tidak ada cara
+     * memastikan apakah penyebabnya kunci yang beda, spasi tak terlihat di
+     * nilai env, atau notifikasi yang bukan dari Midtrans. Admin dan pembeli
+     * hanya bisa menebak, sementara uangnya sudah masuk.
+     *
+     * Setiap respons Core API Midtrans ikut membawa `signature_key` yang
+     * dihitung MEMAKAI SERVER KEY AKUN PEMILIK TRANSAKSI. Jadi bila kita
+     * menghitung ulang tanda tangan itu dengan kunci yang kita punya dan
+     * hasilnya cocok, kunci kita PASTI benar untuk akun ini — tanpa perlu
+     * menunggu satu pun notifikasi. Kalau tidak cocok, kuncinya memang beda,
+     * dan itu bisa dikatakan sekarang juga.
+     *
+     * Hanya statusnya yang dilaporkan; tidak ada nilai kunci yang dikirim.
+     */
+    const signatureUji = (() => {
+      const data = res.data || {};
+      if (!data.signature_key) return { tersedia: false, cocok: null };
+      if (!data.order_id || !data.status_code || data.gross_amount == null) {
+        return { tersedia: false, cocok: null };
+      }
+      return {
+        tersedia: true,
+        cocok: verifySignature(data, cfg.serverKey),
+        ekor: sidikKunci(cfg.serverKey)?.ekor || null
+      };
+    })();
+
+    /*
+     * Dicatat HANYA saat hasilnya "tidak cocok". Kalau kunci benar (kasus
+     * normal), tidak ada gunanya memenuhi audit dengan catatan sukses setiap
+     * kali pembeli menekan "Periksa Status".
+     */
+    if (signatureUji.tersedia && signatureUji.cocok === false) {
+      await recordAudit(store, {
+        action: 'pembayaran.kunci-tidak-cocok-dengan-akun',
+        actor: 'midtrans',
+        ip: 'midtrans',
+        target: order.orderId,
+        status: 'fail',
+        detail: {
+          alasan:
+            'ServerKey di server BUKAN kunci akun Midtrans tempat transaksi ini dibuat: Midtrans mengirim tanda tangan yang dihitung dengan kunci akun tersebut, dan kunci kita tidak menghasilkan nilai yang sama.',
+          tindakan:
+            'Buka dashboard Midtrans → Settings → Access Keys, salin ServerKey untuk environment PRODUKSI, ganti MIDTRANS_SERVER_KEY di hosting, lalu REDEPLOY. Setelah itu tekan "Periksa Status" lagi — hasilnya akan berubah tanpa perlu menunggu notifikasi.',
+          sidikEkor: signatureUji.ekor,
+          kunciCocok: false
+        }
+      });
+    }
+
     return ok({
       orderId: order.orderId,
       paymentStatus: order.paymentStatus,
       kedaluwarsa,
+      /*
+       * `kunciCocok` diteruskan ke UI supaya pembeli/admin melihat sebabnya,
+       * bukan sekadar "belum lunas" yang tidak menjelaskan apa pun. Nilai
+       * `null` berarti Midtrans tidak mengirim tanda tangan (tidak bisa
+       * disimpulkan) — jangan pernah dianggap gagal.
+       */
+      kunciCocok: signatureUji.tersedia ? signatureUji.cocok : null,
       gateway: {
         ok: res.ok,
         httpStatus: res.status,
@@ -3129,6 +3206,275 @@ const publicTrackingView = (order) => ({
     location: t.location
   }))
 });
+
+  /*
+   * STATUS PENGEMBALIAN DANA yang boleh dilihat pembeli.
+   *
+   * Sengaja diturunkan dari data pesanan, bukan tabel terpisah: kalau suatu
+   * saat admin menandai pesanan dibatalkan setelah lunas, pembeli langsung
+   * melihat bahwa uangnya sedang/di proses kembali.
+   */
+  const ringkasRefund = (order) => {
+    const lunas = order.paymentStatus === 'LUNAS';
+    const batal = order.status === 'DIBATALKAN';
+    if (!lunas) return 'tidak-ada';
+    if (!batal) return 'tidak-ada';
+    if (order.refundedAt) return 'selesai';
+    return 'diproses';
+  };
+
+  /**
+   * Ringkasan pesanan untuk PEMILIK nomor WhatsApp-nya sendiri.
+   *
+   * Tidak memakai publicTrackingView apa adanya karena pemilik akun berhak
+   * melihat lebih banyak (alamat penuh, metode pembayaran, status refund)
+   * tanpa harus mengetik nomor pesanan satu per satu.
+   */
+  const ringkasPesananSaya = (order) => ({
+    orderId: order.orderId,
+    invoiceNumber: order.invoiceNumber,
+    createdAt: order.createdAt,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    refund: ringkasRefund(order),
+    courier: order.courier,
+    resi: order.resi || null,
+    trackingLinks: trackLinksFor(order.courier, order.resi),
+    totalAmount: order.totalAmount,
+    subtotal: order.subtotal,
+    shippingCost: order.shippingCost,
+    voucherDiscount: order.voucherDiscount || 0,
+    ongkirGratis: Boolean(order.ongkirGratis),
+    items: (order.items || []).map((it) => ({
+      name: it.name,
+      qty: it.qty,
+      price: it.price,
+      optionsLabel: it.optionsLabel || it.variantLabel || ''
+    })),
+    paymentMethod: order.paymentMethod,
+    destination: order.destination,
+    addressDetail: order.addressDetail || '',
+    paidAt: order.paidAt || null,
+    timeline: (order.timeline || []).slice(-12)
+  });
+
+  /** Ambil sesi pembeli dari cookie. Null kalau tidak ada/tidak sah. */
+  const sesiPembeli = (headers) => {
+    const cookies = parseCookies(headers);
+    return verifyBuyerToken(cookies[BUYER_COOKIE]);
+  };
+
+  /**
+   * GET /api/buyer/session
+   * Siapa yang sedang login (kalau ada). Tidak pernah mengembalikan nomor penuh.
+   */
+  route('GET', '/api/buyer/session', async ({ headers }) => {
+    const klaim = sesiPembeli(headers);
+    if (!klaim) return ok({ loggedIn: false });
+    return ok({
+      loggedIn: true,
+      nama: klaim.n || '',
+      nomorMasked: `${klaim.wa.slice(0, 4)}${'*'.repeat(Math.max(0, klaim.wa.length - 7))}${klaim.wa.slice(-3)}`
+    });
+  });
+
+  /**
+   * POST /api/buyer/otp
+   * Minta kode verifikasi untuk nomor WhatsApp.
+   *
+   * KENAPA OTP WA, BUKAN PASSWORD/EMAIL
+   * Nomor WhatsApp sudah menjadi identitas pembeli di toko ini sejak awal
+   * (4 digit terakhir dipakai untuk lacak pesanan). Memakai nomor yang sama
+   * membuat riwayat otomatis lengkap tanpa meminta pembeli mengingat password
+   * baru — dan tanpa menambah data pribadi yang harus dijaga.
+   *
+   * Kode dikirim ke admin lewat Telegram karena toko belum punya kanal SMS/
+   * WhatsApp Business API. Admin meneruskan kode itu ke pembeli. Ini tetap
+   * aman: kode tetap 6 digit acak, berlaku 10 menit, dan hangus setelah 5 kali
+   * salah — jadi admin tidak bisa "menebak" kode milik pembeli.
+   */
+  route('POST', '/api/buyer/otp', async ({ body, headers }) => {
+    const ip = clientIp(headers);
+    const nomor = normalisasiNomor(body?.nomor);
+    if (!nomor) {
+      return bad('Nomor WhatsApp tidak valid. Gunakan format 08xxxxxxxxxx.', 400);
+    }
+
+    const limit = rateLimit(`buyer-otp:${ip}`, { max: 5, windowMs: 15 * 60 * 1000 });
+    if (!limit.allowed) {
+      return bad('Terlalu banyak permintaan kode. Coba lagi beberapa menit lagi.', 429);
+    }
+
+    const settings = await readSettings();
+    const kode = buatKodeOtp();
+    const now = Date.now();
+
+    await store.put('buyer_otp', {
+      id: otpDocId(nomor),
+      nomor,
+      hash: hashOtp(nomor, kode),
+      dibuatAt: new Date(now).toISOString(),
+      kedaluwarsaAt: new Date(now + OTP_TTL_MS).toISOString(),
+      percobaan: 0
+    });
+
+    /*
+     * Kode TIDAK dikembalikan ke browser dalam bentuk apa pun — kalau
+     * dikembalikan, verifikasi ini tidak ada gunanya.
+     */
+    const pesan = [
+      '🔐 <b>Kode verifikasi akun pembeli</b>',
+      `Nomor: <code>${nomor}</code>`,
+      `Kode: <b>${kode}</b>`,
+      `Berlaku ${OTP_TTL_MS / 60000} menit, hangus setelah ${OTP_MAX_ATTEMPTS} kali salah.`,
+      '',
+      'Teruskan kode ini <b>hanya</b> kepada pemilik nomor tersebut di atas.',
+      'Petugas toko tidak pernah meminta kode ini untuk keperluan lain.'
+    ].join('\n');
+    const terkirim = await notifySafe(settings, pesan);
+    await catatStatusNotifikasi(terkirim, 'kode-verifikasi-pembeli');
+
+    return ok({
+      ok: true,
+      nomorMasked: `${nomor.slice(0, 4)}${'*'.repeat(Math.max(0, nomor.length - 7))}${nomor.slice(-3)}`,
+      berlakuDetik: OTP_TTL_MS / 1000,
+      /*
+       * Kalau Telegram belum dikonfigurasi, pembeli tidak boleh dibiarkan
+       * menunggu kode yang tidak akan pernah datang. Katakan apa adanya.
+       */
+      terkirim: Boolean(terkirim?.sent),
+      pesan: terkirim?.sent
+        ? 'Kode dikirim ke admin toko. Hubungi admin untuk menerima kode Anda.'
+        : 'Admin belum mengaktifkan pengiriman kode. Hubungi admin toko lewat menu Bantuan.'
+    });
+  });
+
+  /**
+   * POST /api/buyer/verify
+   * Tukar kode OTP menjadi sesi pembeli (cookie HttpOnly, 30 hari).
+   */
+  route('POST', '/api/buyer/verify', async ({ body, headers }) => {
+    const ip = clientIp(headers);
+    const nomor = normalisasiNomor(body?.nomor);
+    const kode = String(body?.kode || '').replace(/\D/g, '');
+    if (!nomor || kode.length !== 6) {
+      return bad('Nomor WhatsApp dan 6 digit kode wajib diisi.', 400);
+    }
+
+    const limit = rateLimit(`buyer-verify:${ip}`, { max: 15, windowMs: 15 * 60 * 1000 });
+    if (!limit.allowed) {
+      return bad('Terlalu banyak percobaan verifikasi. Coba lagi nanti.', 429);
+    }
+
+    const doc = await store.get('buyer_otp', otpDocId(nomor));
+    if (!doc) return bad('Kode tidak ditemukan. Minta kode baru.', 400);
+
+    if (new Date(doc.kedaluwarsaAt).getTime() < Date.now()) {
+      await store.remove('buyer_otp', doc.id);
+      return bad('Kode sudah kedaluwarsa. Minta kode baru.', 400);
+    }
+
+    /*
+     * Percobaan salah dibatasi. Tanpa ini, 6 digit bisa ditebak dengan skrip:
+     * satu juta kombinasi terlalu banyak untuk manusia, tetapi tidak untuk
+     * komputer yang bisa mengirim ribuan permintaan.
+     */
+    if (Number(doc.percobaan) >= OTP_MAX_ATTEMPTS) {
+      await store.remove('buyer_otp', doc.id);
+      return bad('Terlalu banyak kode salah. Minta kode baru.', 429);
+    }
+
+    if (!otpCocok(nomor, kode, doc.hash)) {
+      await store.put('buyer_otp', { ...doc, percobaan: Number(doc.percobaan) + 1 });
+      return bad('Kode verifikasi salah.', 400);
+    }
+
+    /* Sekali pakai. */
+    await store.remove('buyer_otp', doc.id);
+
+    /* Nama diambil dari pesanan terakhir nomor ini (kalau ada) supaya terasa akrab. */
+    const pesanan = await readOrders();
+    const milik = pesanan
+      .filter((o) => empatTerakhir(o.customerPhone) === empatTerakhir(nomor))
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    const nama = milik[0]?.customerName || '';
+
+    const { token } = createBuyerToken({ nomor, nama });
+
+    await recordAudit(store, {
+      action: 'buyer.login',
+      actor: 'pembeli',
+      ip,
+      target: nomor.slice(-4),
+      status: 'ok',
+      detail: { pesananTerkait: milik.length }
+    });
+
+    return ok(
+      { ok: true, jumlahPesanan: milik.length, nama },
+      200,
+      { 'Set-Cookie': buyerCookie(token, { headers }) }
+    );
+  });
+
+  /** POST /api/buyer/logout */
+  route('POST', '/api/buyer/logout', async ({ headers }) =>
+    ok({ ok: true }, 200, { 'Set-Cookie': clearBuyerCookie(headers) })
+  );
+
+  /**
+   * GET /api/buyer/orders
+   *
+   * SELURUH pesanan milik nomor yang sudah diverifikasi — inilah inti keluhan
+   * "kalau pesan 5 barang di waktu berbeda, bagaimana memantaunya?".
+   *
+   * Satu akun = satu nomor WhatsApp. Semua pesanan dengan nomor itu terkumpul
+   * tanpa perlu mengetik nomor pesanan satu per satu.
+   */
+  route('GET', '/api/buyer/orders', async ({ headers }) => {
+    const klaim = sesiPembeli(headers);
+    if (!klaim) return bad('Masuk dulu untuk melihat riwayat pesanan Anda.', 401);
+
+    const tail = empatTerakhir(klaim.wa);
+    const semua = await readOrders();
+    const milik = semua
+      .filter((o) => empatTerakhir(o.customerPhone) === tail)
+      .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+
+    /*
+     * Ringkasan angka supaya pembeli langsung tahu posisinya: berapa yang
+     * masih perlu dibayar, berapa yang sedang dikirim, berapa yang sudah
+     * selesai, dan apakah ada uang yang sedang dikembalikan.
+     */
+    const ringkasan = {
+      total: milik.length,
+      perluDibayar: milik.filter((o) => o.paymentStatus !== 'LUNAS' && o.status !== 'DIBATALKAN').length,
+      dikirim: milik.filter((o) => o.status === 'DIKIRIM').length,
+      selesai: milik.filter((o) => o.status === 'SELESAI').length,
+      refundDiproses: milik.filter((o) => ringkasRefund(o) === 'diproses').length,
+      totalBelanjaLunas: milik
+        .filter((o) => o.paymentStatus === 'LUNAS')
+        .reduce((sum, o) => sum + (Number(o.totalAmount) || 0), 0)
+    };
+
+    return ok({ ringkasan, orders: milik.map(ringkasPesananSaya) });
+  });
+
+  /**
+   * GET /api/buyer/orders/:orderId
+   * Detail satu pesanan milik sendiri. Pesanan orang lain = 404, bukan 403 —
+   * supaya keberadaan pesanan orang lain tidak bisa dipastikan.
+   */
+  route('GET', '/api/buyer/orders/:orderId', async ({ headers, params }) => {
+    const klaim = sesiPembeli(headers);
+    if (!klaim) return bad('Masuk dulu untuk melihat pesanan Anda.', 401);
+
+    const order = await store.get('orders', String(params.orderId || ''));
+    if (!order || empatTerakhir(order.customerPhone) !== empatTerakhir(klaim.wa)) {
+      return bad('Pesanan tidak ditemukan.', 404);
+    }
+    return ok({ order: ringkasPesananSaya(order) });
+  });
 
 route('GET', '/api/orders/track', async ({ query, headers }) => {
   const code = String(query.q || query.query || query.orderId || '').trim();
