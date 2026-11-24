@@ -81,6 +81,13 @@ export const PaymentPanel: React.FC<Props> = ({
   const [membatalkan, setMembatalkan] = useState(false);
   const [konfirmasiBatal, setKonfirmasiBatal] = useState(false);
   const [kedaluwarsa, setKedaluwarsa] = useState<string | null>(null);
+  /*
+   * Alasan gateway gagal memeriksa status. SENGAJA DITAMPILKAN, bukan hanya
+   * dilempar ke toast: kalau pembeli sudah membayar tetapi status tidak bisa
+   * dipastikan, menyembunyikan sebabnya persis yang membuat orang menghubungi
+   * admin tanpa informasi apa pun.
+   */
+  const [alasanGagal, setAlasanGagal] = useState<string | null>(null);
   const [dibatalkan, setDibatalkan] = useState(false);
   const [sekarang, setSekarang] = useState(() => Date.now());
   const diprosesRef = useRef(false);
@@ -107,6 +114,7 @@ export const PaymentPanel: React.FC<Props> = ({
       if (diprosesRef.current) return;
       diprosesRef.current = true;
       setMemeriksa(true);
+      setAlasanGagal(null);
       try {
         const hasil = await snap.checkStatus(orderId, phoneLast4);
         if (hasil.paymentStatus === 'LUNAS') {
@@ -125,6 +133,21 @@ export const PaymentPanel: React.FC<Props> = ({
               'Tagihan ini sudah tidak aktif. Tekan "Buat Tagihan Baru" untuk membayar dengan kode baru.',
               'info'
             );
+          }
+        } else if (hasil.gateway && hasil.gateway.ok === false) {
+          /*
+           * Midtrans menjawab tetapi menolak (mis. 404). Pembeli TIDAK boleh
+           * dibiarkan mengira tombolnya berfungsi: katakan apa adanya, dan
+           * jangan menyarankan membayar lagi.
+           */
+          const alasan =
+            hasil.gateway.alasan ||
+            `Midtrans belum bisa memastikan pembayaran ini${
+              hasil.gateway.httpStatus ? ` (HTTP ${hasil.gateway.httpStatus})` : ''
+            }.`;
+          setAlasanGagal(alasan);
+          if (!otomatis) {
+            pushToast?.('Status Belum Bisa Dipastikan', alasan, 'warning');
           }
         } else if (hasil.nominalTidakCocok) {
           pushToast?.(
@@ -280,6 +303,17 @@ export const PaymentPanel: React.FC<Props> = ({
           <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-3">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
             <span>{snap.galat || 'Pembayaran belum berhasil.'} Anda bisa mencoba lagi.</span>
+          </div>
+        )}
+
+        {alasanGagal && !lunas && (
+          <div className="flex items-start gap-2 text-xs text-amberbrand-900 bg-amberbrand-50 border border-amberbrand-300 rounded-xl p-3">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              {alasanGagal}{' '}
+              <strong>Kalau Anda sudah membayar</strong>, tunjukkan pesan ini ke admin — kami bisa
+              mencocokkan pembayaran Anda secara manual tanpa Anda perlu membayar dua kali.
+            </span>
           </div>
         )}
 

@@ -92,6 +92,7 @@ import {
   adminLogout,
   adminDeleteOrder,
   adminResetOrders,
+  checkMidtransStatus,
   ApiError
 } from '../lib/api';
 
@@ -432,6 +433,63 @@ export const AdminDashboardPage: React.FC = () => {
     } finally {
       setBusyId(null);
     }
+  };
+
+  /**
+   * Tanya langsung ke Midtrans apakah pesanan ini sudah dibayar.
+   *
+   * Endpoint-nya sama dengan tombol pembeli, tetapi admin memakai nomor
+   * WhatsApp dari pesanan itu sendiri (bukan menebak 4 digit). Kalau Midtrans
+   * menyatakan settlement, pesanan DILUNASKAN di server — admin tidak perlu
+   * mengubah status manual.
+   *
+   * Yang dikembalikan adalah kalimat siap tampil, jadi kegagalan pun tidak
+   * pernah diam.
+   */
+  const cekMidtransOrder = async (order: any): Promise<{ lunas: boolean; pesan: string }> => {
+    const last4 = String(order?.phoneLast4 || order?.customerPhone || '').replace(/\D/g, '').slice(-4);
+    if (last4.length !== 4) {
+      throw new Error('Pesanan ini tidak punya nomor WhatsApp yang bisa dipakai memeriksa status.');
+    }
+    const hasil = await checkMidtransStatus(order.orderId, last4);
+
+    if (hasil.paymentStatus === 'LUNAS') {
+      setOrders((prev) => prev.map((o) => (o.orderId === order.orderId ? { ...o, paymentStatus: 'LUNAS' } : o)));
+      pushToast('Pembayaran Lunas', `${order.orderId} sudah dibayar di Midtrans.`, 'success');
+      void loadAll?.();
+      return { lunas: true, pesan: 'Lunas — Midtrans menyatakan pembayaran sudah settle. Pesanan diperbarui otomatis.' };
+    }
+
+    if (hasil.nominalTidakCocok) {
+      return {
+        lunas: false,
+        pesan: 'Midtrans menyatakan lunas, TETAPI nominalnya berbeda dari total pesanan — tidak dilunaskan otomatis. Periksa manual.'
+      };
+    }
+
+    if (hasil.kedaluwarsa) {
+      return {
+        lunas: false,
+        pesan:
+          hasil.kedaluwarsa === 'kedaluwarsa'
+            ? 'Tagihan sudah kedaluwarsa di Midtrans. Pembeli perlu membuat tagihan baru.'
+            : 'Tagihan sudah dibatalkan di Midtrans.'
+      };
+    }
+
+    if (hasil.gateway && hasil.gateway.ok === false) {
+      return {
+        lunas: false,
+        pesan:
+          hasil.gateway.alasan ||
+          `Midtrans tidak bisa memastikan status tagihan ini (HTTP ${hasil.gateway.httpStatus ?? '?'}).`
+      };
+    }
+
+    return {
+      lunas: false,
+      pesan: `Belum ada pembayaran masuk di Midtrans${hasil.gateway?.transactionStatus ? ` (status: ${hasil.gateway.transactionStatus})` : ''}.`
+    };
   };
 
   const updateOrder = async (orderId: string, payload: Record<string, unknown>) => {
@@ -1107,6 +1165,7 @@ export const AdminDashboardPage: React.FC = () => {
               busy={busyId === order.orderId}
               onUpdate={updateOrder}
               onDelete={deleteOrder}
+              onCekMidtrans={cekMidtransOrder}
               vendors={vendorOptions}
               onPrint={(mode) => {
                 setInvoiceOrder(order);
@@ -1501,11 +1560,41 @@ const OrderCard: React.FC<{
   onUpdate: (orderId: string, payload: Record<string, unknown>) => void;
   onPrint: (mode: 'invoice' | 'label') => void;
   onDelete: (orderId: string) => void;
-}> = ({ order, vendors, busy, onUpdate, onPrint, onDelete }) => {
+  /** Cek status ke Midtrans. Melempar error berisi alasan yang bisa dibaca. */
+  onCekMidtrans: (order: any) => Promise<{ lunas: boolean; pesan: string }>;
+}> = ({ order, vendors, busy, onUpdate, onPrint, onDelete, onCekMidtrans }) => {
   const [resi, setResi] = useState(order.resi || '');
   const [courier, setCourier] = useState(order.courier || COURIER_OPTIONS[0]);
   const [timelineNote, setTimelineNote] = useState('');
   const [showProof, setShowProof] = useState(false);
+  const [cekStatus, setCekStatus] = useState<{ memeriksa: boolean; pesan: string | null; lunas: boolean }>({
+    memeriksa: false,
+    pesan: null,
+    lunas: false
+  });
+
+  /*
+   * Tombol "Cek Status Midtrans" ADA karena admin tidak punya cara lain untuk
+   * tahu mengapa sebuah pesanan masih "menunggu verifikasi" padahal pembeli
+   * bilang sudah bayar. Sebelumnya satu-satunya jalan adalah menebak, atau
+   * menyuruh pembeli menekan tombol yang sama-sama tidak bisa memberitahu apa pun.
+   *
+   * Hasilnya SELALU ditampilkan di kartu ini — termasuk saat gagal — supaya
+   * admin bisa memutuskan: lunaskan manual, atau perbaiki konfigurasi.
+   */
+  const jalankanCekMidtrans = async () => {
+    setCekStatus({ memeriksa: true, pesan: null, lunas: false });
+    try {
+      const hasil = await onCekMidtrans(order);
+      setCekStatus({ memeriksa: false, pesan: hasil.pesan, lunas: hasil.lunas });
+    } catch (err) {
+      setCekStatus({
+        memeriksa: false,
+        pesan: err instanceof Error ? err.message : 'Gagal menghubungi Midtrans.',
+        lunas: false
+      });
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-soft overflow-hidden">
@@ -1758,6 +1847,39 @@ const OrderCard: React.FC<{
               </select>
             </div>
           </div>
+
+          {/*
+            * CEK STATUS MIDTRANS — hanya untuk pesanan yang dibayar lewat
+            * Midtrans dan belum lunas. Inilah yang menjawab "pembeli bilang
+            * sudah bayar tapi dashboard masih menunggu verifikasi".
+            */}
+          {order.paymentGateway === 'midtrans' && order.paymentStatus !== 'LUNAS' && (
+            <div className="rounded-xl border border-forest-200 bg-forest-50/60 p-2.5 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={jalankanCekMidtrans}
+                  disabled={busy || cekStatus.memeriksa}
+                  className="px-2.5 py-1.5 rounded-lg bg-forest-600 hover:bg-forest-700 disabled:opacity-60 text-white text-[11px] font-extrabold inline-flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${cekStatus.memeriksa ? 'animate-spin' : ''}`} />
+                  {cekStatus.memeriksa ? 'Memeriksa Midtrans…' : 'Cek Status Midtrans'}
+                </button>
+                <span className="text-[10px] text-slate-600">
+                  {order.midtransOrderId ? `Tagihan ${order.midtransOrderId}` : 'Belum ada tagihan'}
+                </span>
+              </div>
+              {cekStatus.pesan && (
+                <p
+                  className={`text-[10px] leading-relaxed font-semibold ${
+                    cekStatus.lunas ? 'text-forest-800' : 'text-amberbrand-900'
+                  }`}
+                >
+                  {cekStatus.pesan}
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="rounded-xl border border-slate-200 p-2.5 space-y-2 bg-slate-50/60">
             <div className="text-[10px] font-extrabold uppercase text-slate-500 flex items-center gap-1">
