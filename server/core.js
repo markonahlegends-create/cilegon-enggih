@@ -1398,14 +1398,22 @@ route('POST', '/api/orders', async ({ body, headers }) => {
       if (combo?.image) comboImage = combo.image;
     }
 
+    /*
+     * HARGA SATUAN — aturan yang SAMA dengan `unitPriceFor()` di
+     * src/lib/variantPricing.ts (dipakai halaman produk, keranjang, checkout).
+     *
+     * Urutan: pilihan/kombinasi → varian → harga produk; lalu harga grosir
+     * hanya bila (a) minimal grosir diisi > 0, (b) qty mencapai minimal, dan
+     * (c) harga grosir memang lebih murah.
+     */
     const unitPrice = groups.length
       ? Number(optionPrice) || 0
       : Number(variant?.price ?? product.price) || 0;
+    const minGrosir = Number(product.minWholesaleQty) || 0;
+    const hargaGrosir = Number(product.wholesalePrice) || 0;
     const wholesaleApplies =
-      Number(product.minWholesaleQty) > 0 && qty >= Number(product.minWholesaleQty);
-    const effectivePrice = wholesaleApplies
-      ? Math.min(unitPrice, Number(product.wholesalePrice) || unitPrice)
-      : unitPrice;
+      minGrosir > 0 && qty >= minGrosir && hargaGrosir > 0 && hargaGrosir < unitPrice;
+    const effectivePrice = wholesaleApplies ? hargaGrosir : unitPrice;
 
     const sentPrice = Number(raw.price);
     if (Number.isFinite(sentPrice) && Math.abs(sentPrice - effectivePrice) > 1) {
@@ -3919,6 +3927,59 @@ const normalizeProduct = async (payload, existing) => {
 
   if (wholesalePrice > price && minWholesaleQty > 0) {
     errors.push('Harga grosir seharusnya lebih murah daripada harga jual satuan.');
+  }
+
+  /*
+   * VALIDASI KOMBINASI HARGA.
+   *
+   * Kombinasi adalah DAFTAR PENGECUALIAN: begitu satu kombinasi ada, harga
+   * produk untuk pilihan lain dihitung dari harga dasar + selisih, bukan dari
+   * kombinasi. Ini pernah menghasilkan harga yang membingungkan di produksi —
+   * mis. produk Rp 8.000 dengan satu kombinasi Rp 20.000, sehingga "Paket Isi
+   * 3" tampak jauh lebih mahal daripada 3 × harga satuan.
+   *
+   * Aturan yang ditegakkan di sini:
+   *   1. setiap kombinasi wajib menyebut SEMUA grup pilihan (kalau tidak,
+   *      kombinasi itu tidak akan pernah cocok dan harganya tidak terpakai)
+   *   2. nilai yang disebut harus benar-benar ada di grupnya
+   *   3. harga kombinasi harus > 0
+   */
+  const opsiGrup = Array.isArray(src.optionGroups ?? base.optionGroups)
+    ? src.optionGroups ?? base.optionGroups
+    : [];
+  const kombinasiMasuk = Array.isArray(src.combinations ?? base.combinations)
+    ? src.combinations ?? base.combinations
+    : [];
+  if (opsiGrup.length) {
+    kombinasiMasuk.forEach((c, idx) => {
+      const ids = Array.isArray(c?.optionValueIds) ? c.optionValueIds : [];
+      if (ids.length !== opsiGrup.length) {
+        errors.push(
+          `Kombinasi ke-${idx + 1} harus memilih semua ${opsiGrup.length} pilihan (${opsiGrup
+            .map((g) => g.name)
+            .join(', ')}).`
+        );
+        return;
+      }
+      opsiGrup.forEach((g, i) => {
+        const ada = (g.values || []).some((v) => v.id === ids[i]);
+        if (!ada) {
+          errors.push(
+            `Kombinasi ke-${idx + 1}: nilai "${ids[i]}" tidak ada di pilihan "${g.name}".`
+          );
+        }
+      });
+      if (Number(c?.price) <= 0) {
+        errors.push(`Harga kombinasi ke-${idx + 1} harus lebih besar dari 0.`);
+      }
+      if (c?.available !== false && Number(c?.price) > 0 && price > 0 && Number(c.price) > price * 20) {
+        errors.push(
+          `Harga kombinasi ke-${idx + 1} (Rp ${Number(c.price).toLocaleString(
+            'id-ID'
+          )}) lebih dari 20x harga satuan — periksa kembali.`
+        );
+      }
+    });
   }
 
   const variants = cleanVariants(src.variants ?? base.variants);

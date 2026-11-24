@@ -11,6 +11,7 @@ import {
   STORE_INFO
 } from '../data/products';
 import { fetchStorefront } from '../lib/api';
+import { unitPriceFor, resolveSelection } from '../lib/variantPricing';
 
 export interface CartItem {
   key: string;
@@ -324,6 +325,43 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     refreshStorefront();
   }, [refreshStorefront]);
 
+  /*
+   * SINKRONKAN PRODUK DI KERANJANG SETELAH KATALOG DIPERBARUI.
+   *
+   * Keranjang disimpan di localStorage UTUH — termasuk salinan objek produk
+   * pada saat barang dimasukkan. Kalau admin lalu menurunkan harga (atau
+   * pembeli memasukkan barang sebelum harga diubah), keranjang terus memakai
+   * harga LAMA selamanya tanpa ada tanda apa pun. Di produksi ini terlihat
+   * sebagai "total tiba-tiba lebih mahal dari yang saya hitung": keranjang
+   * masih memuat stiker lama, lalu ditambah barang baru.
+   *
+   * Sekarang setiap katalog baru datang, produk di keranjang diganti versi
+   * TERBARU (id sama). Varian & pilihan tetap dipertahankan; kalau variannya
+   * sudah tidak ada, dipakai harga produk terbaru — server tetap menghitung
+   * ulang dan menolak harga yang tidak sah.
+   */
+  useEffect(() => {
+    if (!products.length) return;
+    const byId = new Map(products.map((p) => [p.id, p]));
+    setCart((prev) => {
+      let berubah = false;
+      const next = prev.map((item) => {
+        const segar = byId.get(item.product.id);
+        if (!segar) return item;
+        const varianLama = item.variant;
+        const varianMasihAda =
+          !varianLama || (segar.variants || []).some((v) => v.id === varianLama.id);
+        const varian = varianMasihAda
+          ? (segar.variants || []).find((v) => v.id === varianLama?.id) || varianLama
+          : (segar.variants || [])[0];
+        if (segar === item.product && varian === item.variant) return item;
+        berubah = true;
+        return { ...item, product: segar, variant: varian };
+      });
+      return berubah ? next : prev;
+    });
+  }, [products]);
+
   useEffect(() => {
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
@@ -443,15 +481,29 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const cartCount = useMemo(() => cart.reduce((sum, item) => sum + item.qty, 0), [cart]);
 
+  /*
+   * SUBTOTAL KERANJANG — memakai `unitPriceFor` dari lib/variantPricing.
+   *
+   * Dulu rumus ditulis ulang di sini dan MENGABAIKAN priceDelta pilihan, serta
+   * memakai `minWholesaleQty` tanpa cek > 0. Akibatnya total di keranjang bisa
+   * berbeda dari yang ditagih server — persis keluhan "total tidak sesuai".
+   */
   const cartSubtotal = useMemo(
     () =>
       cart.reduce((sum, item) => {
-        const unitPrice = item.variant?.price ?? item.product.price;
-        const effectivePrice =
-          item.product.minWholesaleQty > 0 && item.qty >= item.product.minWholesaleQty
-            ? Math.min(unitPrice, item.product.wholesalePrice || unitPrice)
-            : unitPrice;
-        return sum + effectivePrice * item.qty;
+        const groups = item.product.optionGroups || [];
+        const optionPrice = groups.length
+          ? resolveSelection(item.product, item.options || {}).price
+          : undefined;
+        const unit = unitPriceFor({
+          price: item.product.price,
+          wholesalePrice: item.product.wholesalePrice,
+          minWholesaleQty: item.product.minWholesaleQty,
+          variantPrice: item.variant?.price,
+          optionPrice,
+          qty: item.qty
+        });
+        return sum + unit * item.qty;
       }, 0),
     [cart]
   );

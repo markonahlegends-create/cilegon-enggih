@@ -278,37 +278,68 @@ export const AdminDashboardPage: React.FC = () => {
   };
 
   /* ---------------------------- data ---------------------------- */
+  /*
+   * MEMUAT DATA DASHBOARD — satu endpoint gagal TIDAK boleh mengosongkan yang lain.
+   *
+   * Dulu kelimanya digabung dalam satu Promise.all. Cukup satu endpoint
+   * melempar galat (mis. /api/admin/b2b atau /api/admin/products error 500),
+   * maka SEMUA hasil dibuang — termasuk daftar pesanan. Admin lalu melihat
+   * "Pesanan (0)" dan "Total Pesanan 0" padahal pesanannya ada di database,
+   * tanpa tahu ada yang gagal.
+   *
+   * Sekarang tiap endpoint punya penanganannya sendiri (`allSettled`), data
+   * yang berhasil tetap ditampilkan, dan yang gagal disebutkan namanya supaya
+   * bisa ditindaklanjuti.
+   */
   const loadAll = useCallback(async () => {
     if (!authed) return;
     setLoading(true);
-    try {
-      const [an, ord, b2b, prod, full] = await Promise.all([
-        adminAnalytics(),
-        adminOrders(),
-        adminB2B(),
-        adminProducts(),
-        // Endpoint admin mengembalikan settings LENGKAP (termasuk kredensial Telegram).
-        // Jangan pakai /api/admin/export: publicSettings() menghapus botToken/chatId.
-        adminSettingsFull().catch(() => null)
-      ]);
-      setAnalytics(an);
-      setOrders(ord.orders || []);
-      setInquiries(b2b.inquiries || []);
-      setProducts(prod.products || []);
-      if (full?.settings) setDraftSettings(full.settings);
-      // Dropdown vendor untuk editor produk.
+    const hasil = await Promise.allSettled([
+      adminAnalytics(),
+      adminOrders(),
+      adminB2B(),
+      adminProducts(),
+      // Endpoint admin mengembalikan settings LENGKAP (termasuk kredensial Telegram).
+      // Jangan pakai /api/admin/export: publicSettings() menghapus botToken/chatId.
+      adminSettingsFull(),
       adminVendors()
-        .then((res) => setVendorOptions(res.vendors || []))
-        .catch(() => setVendorOptions([]));
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
+    ]);
+
+    const [an, ord, b2b, prod, full, ven] = hasil;
+    const gagal: string[] = [];
+
+    const nilai = <T,>(r: PromiseSettledResult<T>, label: string): T | null => {
+      if (r.status === 'fulfilled') return r.value;
+      if (r.reason instanceof ApiError && r.reason.status === 401) {
         setAuthed(false);
-      } else {
-        pushToast('Gagal Memuat Data', err instanceof ApiError ? err.message : 'Coba lagi', 'error');
+        return null;
       }
-    } finally {
-      setLoading(false);
+      gagal.push(label);
+      return null;
+    };
+
+    const anV = nilai(an, 'analitik');
+    const ordV = nilai(ord, 'pesanan');
+    const b2bV = nilai(b2b, 'B2B');
+    const prodV = nilai(prod, 'produk');
+    const fullV = nilai(full, 'pengaturan');
+    const venV = nilai(ven, 'vendor');
+
+    if (anV) setAnalytics(anV);
+    if (ordV) setOrders(ordV.orders || []);
+    if (b2bV) setInquiries(b2bV.inquiries || []);
+    if (prodV) setProducts(prodV.products || []);
+    if (fullV?.settings) setDraftSettings(fullV.settings);
+    if (venV) setVendorOptions(venV.vendors || []);
+
+    if (gagal.length) {
+      pushToast(
+        'Sebagian Data Gagal Dimuat',
+        `${gagal.join(', ')} tidak bisa dimuat. Data lain tetap ditampilkan — tekan Refresh untuk mencoba lagi.`,
+        'error'
+      );
     }
+    setLoading(false);
   }, [authed, pushToast]);
 
   useEffect(() => {

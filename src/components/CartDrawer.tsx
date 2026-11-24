@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { formatRupiah, buildWhatsAppUrl } from '../data/products';
-import { resolveSelection } from '../lib/variantPricing';
+import { resolveSelection, unitPriceFor, isWholesalePrice } from '../lib/variantPricing';
 import { useBackClose } from '../hooks/useBackClose';
 
 export const CartDrawer: React.FC = () => {
@@ -65,13 +65,16 @@ export const CartDrawer: React.FC = () => {
   const handleCheckoutViaWA = () => {
     const lines = cart.map((item, i) => {
       // Produk multi-dimensi: harga dari pilihan, bukan `variant`.
-      const unitPrice = item.options
-        ? resolveSelection(item.product, item.options).price
-        : item.variant?.price ?? item.product.price;
-      const effectivePrice =
-        item.qty >= item.product.minWholesaleQty
-          ? Math.min(unitPrice, item.product.wholesalePrice)
-          : unitPrice;
+      const effectivePrice = unitPriceFor({
+        price: item.product.price,
+        wholesalePrice: item.product.wholesalePrice,
+        minWholesaleQty: item.product.minWholesaleQty,
+        variantPrice: item.variant?.price,
+        optionPrice: item.options
+          ? resolveSelection(item.product, item.options).price
+          : undefined,
+        qty: item.qty
+      });
       return `${i + 1}. ${item.product.name}${
         item.optionsLabel
           ? ` [${item.optionsLabel}]`
@@ -166,13 +169,26 @@ export const CartDrawer: React.FC = () => {
             </div>
           ) : (
             cart.map((item) => {
-              const unitPrice = item.options
-                ? resolveSelection(item.product, item.options).price
-                : item.variant?.price ?? item.product.price;
-              const isWholesale = item.qty >= item.product.minWholesaleQty;
-              const effectivePrice = isWholesale
-                ? Math.min(unitPrice, item.product.wholesalePrice)
-                : unitPrice;
+              const effectivePrice = unitPriceFor({
+                price: item.product.price,
+                wholesalePrice: item.product.wholesalePrice,
+                minWholesaleQty: item.product.minWholesaleQty,
+                variantPrice: item.variant?.price,
+                optionPrice: item.options
+                  ? resolveSelection(item.product, item.options).price
+                  : undefined,
+                qty: item.qty
+              });
+              const isWholesale = isWholesalePrice({
+                price: item.product.price,
+                wholesalePrice: item.product.wholesalePrice,
+                minWholesaleQty: item.product.minWholesaleQty,
+                variantPrice: item.variant?.price,
+                optionPrice: item.options
+                  ? resolveSelection(item.product, item.options).price
+                  : undefined,
+                qty: item.qty
+              });
 
               return (
                 <div

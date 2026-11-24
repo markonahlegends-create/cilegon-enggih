@@ -37,6 +37,75 @@ import type {
 export const MAX_OPTION_GROUPS = 4;
 export const MAX_OPTION_VALUES = 30;
 
+/**
+ * HARGA SATUAN YANG HARUS DITAGIH — satu rumus, satu tempat.
+ *
+ * KENAPA DIPUSATKAN (audit 24 Nov 2026)
+ * Sebelum ini rumus harga ditulis ulang di empat tempat dengan hasil berbeda
+ * untuk barang yang sama:
+ *
+ *   1. ProductDetailPage  → qty >= minWholesaleQty  (TANPA cek > 0)
+ *   2. CartDrawer         → idem, dan mengabaikan priceDelta pilihan
+ *   3. StoreContext       → mengabaikan priceDelta pilihan  ← sumber angka salah
+ *   4. server/core.js     → menghitung priceDelta, tapi tidak memakai `variants`
+ *
+ * Akibat nyata di produksi: keranjang menampilkan total yang berbeda dari yang
+ * ditagih server, dan produk yang dibuat lewat dashboard (min. grosir bawaan 0)
+ * tampil seolah harganya = harga grosir.
+ *
+ * ATURAN (urut, yang pertama menang):
+ *   1. produk berpilihan  → harga kombinasi, atau harga produk + Σ priceDelta
+ *   2. produk bervarian   → harga varian
+ *   3. selain itu         → harga produk
+ * lalu: bila qty ≥ minimal grosir (dan minimal memang diisi > 0) dan harga
+ * grosir lebih murah, pakai harga grosir.
+ */
+export interface PriceInput {
+  /** Harga produk dasar. */
+  price?: number;
+  /** Harga grosir; hanya berlaku bila `minWholesaleQty` > 0 dan lebih murah. */
+  wholesalePrice?: number;
+  minWholesaleQty?: number;
+  /** Harga varian terpilih (produk tanpa pilihan). */
+  variantPrice?: number;
+  /** Harga dari kombinasi/pilihan (produk dengan optionGroups). */
+  optionPrice?: number;
+  /** Jumlah yang dibeli. */
+  qty?: number;
+}
+
+export const unitPriceFor = ({
+  price = 0,
+  wholesalePrice = 0,
+  minWholesaleQty = 0,
+  variantPrice,
+  optionPrice,
+  qty = 1
+}: PriceInput): number => {
+  const base = Math.max(0, Number(price) || 0);
+  const raw = optionPrice ?? variantPrice ?? base;
+  const unit = Math.max(0, Number(raw) || 0);
+
+  const minQty = Number(minWholesaleQty) || 0;
+  const grosir = Number(wholesalePrice) || 0;
+  /*
+   * TIGA syarat, semuanya wajib:
+   *   - minimal grosir benar-benar diisi (> 0). Produk baru dibuat dengan
+   *     minWholesaleQty 0; tanpa syarat ini SETIAP pembelian 1 pcs dianggap
+   *     grosir dan harganya jatuh ke harga grosir.
+   *   - qty sudah mencapai minimal.
+   *   - harga grosir lebih murah (kalau lebih mahal, itu salah isi — jangan
+   *     sampai pembeli dirugikan).
+   */
+  if (minQty > 0 && Number(qty) >= minQty && grosir > 0 && grosir < unit) return grosir;
+  return unit;
+};
+
+/** Apakah pembelian ini sedang menikmati harga grosir? (untuk label UI) */
+export const isWholesalePrice = (input: PriceInput): boolean =>
+  unitPriceFor(input) <
+  Math.max(0, Number(input.optionPrice ?? input.variantPrice ?? input.price) || 0);
+
 export type SelectedOptions = Record<string, string>;
 
 /** Kunci stabil untuk keranjang: 'model=oversize|ukuran=xl|warna=navy'. */
