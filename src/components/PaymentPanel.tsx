@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   Clock,
   CreditCard,
+  ExternalLink,
   Loader2,
   RefreshCw,
   ShieldCheck,
@@ -345,6 +346,47 @@ export const PaymentPanel: React.FC<Props> = ({
               kode pembayaran baru.
             </span>
           </div>
+        )}
+
+        {/*
+          TAGIHAN LAMA DIPAKAI ULANG.
+
+          Pembeli yang menunda pembayaran lalu kembali beberapa jam kemudian
+          akan menerima tagihan yang SAMA — bukan kode baru. Ini disengaja:
+          kalau ia sudah menyimpan atau memotret QRIS, kode itu tetap berlaku.
+          Tanpa penjelasan, pembeli justru bingung melihat angka yang sama
+          dan mengira sistemnya tidak bekerja.
+        */}
+        {snap.tagihan?.reused && (
+          <div className="flex items-start gap-2 text-xs text-sky-800 bg-sky-50 border border-sky-200 rounded-xl p-3">
+            <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              Ini <strong>tagihan yang sama</strong> seperti sebelumnya. Kalau Anda sempat
+              menyimpan kode QRIS atau nomor Virtual Account, itu masih berlaku — tidak perlu
+              meminta kode baru.
+            </span>
+          </div>
+        )}
+
+        {/*
+          TAUTAN TAGIHAN — KUNCI UNTUK PEMBAYARAN YANG DITUNDA.
+
+          Popup Snap mudah tertutup dan tidak bisa dibuka kembali tanpa token
+          baru. Tautan ini membuka halaman pembayaran Midtrans dengan token
+          yang sedang berlaku, jadi pembeli bisa menyimpannya (bookmark /
+          WhatsApp ke diri sendiri) dan kembali kapan saja sebelum tagihan
+          kedaluwarsa — termasuk dari perangkat lain.
+        */}
+        {snap.tagihan?.redirectUrl && (
+          <a
+            href={snap.tagihan.redirectUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-2.5 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-700 text-xs font-bold inline-flex items-center justify-center gap-1.5"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            Buka Halaman Pembayaran (bisa disimpan)
+          </a>
         )}
 
         <button

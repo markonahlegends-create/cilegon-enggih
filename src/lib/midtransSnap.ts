@@ -99,6 +99,16 @@ const muatSnapScript = (src: string): Promise<void> =>
 export const useMidtransSnap = () => {
   const [sedangMenyiapkan, setSedangMenyiapkan] = useState(false);
   const [galat, setGalat] = useState('');
+  /*
+   * Rincian tagihan yang sedang dipakai. Disimpan supaya panel bisa
+   * menampilkan tautan tagihan (halaman Midtrans) dan tahu apakah ini
+   * tagihan lama yang dipakai ulang atau tagihan baru.
+   */
+  const [tagihan, setTagihan] = useState<{
+    redirectUrl: string | null;
+    reused: boolean;
+    expiresAt: string | null;
+  } | null>(null);
   /** Menyimpan callback yang menunggu popup ditutup, agar state React segar. */
   const selesaiRef = useRef<((outcome: SnapOutcome) => void) | null>(null);
 
@@ -128,6 +138,11 @@ export const useMidtransSnap = () => {
 
       try {
         const sesi = await createSnapToken(orderId);
+        setTagihan({
+          redirectUrl: sesi.redirectUrl || null,
+          reused: Boolean(sesi.reused),
+          expiresAt: sesi.expiresAt || null
+        });
         await muatSnapScript(sesi.snapScriptUrl);
 
         if (!window.snap) throw new Error('Midtrans tidak tersedia di peramban ini.');
@@ -161,5 +176,5 @@ export const useMidtransSnap = () => {
     []
   );
 
-  return { bayar, sedangMenyiapkan, galat, checkStatus: checkMidtransStatus };
+  return { bayar, sedangMenyiapkan, galat, tagihan, checkStatus: checkMidtransStatus };
 };
