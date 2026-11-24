@@ -996,20 +996,40 @@ route('GET', '/api/diagnose', async () => {
    * dengan "kunci belum diisi" — mudah tertukar.
    */
   const mt = midtransConfig();
+  const labelMode = mt.isProduction ? 'PRODUKSI' : 'SANDBOX';
+  const statusMidtrans = !mt.ready ? 'warn' : mt.isProduction ? 'ok' : 'warn';
+
+  let detailMidtrans;
+  if (!mt.ready) {
+    const kosong = [
+      !mt.serverKey ? 'MIDTRANS_SERVER_KEY' : null,
+      !mt.clientKey ? 'MIDTRANS_CLIENT_KEY' : null
+    ].filter(Boolean);
+    detailMidtrans = `belum aktif — ${kosong.join(' & ')} kosong`;
+  } else if (mt.konflik) {
+    /*
+     * Kejadian nyata: kunci produksi (Mid-*) dipasang, tetapi
+     * MIDTRANS_IS_PRODUCTION masih false. Mode sekarang DITEBAK dari kunci
+     * (lihat midtrans.js), jadi transaksi tetap jalan — tetapi flag yang
+     * salah harus dilaporkan, bukan didiamkan, karena kalau nanti kuncinya
+     * diganti orang lain, flag yang salah ini akan menyesatkan.
+     */
+    detailMidtrans = `aktif • mode ${labelMode} • MIDTRANS_IS_PRODUCTION tidak cocok dengan kunci`;
+  } else {
+    detailMidtrans =
+      `aktif • mode ${labelMode} • clientKey ${mt.clientKey.slice(0, 12)}…`;
+  }
+
   add(
     'midtrans',
     'Pembayaran otomatis (Midtrans)',
-    mt.ready ? (mt.isProduction ? 'ok' : 'warn') : 'warn',
-    mt.ready
-      ? mt.isProduction
-        ? `aktif • mode PRODUKSI • clientKey ${mt.clientKey.slice(0, 12)}…`
-        : `aktif • mode SANDBOX • clientKey ${mt.clientKey.slice(0, 12)}…`
-      : `belum aktif — ${!mt.serverKey ? 'MIDTRANS_SERVER_KEY kosong' : ''}${
-          !mt.serverKey && !mt.clientKey ? ' & ' : ''
-        }${!mt.clientKey ? 'MIDTRANS_CLIENT_KEY kosong' : ''}`,
-    mt.ready && !mt.isProduction
-      ? 'MIDTRANS_IS_PRODUCTION masih false — pembeli akan "berhasil bayar" tanpa uang masuk. Set true untuk uang sungguhan, lalu Redeploy.'
-      : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
+    statusMidtrans,
+    detailMidtrans,
+    mt.konflik
+      ? `Kunci Anda berpola ${mt.isProduction ? 'PRODUKSI' : 'SANDBOX'}, tetapi MIDTRANS_IS_PRODUCTION bernilai sebaliknya. Sistem mengikuti KUNCI (sudah benar), tapi rapikan: set MIDTRANS_IS_PRODUCTION=${mt.isProduction ? 'true' : 'false'} lalu Redeploy.`
+      : mt.ready && !mt.isProduction
+        ? 'Kunci Anda berpola SANDBOX (SB-*) — pembeli akan "berhasil bayar" tanpa uang masuk. Ganti ke kunci produksi (Mid-*) untuk uang sungguhan, lalu Redeploy.'
+        : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
   );
 
   // 4. Notifikasi Telegram (opsional, sangat disarankan)

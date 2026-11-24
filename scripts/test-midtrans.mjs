@@ -39,21 +39,52 @@ const nota = {
 };
 
 /* ---------- 1. Konfigurasi ---------- */
-cek('config: kosong = belum siap, sandbox', midtransConfig({}), {
-  serverKey: '',
-  clientKey: '',
-  isProduction: false,
-  base: 'https://app.sandbox.midtrans.com',
-  ready: false
-});
+const cfgKosong = midtransConfig({});
+cek('config: kosong = belum siap', cfgKosong.ready, false);
+cek('config: kosong = sandbox', [cfgKosong.isProduction, cfgKosong.base],
+  [false, 'https://app.sandbox.midtrans.com']);
+cek('config: kosong = tanpa konflik', cfgKosong.konflik, false);
 
-const cfgLengkap = midtransConfig({
-  MIDTRANS_SERVER_KEY: 'x',
-  MIDTRANS_CLIENT_KEY: 'y',
+/* --- Mode ditebak dari awalan kunci, dan KUNCI MENANG atas flag --- */
+const cfgProduksi = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'Mid-server-Produksi123',
+  MIDTRANS_CLIENT_KEY: 'Mid-client-Produksi123',
+  MIDTRANS_IS_PRODUCTION: 'false' // sengaja salah
+});
+cek(
+  'config: kunci Mid-* = PRODUKSI walau flag false',
+  [cfgProduksi.isProduction, cfgProduksi.base],
+  [true, 'https://app.midtrans.com']
+);
+cek('config: konflik flag dilaporkan', cfgProduksi.konflik, true);
+
+const cfgSandbox = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'SB-Mid-server-Sandbox123',
+  MIDTRANS_CLIENT_KEY: 'SB-Mid-client-Sandbox123',
+  MIDTRANS_IS_PRODUCTION: 'true' // sengaja salah
+});
+cek(
+  'config: kunci SB-* = SANDBOX walau flag true',
+  [cfgSandbox.isProduction, cfgSandbox.base],
+  [false, 'https://app.sandbox.midtrans.com']
+);
+cek('config: konflik arah sebaliknya juga dilaporkan', cfgSandbox.konflik, true);
+
+const cfgCocok = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'Mid-server-Produksi123',
+  MIDTRANS_CLIENT_KEY: 'Mid-client-Produksi123',
   MIDTRANS_IS_PRODUCTION: 'true'
 });
-cek('config: lengkap + produksi = siap', [cfgLengkap.ready, cfgLengkap.isProduction], [true, true]);
-cek('config: base produksi benar', cfgLengkap.base, 'https://app.midtrans.com');
+cek('config: flag cocok dengan kunci = tanpa konflik', cfgCocok.konflik, false);
+cek('config: lengkap + produksi = siap', cfgCocok.ready, true);
+
+const cfgTakBerpola = midtransConfig({
+  MIDTRANS_SERVER_KEY: 'aneh',
+  MIDTRANS_CLIENT_KEY: 'lain',
+  MIDTRANS_IS_PRODUCTION: 'true'
+});
+cek('config: kunci tak berpola -> ikut flag', cfgTakBerpola.isProduction, true);
+cek('config: kunci tak berpola -> bukan konflik', cfgTakBerpola.konflik, false);
 
 /* Hanya server key terisi -> TIDAK siap (mencegah tagihan dibuat tanpa clientKey) */
 cek(
