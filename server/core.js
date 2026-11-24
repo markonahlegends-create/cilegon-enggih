@@ -984,6 +984,34 @@ route('GET', '/api/diagnose', async () => {
     'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 082249879873.'
   );
 
+  /*
+   * 3b. Midtrans — pembayaran otomatis.
+   *
+   * Pemeriksaan ini HANYA melaporkan terisi/tidak dan mode sandbox/produksi.
+   * Nilai kuncinya tidak pernah dikembalikan, sehingga endpoint diagnosa tetap
+   * aman dibuka tanpa login (sudah begitu sejak awal untuk kenyamanan admin).
+   *
+   * Gunanya: memastikan env var benar-benar terbaca DI DALAM Vercel. Env yang
+   * baru diubah tidak berlaku pada deploy lama, dan gejalanya persis sama
+   * dengan "kunci belum diisi" — mudah tertukar.
+   */
+  const mt = midtransConfig();
+  add(
+    'midtrans',
+    'Pembayaran otomatis (Midtrans)',
+    mt.ready ? (mt.isProduction ? 'ok' : 'warn') : 'warn',
+    mt.ready
+      ? mt.isProduction
+        ? `aktif • mode PRODUKSI • clientKey ${mt.clientKey.slice(0, 12)}…`
+        : `aktif • mode SANDBOX • clientKey ${mt.clientKey.slice(0, 12)}…`
+      : `belum aktif — ${!mt.serverKey ? 'MIDTRANS_SERVER_KEY kosong' : ''}${
+          !mt.serverKey && !mt.clientKey ? ' & ' : ''
+        }${!mt.clientKey ? 'MIDTRANS_CLIENT_KEY kosong' : ''}`,
+    mt.ready && !mt.isProduction
+      ? 'MIDTRANS_IS_PRODUCTION masih false — pembeli akan "berhasil bayar" tanpa uang masuk. Set true untuk uang sungguhan, lalu Redeploy.'
+      : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
+  );
+
   // 4. Notifikasi Telegram (opsional, sangat disarankan)
   const tg = telegramConfig(settings);
   add(
@@ -4758,6 +4786,100 @@ route('GET', '/api/cron/digest', async ({ headers }) => {
     return bad(`Digest tidak terkirim: ${result.reason}`, 502);
   }
   return ok({ ok: true, sent: true });
+});
+
+/**
+ * GET /api/cron/midtrans-reconcile — jaring pengaman webhook.
+ *
+ * KENAPA PERLU
+ * Webhook bisa gagal masuk: Midtrans sedang gangguan, deploy baru sedang
+ * berjalan, atau ada galat sesaat di fungsi serverless. Kalau itu terjadi,
+ * pembeli sudah membayar tetapi pesanannya tetap "menunggu pembayaran" — dan
+ * pembeli akan menghubungi admin, persis beban manual yang ingin dihilangkan.
+ *
+ * Yang dikerjakan: ambil pesanan yang masih menunggu, tanyakan statusnya
+ * langsung ke Midtrans, lalu lunaskan yang ternyata sudah settlement.
+ * Tidak ada yang ditandai lunas tanpa bukti dari Midtrans sendiri.
+ *
+ * Hanya menyentuh pesanan berusia > 10 menit, supaya pembeli yang sedang
+ * membuka popup pembayaran tidak diganggu.
+ */
+route('GET', '/api/cron/midtrans-reconcile', async ({ headers }) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return bad('CRON_SECRET belum diisi di environment.', 503);
+
+  const provided = bearer(headers);
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(secret));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return bad('Tidak diizinkan.', 401);
+  }
+
+  const cfg = midtransConfig();
+  if (!cfg.ready) return bad('Midtrans belum dikonfigurasi.', 503);
+
+  const batas = Date.now() - 10 * 60 * 1000;
+  const semua = await readOrders();
+  const menunggu = semua.filter(
+    (o) =>
+      o.midtransOrderId &&
+      o.paymentStatus !== 'LUNAS' &&
+      o.status !== 'DIBATALKAN' &&
+      new Date(o.createdAt || 0).getTime() < batas
+  );
+
+  /* Dibatasi supaya satu eksekusi cron tidak menembak Midtrans puluhan kali. */
+  const diperiksa = menunggu.slice(0, 15);
+  const hasil = { diperiksa: diperiksa.length, dilunaskan: [], gagal: [] };
+
+  for (const order of diperiksa) {
+    try {
+      const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
+      if (!res.ok) continue;
+
+      const keputusan = mapTransactionStatus(res.data);
+      if (keputusan !== 'LUNAS') continue;
+
+      const gross = grossAmountToRupiah(res.data.gross_amount);
+      const seharusnya = Math.round(Number(order.totalAmount) || 0);
+      if (gross !== seharusnya) {
+        hasil.gagal.push({ orderId: order.orderId, alasan: 'nominal-tidak-cocok' });
+        continue;
+      }
+
+      const paid = await markOrderPaid(order, {
+        via: 'midtrans',
+        actor: 'midtrans:cron-reconcile',
+        verifiedAmount: gross
+      });
+      if (paid.ok && paid.changed) {
+        await store.put('orders', {
+          ...paid.order,
+          midtransTransactionStatus: res.data.transaction_status || null,
+          midtransPaymentType: res.data.payment_type || null
+        });
+        hasil.dilunaskan.push(order.orderId);
+
+        const settings = await readSettings();
+        if (telegramConfig(settings).notifyPaid !== false) {
+          await notifySafe(settings, templatePaid(paid.order));
+        }
+      }
+    } catch (err) {
+      console.error(`[midtrans] reconcile ${order.orderId} gagal:`, err.message);
+    }
+  }
+
+  if (hasil.dilunaskan.length) {
+    await recordAudit(store, {
+      action: 'pembayaran.lunas-via-reconcile',
+      actor: 'cron',
+      ip: clientIp(headers),
+      detail: hasil
+    });
+  }
+
+  return ok({ ok: true, ...hasil });
 });
 
 /** POST /api/admin/digest — kirim digest sekarang (untuk uji coba & preview). */
