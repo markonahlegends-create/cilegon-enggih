@@ -1128,7 +1128,17 @@ route('GET', '/api/diagnose', async () => {
     detailMidtrans = `aktif • mode ${labelMode} • MIDTRANS_IS_PRODUCTION tidak cocok dengan kunci`;
   } else {
     detailMidtrans =
-      `aktif • mode ${labelMode} • clientKey ${mt.clientKey.slice(0, 12)}…`;
+      `aktif • mode ${labelMode} • clientKey ${mt.clientKey.slice(0, 12)}…` +
+      /*
+       * KUNCI MANA YANG MENANDATANGANI NOTIFIKASI — disebut eksplisit.
+       *
+       * Ini pertanyaan yang menjawab 8 notifikasi yang ditolak: sejak
+       * 28 Oktober 2026 Midtrans menandatangani dengan Signature Secret Key,
+       * bukan Server Key. Kalau baris ini berbunyi "server-key", berarti
+       * MIDTRANS_SIGNATURE_SECRET_KEY masih kosong dan kemungkinan besar
+       * itulah sebab penolakan.
+       */
+      (mt.signatureKeyTerpisah ? ' • tanda tangan: signature-secret-key' : ' • tanda tangan: server-key');
   }
 
   add(
@@ -1141,6 +1151,27 @@ route('GET', '/api/diagnose', async () => {
       : mt.ready && !mt.isProduction
         ? 'Kunci Anda berpola SANDBOX (SB-*) — pembeli akan "berhasil bayar" tanpa uang masuk. Ganti ke kunci produksi (Mid-*) untuk uang sungguhan, lalu Redeploy.'
         : 'Vercel → Settings → Environment Variables: tambah MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY, MIDTRANS_IS_PRODUCTION=true untuk Production, lalu REDEPLOY. Env baru tidak berlaku pada deploy lama.'
+  );
+
+  /*
+   * 3b-2. Signature Secret Key — kunci KETIGA yang paling sering terlewat.
+   *
+   * Sejak 28 Oktober 2026 Midtrans memisahkan kunci untuk memverifikasi
+   * notifikasi dari Server Key. Merchant yang mendaftar sebelum tanggal itu
+   * memulai dengan kedua nilai identik, jadi kekurangan ini tidak terlihat
+   * sampai salah satu kunci dibuat ulang — lalu pembayaran masuk tetapi
+   * semua notifikasinya ditolak.
+   */
+  add(
+    'midtrans-signature-key',
+    'Kunci verifikasi notifikasi (Signature Secret Key)',
+    mt.signatureKeyTerpisah ? 'ok' : 'warn',
+    mt.signatureKeyTerpisah
+      ? 'terpasang terpisah dari Server Key'
+      : 'belum terpisah — verifikasi masih memakai Server Key',
+    mt.signatureKeyTerpisah
+      ? 'Tidak ada yang perlu diperbaiki.'
+      : 'Buka dashboard Midtrans → Settings → Access Keys → baris "Signature Secret Key", klik ikon mata untuk melihatnya, lalu simpan sebagai MIDTRANS_SIGNATURE_SECRET_KEY di Vercel (Production) dan REDEPLOY. Tanpa ini, selama Server Key dan Signature Secret Key masih bernilai sama tidak ada masalah — tetapi begitu salah satunya di-generate ulang, SEMUA notifikasi pembayaran akan ditolak (uang masuk, pesanan tidak pernah lunas).'
   );
 
   /*
@@ -2156,7 +2187,7 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
    *
    * Catatan privasi: nilai kunci TIDAK pernah dicatat, hanya ekornya.
    */
-  const sidik = sidikKunci(cfg.serverKey);
+  const sidik = sidikKunci(cfg.signatureKey);
   const catatNotifikasi = (action, detail, status = 'ok') =>
     recordAudit(store, {
       action,
@@ -2182,11 +2213,33 @@ route('POST', '/api/payments/midtrans/notification', async ({ body }) => {
          * menebak kunci.
          */
         sidikEkor: sidik?.ekor || null,
-        sidikPanjang: sidik?.panjang || null
+        sidikPanjang: sidik?.panjang || null,
+        /*
+         * Kunci mana yang dipakai memverifikasi. Bila "server-key", berarti
+         * MIDTRANS_SIGNATURE_SECRET_KEY masih kosong dan kita memakai
+         * perilaku lama — petunjuk pertama yang harus diperiksa.
+         */
+        kunciVerifikasi: cfg.signatureKeyTerpisah ? 'signature-secret-key' : 'server-key'
       }
     });
 
-  if (!verifySignature(payload, cfg.serverKey)) {
+  /*
+   * KUNCI UNTUK MEMVERIFIKASI ≠ KUNCI UNTUK API.
+   *
+   * Sejak 28 Oktober 2026 Midtrans menghitung signature_key dengan Signature
+   * Secret Key, bukan Server Key. Memakai Server Key untuk verifikasi adalah
+   * penyebab 8 notifikasi toko ini ditolak padahal pembayarannya sah.
+   *
+   * Kandidat diuji berurutan supaya tetap aman dalam dua keadaan:
+   *   - Signature Secret Key belum diisi  → jatuh ke Server Key (perilaku lama)
+   *   - baru saja "Regenerate"            → kunci lama masih diterima sebentar
+   * Kandidat tidak pernah dikirim ke UI atau dicatat; hanya statusnya.
+   */
+  const kandidatKunci = [cfg.signatureKey, cfg.signatureKeyLama, cfg.serverKey]
+    .map((k) => String(k || '').trim())
+    .filter((k, i, arr) => Boolean(k) && arr.indexOf(k) === i);
+
+  if (!verifySignature(payload, kandidatKunci)) {
     /*
      * DIAGNOSTIK TANDA TANGAN — urutan "kenapa cocok/tidak cocok".
      *
@@ -2591,6 +2644,10 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
      *
      * Hanya statusnya yang dilaporkan; tidak ada nilai kunci yang dikirim.
      */
+    const kandidatKunciUji = [cfg.signatureKey, cfg.signatureKeyLama, cfg.serverKey]
+      .map((k) => String(k || '').trim())
+      .filter((k, i, arr) => Boolean(k) && arr.indexOf(k) === i);
+
     const signatureUji = (() => {
       const data = res.data || {};
       if (!data.signature_key) return { tersedia: false, cocok: null };
@@ -2599,8 +2656,8 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params, query })
       }
       return {
         tersedia: true,
-        cocok: verifySignature(data, cfg.serverKey),
-        ekor: sidikKunci(cfg.serverKey)?.ekor || null
+        cocok: verifySignature(data, kandidatKunciUji),
+        ekor: sidikKunci(cfg.signatureKey)?.ekor || null
       };
     })();
 

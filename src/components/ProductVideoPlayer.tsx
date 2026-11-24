@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Play, X, Film } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Play, X, Film, Volume2, VolumeX } from 'lucide-react';
 import type { ProductVideo } from '../data/products';
 
 /**
@@ -37,15 +37,291 @@ export const toEmbedUrl = (video: ProductVideo): string | null => {
 };
 
 /**
- * Pemutar video produk.
+ * APAKAH AUTOPLAY BOLEH DIPAKAI DI PERANGKAT INI?
  *
- * Keputusan penting:
- *  - `preload="none"` + poster: pembeli berkuota kecil tidak dipaksa
- *    mengunduh 5 MB video yang mungkin tidak ditonton. Poster kecil yang
- *    tampil lebih dulu.
- *  - Video file baru dimuat setelah tombol play ditekan.
- *  - Embed memakai iframe lazy, bukan <video>.
- *  - Tidak ada video → komponen tidak dirender sama sekali (tidak ada ruang kosong).
+ * Browser modern MEMBLOKIR autoplay yang bersuara (kebijakan Chrome/Safari).
+ * Kalau kita paksa, hasilnya justru video yang diam membeku di frame pertama
+ * — terlihat seperti gambar rusak. Satu-satunya bentuk autoplay yang
+ * diizinkan secara universal adalah **senyap**.
+ *
+ * Jadi: autoplay selalu `muted`. Suara hanya aktif bila pembeli menekan
+ * tombol speaker. Ini bukan kekurangan — video produk di Shopee/Tokopedia
+ * juga berjalan tanpa suara sampai ditekan.
+ */
+const AUTOPLAY_SENYAP = true;
+
+interface GaleriVideoProps {
+  videos?: ProductVideo[];
+  /** Dipanggil saat pembeli menekan tombol play besar (mode normal). */
+  onOpen?: (video: ProductVideo) => void;
+  /**
+   * true = berjalan sendiri di dalam galeri (layar pertama, menarik perhatian).
+   * false = hanya poster + tombol play (dipakai di tempat lain).
+   */
+  autoplay?: boolean;
+  className?: string;
+  /** Poster pengganti bila video tidak punya poster sendiri (mis. embed). */
+  fallbackPoster?: string;
+}
+
+/**
+ * Video produk untuk GALERI PRODUK.
+ *
+ * KENAPA DIPISAH DARI `ProductVideoPlayer`
+ * Versi lama hanya menampilkan poster + tombol play, dan diletakkan jauh di
+ * bawah halaman (setelah tabel spesifikasi). Pembeli tidak pernah melihatnya,
+ * apalagi terpancing menonton — padahal video produk adalah hal pertama yang
+ * membuat orang berhenti menggulir.
+ *
+ * Komponen ini dipakai di area galeri (layar pertama):
+ *   - video file  → autoplay SENYAP, loop, playsInline (tidak membuka
+ *     pemutar layar penuh di iPhone saat halaman dimuat)
+ *   - video embed (YouTube/TikTok/IG) → tidak bisa autoplay tanpa iframe
+ *     yang berat, jadi poster + tombol play; iframe baru dimuat setelah
+ *     ditekan supaya halaman tetap ringan
+ *   - `prefers-reduced-motion` → TIDAK autoplay (aksesibilitas)
+ *   - hemat data: tidak memuat berkas video penuh lebih awal, hanya metadata
+ *     dan poster; kalau koneksi lambat poster yang tampil lebih dulu
+ */
+export const GaleriVideo: React.FC<GaleriVideoProps> = ({
+  videos,
+  onOpen,
+  autoplay = false,
+  className = '',
+  fallbackPoster
+}) => {
+  const list = useMemo(
+    () => (Array.isArray(videos) ? videos.filter((v) => v && v.url) : []),
+    [videos]
+  );
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [suaraAktif, setSuaraAktif] = useState(false);
+  const [sedangJalan, setSedangJalan] = useState(false);
+  const [gagal, setGagal] = useState(false);
+  const [embedDibuka, setEmbedDibuka] = useState(false);
+  const [kurangiGerak, setKurangiGerak] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setKurangiGerak(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setKurangiGerak(e.matches);
+    mq.addEventListener?.('change', onChange);
+    return () => mq.removeEventListener?.('change', onChange);
+  }, []);
+
+  const aktif = list[0];
+  const embedUrl = aktif && aktif.source === 'embed' ? toEmbedUrl(aktif) : null;
+
+  /*
+   * Jangan pernah memaksa putar bila:
+   *   - pembeli meminta animasi dikurangi (aksesibilitas),
+   *   - tab sedang tidak terlihat (hemat baterai & kuota),
+   *   - video ternyata gagal dimuat (biarkan poster yang tampil).
+   */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !autoplay || aktif?.source !== 'file' || kurangiGerak || gagal) return;
+
+    let dibatalkan = false;
+    const coba = async () => {
+      try {
+        v.muted = true;
+        await v.play();
+        if (!dibatalkan) setSedangJalan(true);
+      } catch {
+        /*
+         * Autoplay ditolak (kebijakan browser, mode hemat daya, iOS Low Power
+         * Mode). BUKAN error: poster + tombol play tetap ada, dan pembeli bisa
+         * menekannya. Jangan tampilkan pesan apa pun.
+         */
+        if (!dibatalkan) setSedangJalan(false);
+      }
+    };
+
+    /* Hanya saat benar-benar terlihat — menghemat kuota pembeli. */
+    if (typeof IntersectionObserver === 'undefined') {
+      void coba();
+      return () => {
+        dibatalkan = true;
+      };
+    }
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) void coba();
+          else v.pause();
+        }
+      },
+      { threshold: 0.35 }
+    );
+    io.observe(v);
+
+    const onVisibility = () => {
+      if (document.hidden) v.pause();
+      else void coba();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      dibatalkan = true;
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [autoplay, aktif?.url, aktif?.source, kurangiGerak, gagal]);
+
+  if (!list.length || !aktif) return null;
+
+  /* Video dari tautan yang tidak dikenali: jangan tampilkan kotak kosong. */
+  if (aktif.source === 'embed' && !embedUrl) return null;
+
+  const poster = aktif.poster || fallbackPoster || '';
+
+  const toggleSuara = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    const jadi = !suaraAktif;
+    v.muted = !jadi;
+    setSuaraAktif(jadi);
+    /* Menyalakan suara WAJIB disertai pemutaran — kalau tidak, hasilnya diam. */
+    void v.play().catch(() => null);
+  };
+
+  /* ------------------------- EMBED (YouTube/TikTok) ------------------------ */
+  if (aktif.source === 'embed') {
+    return (
+      <div className={`relative h-full w-full bg-slate-900 ${className}`}>
+        {embedDibuka && embedUrl ? (
+          <>
+            <iframe
+              src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+              title={aktif.title || 'Video produk'}
+              className="h-full w-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+            <button
+              type="button"
+              onClick={() => setEmbedDibuka(false)}
+              className="absolute right-2 top-2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
+              aria-label="Tutup video"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setEmbedDibuka(true)}
+            className="group relative flex h-full w-full items-center justify-center"
+            aria-label="Putar video produk"
+          >
+            {poster ? (
+              <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            ) : (
+              <span className="absolute inset-0 bg-gradient-to-br from-navy-800 to-forest-700" />
+            )}
+            <span className="absolute inset-0 bg-navy-900/25" />
+            <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-105 group-hover:bg-white">
+              <Play className="ml-0.5 h-5 w-5 text-navy-800" fill="currentColor" />
+            </span>
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  /* ----------------------------- FILE (mp4/webm) --------------------------- */
+  const tampilkanPosterSaja = !autoplay || kurangiGerak || gagal;
+
+  return (
+    <div className={`relative h-full w-full bg-slate-900 ${className}`}>
+      {tampilkanPosterSaja ? (
+        <button
+          type="button"
+          onClick={() => (onOpen ? onOpen(aktif) : setGagal(false))}
+          className="group relative flex h-full w-full items-center justify-center"
+          aria-label="Putar video produk"
+        >
+          {poster ? (
+            <img src={poster} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <span className="absolute inset-0 bg-gradient-to-br from-navy-800 to-forest-700" />
+          )}
+          <span className="absolute inset-0 bg-navy-900/20" />
+          <span className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform group-hover:scale-105 group-hover:bg-white">
+            <Play className="ml-0.5 h-5 w-5 text-navy-800" fill="currentColor" />
+          </span>
+        </button>
+      ) : (
+        <>
+          <video
+            ref={videoRef}
+            src={aktif.url}
+            poster={poster || undefined}
+            /*
+             * muted + playsInline adalah SYARAT autoplay di iOS & Chrome
+             * Android. Tanpa playsInline, iPhone membuka pemutar layar penuh
+             * sendiri saat halaman dimuat.
+             */
+            muted
+            loop
+            playsInline
+            preload="metadata"
+            onPlaying={() => setSedangJalan(true)}
+            onError={() => setGagal(true)}
+            className="h-full w-full object-cover"
+            aria-label={aktif.title || 'Video produk'}
+          />
+
+          {/* Kontrol kecil: tidak menutupi produk, tapi selalu bisa dijangkau. */}
+          <div className="absolute bottom-2 right-2 z-10 flex gap-1.5">
+            <button
+              type="button"
+              onClick={toggleSuara}
+              className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
+              aria-label={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
+              title={suaraAktif ? 'Matikan suara' : 'Nyalakan suara'}
+            >
+              {suaraAktif ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+            </button>
+            {onOpen && (
+              <button
+                type="button"
+                onClick={() => onOpen(aktif)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur-sm hover:bg-black/75"
+                aria-label="Perbesar video"
+                title="Perbesar video"
+              >
+                <Play className="h-4 w-4" fill="currentColor" />
+              </button>
+            )}
+          </div>
+
+          {/* Penanda bahwa ini video, bukan foto diam. */}
+          <span className="pointer-events-none absolute top-2 left-2 z-10 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-bold text-white backdrop-blur-sm">
+            <Film className="h-3 w-3" /> Video
+          </span>
+
+          {!sedangJalan && (
+            <span className="pointer-events-none absolute inset-x-0 bottom-12 z-10 text-center text-[10px] text-white/80">
+              Menyiapkan video…
+            </span>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+/**
+ * Pemutar video produk (versi lengkap, untuk bagian bawah halaman).
+ *
+ * Tetap dipertahankan untuk produk yang punya LEBIH DARI SATU video: di sini
+ * pembeli bisa memilih video mana yang ditonton. Untuk satu video, galeri di
+ * atas sudah cukup — jadi komponen ini tidak perlu lagi ditampilkan.
  */
 export const ProductVideoPlayer: React.FC<{ videos?: ProductVideo[] }> = ({ videos }) => {
   const list = useMemo(

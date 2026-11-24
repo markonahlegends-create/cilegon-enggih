@@ -18,6 +18,7 @@ import {
   Building2,
   CreditCard,
   ArrowLeft,
+  Play,
   X
 } from 'lucide-react';
 import {
@@ -36,7 +37,7 @@ import {
 } from '../lib/variantPricing';
 import { useStore } from '../context/StoreContext';
 import { ShippingCalculator } from '../components/ShippingCalculator';
-import ProductVideoPlayer from '../components/ProductVideoPlayer';
+import ProductVideoPlayer, { GaleriVideo } from '../components/ProductVideoPlayer';
 import { ProductCard } from '../components/ProductCard';
 import { useBackClose } from '../hooks/useBackClose';
 
@@ -67,6 +68,18 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
     product?.variants?.[0]
   );
   const [activeImage, setActiveImage] = useState(product?.image);
+  /*
+   * TAMPILKAN VIDEO DI GALERI, BUKAN DI BAWAH HALAMAN.
+   *
+   * Sebelumnya video diletakkan setelah tabel spesifikasi — pembeli harus
+   * menggulir jauh dan tidak pernah menyadarinya. Video produk adalah hal
+   * pertama yang membuat orang berhenti menggulir, jadi tempatnya di layar
+   * pertama, di dalam galeri.
+   *
+   * Video tetap bisa dikembalikan ke foto kapan saja (tombol "Lihat foto").
+   */
+  const [modeGaleri, setModeGaleri] = useState<'foto' | 'video'>('foto');
+  const videoGaleri = product?.videos?.find((v) => v && v.url) || null;
   const [qty, setQty] = useState(1);
   const [note, setNote] = useState('');
   const [activeTab, setActiveTab] = useState<'deskripsi' | 'spesifikasi' | 'ulasan'>('deskripsi');
@@ -282,11 +295,40 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             {/* Thumbnail vertikal (desktop) — gaya Tokopedia */}
             {gallery.length > 1 && (
               <div className="hidden lg:flex flex-col gap-2 max-h-[430px] overflow-y-auto pr-0.5 shrink-0">
+                {videoGaleri && (
+                  <button
+                    type="button"
+                    onClick={() => setModeGaleri('video')}
+                    aria-label="Putar video produk"
+                    title="Video produk"
+                    className={`relative w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
+                      modeGaleri === 'video'
+                        ? 'border-forest-600 ring-1 ring-forest-600/30'
+                        : 'border-slate-200 opacity-70 hover:opacity-100'
+                    }`}
+                  >
+                    {videoGaleri.poster || gallery[0] ? (
+                      <img
+                        src={videoGaleri.poster || gallery[0]}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="absolute inset-0 bg-gradient-to-br from-navy-800 to-forest-700" />
+                    )}
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Play className="w-4 h-4 text-white" fill="currentColor" />
+                    </span>
+                  </button>
+                )}
                 {gallery.map((img, idx) => (
                   <button
                     key={`${img}-${idx}`}
                     type="button"
-                    onClick={() => setActiveImage(img)}
+                    onClick={() => {
+                      setActiveImage(img);
+                      setModeGaleri('foto');
+                    }}
                     aria-label={`Gambar ${idx + 1}`}
                     className={`w-14 h-14 rounded-lg overflow-hidden border-2 shrink-0 transition-all ${
                       activeImage === img
@@ -307,18 +349,33 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                 Di desktop tetap persegi penuh.
               */}
               <div className="h-[260px] lg:h-auto lg:aspect-square rounded-xl overflow-hidden bg-white border border-slate-200 relative group">
-                <button
-                  type="button"
-                  onClick={() => setLightboxIndex(Math.max(0, gallery.indexOf(activeImage || gallery[0])))}
-                  className="w-full h-full block cursor-zoom-in"
-                  aria-label="Perbesar gambar"
-                >
-                  <img
-                    src={activeImage}
-                    alt={product.name}
-                    className="w-full h-full object-cover"
+                {modeGaleri === 'video' && videoGaleri ? (
+                  /*
+                   * Video berjalan SENYAP dan berulang di dalam galeri supaya
+                   * pembeli langsung melihat produk bergerak tanpa harus
+                   * menekan apa pun. Suara hanya aktif bila ia menekannya —
+                   * itu satu-satunya bentuk autoplay yang diizinkan browser.
+                   */
+                  <GaleriVideo
+                    videos={product.videos}
+                    autoplay
+                    fallbackPoster={activeImage || gallery[0]}
+                    className="h-full w-full"
                   />
-                </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setLightboxIndex(Math.max(0, gallery.indexOf(activeImage || gallery[0])))}
+                    className="w-full h-full block cursor-zoom-in"
+                    aria-label="Perbesar gambar"
+                  >
+                    <img
+                      src={activeImage}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+                )}
                 <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 pointer-events-none">
                   {product.badges.map((b, i) => (
                     <span
@@ -334,10 +391,24 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
                     </span>
                   )}
                 </div>
-                {gallery.length > 1 && (
+                {modeGaleri === 'foto' && gallery.length > 1 && (
                   <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-navy-950/70 text-white text-[10.5px] font-bold">
                     {Math.max(1, gallery.indexOf(activeImage || gallery[0]) + 1)}/{gallery.length}
                   </span>
+                )}
+
+                {/*
+                  Tombol kembali ke foto. Tanpa ini, pembeli yang ingin melihat
+                  detail produk diam-diam terjebak menonton video berulang.
+                */}
+                {modeGaleri === 'video' && videoGaleri && (
+                  <button
+                    type="button"
+                    onClick={() => setModeGaleri('foto')}
+                    className="absolute top-2 right-2 z-10 rounded-lg bg-black/60 px-2.5 py-1 text-[10.5px] font-bold text-white backdrop-blur-sm hover:bg-black/80"
+                  >
+                    Lihat foto
+                  </button>
                 )}
               </div>
             </div>
@@ -346,11 +417,37 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
           {/* Thumbnail horizontal (mobile) */}
           {gallery.length > 1 && (
             <div className="lg:hidden flex gap-2 overflow-x-auto pb-1">
+              {videoGaleri && (
+                <button
+                  type="button"
+                  onClick={() => setModeGaleri('video')}
+                  aria-label="Putar video produk"
+                  className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 ${
+                    modeGaleri === 'video' ? 'border-forest-600' : 'border-slate-200 opacity-75'
+                  }`}
+                >
+                  {videoGaleri.poster || gallery[0] ? (
+                    <img
+                      src={videoGaleri.poster || gallery[0]}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="absolute inset-0 bg-gradient-to-br from-navy-800 to-forest-700" />
+                  )}
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                    <Play className="w-4 h-4 text-white" fill="currentColor" />
+                  </span>
+                </button>
+              )}
               {gallery.map((img, idx) => (
                 <button
                   key={`m-${img}-${idx}`}
                   type="button"
-                  onClick={() => setActiveImage(img)}
+                  onClick={() => {
+                    setActiveImage(img);
+                    setModeGaleri('foto');
+                  }}
                   className={`w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 ${
                     activeImage === img ? 'border-forest-600' : 'border-slate-200 opacity-75'
                   }`}
@@ -648,7 +745,13 @@ const ProductDetailView: React.FC<{ product: Product }> = ({ product }) => {
             foto, sebelum membaca deskripsi. Komponen mengembalikan null bila
             produk tidak punya video, jadi tidak ada ruang kosong.
           */}
-          {product.videos && product.videos.length > 0 && (
+          {/*
+            Hanya untuk produk dengan LEBIH DARI SATU video.
+            Satu video sudah tampil di galeri (layar pertama) dengan autoplay
+            senyap — menampilkannya lagi di sini hanya mendorong deskripsi
+            produk ke bawah tanpa menambah informasi.
+          */}
+          {product.videos && product.videos.filter((v) => v && v.url).length > 1 && (
             <div className="bg-white rounded-2xl border border-slate-200 p-3">
               <ProductVideoPlayer videos={product.videos} />
             </div>
