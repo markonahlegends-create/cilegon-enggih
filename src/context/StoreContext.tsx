@@ -103,7 +103,7 @@ const FALLBACK_SETTINGS: StoreSettings = {
   originPostal: STORE_INFO.originPostal,
   email: STORE_EMAIL,
   whatsapp: WHATSAPP_NUMBER,
-  whatsappDisplay: '0819-2715-7103',
+  whatsappDisplay: '+62 822-4987-9873',
   openHours: STORE_INFO.openHours,
   mapsUrl: STORE_INFO.mapsUrl,
   instagram: 'https://instagram.com/cilegonenggih',

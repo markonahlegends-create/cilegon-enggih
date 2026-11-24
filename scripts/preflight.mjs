@@ -192,7 +192,7 @@ const distJs = fs.existsSync(path.join(root, 'dist/assets'))
       .map((f) => fs.readFileSync(path.join(root, 'dist/assets', f), 'utf-8'))
       .join('\n')
   : '';
-if (distJs.includes('6281927157103')) pass('WhatsApp resmi', '0819-2715-7103 ter-bundle');
+if (distJs.includes('6282249879873')) pass('WhatsApp resmi', '+62 822-4987-9873 ter-bundle');
 else fail('WhatsApp resmi', 'nomor tidak ditemukan di bundle');
 if (distJs.includes('fadil-labs.vercel.app')) pass('kredit developer', 'Fadil Labs ter-bundle');
 else fail('kredit developer', 'link Fadil Labs tidak ditemukan');

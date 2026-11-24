@@ -14,8 +14,8 @@ export const STORE = {
   originDistrict: 'Kec. Cibeber',
   originPostal: '42425',
   email: 'cilegonenggih@gmail.com',
-  whatsapp: '6281927157103',
-  whatsappDisplay: '0819-2715-7103',
+  whatsapp: '6282249879873',
+  whatsappDisplay: '+62 822-4987-9873',
   domain: process.env.STORE_DOMAIN || 'cilegon-enggih.vercel.app',
   instagram: 'https://instagram.com/cilegonenggih',
   mapsUrl: 'https://maps.google.com/?q=Karang+Asem+Cibeber+Kota+Cilegon',
@@ -62,6 +62,10 @@ export const DEFAULT_BANKS = [
   {
     id: 'dana',
     bank: 'DANA (E-Wallet)',
+    // SENGAJA TIDAK diganti saat nomor WhatsApp toko berubah.
+    // Nomor ini adalah tujuan transfer uang pembeli, bukan nomor kontak.
+    // Mengubahnya tanpa memindahkan akun DANA = uang pembeli masuk ke
+    // nomor yang salah. Ganti hanya bersama pemilik akun DANA-nya.
     accountNumber: '081927157103',
     accountHolder: 'Cilegon Enggih',
     color: '#118EEA',

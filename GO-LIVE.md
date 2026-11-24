@@ -49,7 +49,7 @@ Sebelum menyentuh cloud, pastikan hal-hal ini sudah disiapkan pemilik toko (buka
 
 - [ ] **Nomor rekening asli** 3–5 bank (BCA/Mandiri/BRI/SeaBank/DANA) — a.n. pemilik, bukan placeholder.
 - [ ] **Gambar QRIS resmi** dari bank/aplikasi merchant (PNG/JPG, minimal 600×600 px) + **NMID**.
-- [ ] **Nomor WhatsApp bisnis** aktif & sudah terpasang di HP admin: `081927157103`.
+- [ ] **Nomor WhatsApp bisnis** aktif & sudah terpasang di HP admin: `082249879873`.
 - [ ] **Email resmi**: `cilegonenggih@gmail.com`.
 - [ ] **Alamat lengkap & kode pos**: `Link. Jerang Barat RT. 004/001 Kel. Karang Asem Kec. Cibeber Kota Cilegon - Banten 42425`.
 - [ ] **Domain** (opsional tapi sangat disarankan): mis. `cilegonenggih.com`.
@@ -310,7 +310,7 @@ Login di `https://domain-anda.com/admin` → **admin** + `ADMIN_PASSWORD`.
 ### E1. Tab **Pengaturan** → Identitas & Kontak
 
 - [ ] Nama toko, badan usaha (`CV Cilegon Enggih Kreatif`), tagline.
-- [ ] Email `cilegonenggih@gmail.com`, WhatsApp `6281927157103`, tampilan `0819-2715-7103`.
+- [ ] Email `cilegonenggih@gmail.com`, WhatsApp `6282249879873`, tampilan `+62 822-4987-9873`.
 - [ ] Jam operasional `Senin – Minggu: 08.30 – 20.30 WIB`.
 - [ ] Alamat lengkap (harus sama persis dengan yang dipakai kurir):
       `Link. Jerang Barat RT. 004/001 Kel. Karang Asem Kec. Cibeber Kota Cilegon - Banten 42425`

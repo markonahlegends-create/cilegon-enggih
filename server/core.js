@@ -950,9 +950,9 @@ route('GET', '/api/diagnose', async () => {
   add(
     'contact',
     'Kontak & alamat resmi',
-    /Karang Asem/.test(settings.address) && settings.whatsapp === '6281927157103' ? 'ok' : 'warn',
+    /Karang Asem/.test(settings.address) && settings.whatsapp === '6282249879873' ? 'ok' : 'warn',
     `${settings.whatsappDisplay} • ${settings.email}`,
-    'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 081927157103.'
+    'Pengaturan → Identitas: pastikan alamat Karang Asem & WhatsApp 082249879873.'
   );
 
   // 4. Notifikasi Telegram (opsional, sangat disarankan)

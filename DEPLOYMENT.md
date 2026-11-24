@@ -257,7 +257,7 @@ Lihat `.env.example`. Ringkasnya:
 - [ ] `ADMIN_PASSWORD` & `ADMIN_TOKEN_SECRET` sudah diganti.
 - [ ] Rekening bank placeholder (BCA/Mandiri/BRI/SeaBank/DANA) diganti nomor asli di `/admin → Pengaturan`.
 - [ ] QRIS resmi: unggah gambar ke `public/`, isi `qris.staticImageUrl`, atau set mode statis + NMID asli.
-- [ ] Alamat & nomor WhatsApp benar (`Karang Asem, Cibeber, Kota Cilegon 42425`, `0819-2715-7103`).
+- [ ] Alamat & nomor WhatsApp benar (`Karang Asem, Cibeber, Kota Cilegon 42425`, `+62 822-4987-9873`).
 - [ ] Voucher promo disesuaikan.
 - [ ] Uji 1 order end-to-end (buat → verifikasi → input resi → lacak → cetak label).
 - [ ] Backup JSON berkala via tombol **Backup** di dashboard (atau `pg_dump` Supabase).

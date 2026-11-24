@@ -54,7 +54,7 @@ Ketentuan:
 
 ### 1.3 Nomor WhatsApp bisnis 🔴
 
-- Pastikan `081927157103` aktif di HP yang akan dipakai admin.
+- Pastikan `082249879873` aktif di HP yang akan dipakai admin.
 - Disarankan pakai **WhatsApp Business** (gratis): pasang nama usaha, alamat, jam buka, katalog.
 - Nomor ini dipakai untuk: tombol chat pembeli, konfirmasi transfer, dan notifikasi resi.
 
@@ -175,7 +175,7 @@ Buka `https://domain-anda.com/admin` → username `admin` + `ADMIN_PASSWORD` dar
 ### 4.1 Tab Pengaturan → identitas
 
 - [ ] Nama toko, badan usaha, tagline.
-- [ ] Email `cilegonenggih@gmail.com`, WhatsApp `6281927157103`, tampilan `0819-2715-7103`.
+- [ ] Email `cilegonenggih@gmail.com`, WhatsApp `6282249879873`, tampilan `+62 822-4987-9873`.
 - [ ] Jam operasional.
 - [ ] Alamat **persis**: `Link. Jerang Barat RT. 004/001 Kel. Karang Asem Kec. Cibeber Kota Cilegon - Banten 42425`
 - [ ] Origin: `Kec. Cibeber` / `Kota Cilegon` / `42425`.
@@ -387,7 +387,7 @@ Jangan pernah mengirim: password admin, `service_role` key, password database, a
 ```
 [ ] Rekening asli 2–5 buah siap
 [ ] Gambar QRIS (< 300 KB) + NMID
-[ ] WhatsApp 081927157103 aktif
+[ ] WhatsApp 082249879873 aktif
 [ ] Password admin kuat dibuat
 [ ] Supabase project dibuat → supabase-schema.sql dijalankan
 [ ] Vercel import repo → 4 env vars dipasang → Deploy
