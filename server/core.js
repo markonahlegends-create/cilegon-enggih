@@ -1877,8 +1877,93 @@ route('GET', '/api/payments/midtrans/status/:orderId', async ({ params }) => {
     return ok({ orderId: order.orderId, paymentStatus: order.paymentStatus, gateway: null });
   }
 
+  /*
+   * JARING PENGAMAN WEBHOOK — sekaligus penambal, bukan sekadar pelapor.
+   *
+   * Skenario yang ditangani: webhook gagal masuk (Midtrans gangguan, deploy
+   * baru sedang berjalan, galat sesaat di serverless). Pembeli sudah membayar
+   * tetapi pesanan tetap "menunggu pembayaran", dan pembeli akan menghubungi
+   * admin — persis beban manual yang ingin dihilangkan.
+   *
+   * Kenapa di sini, bukan lewat cron: plan Vercel Hobby hanya mengizinkan
+   * 2 cron dan minimal sekali sehari (cron tiap 15 menit membuat deploy
+   * GAGAL). Endpoint ini dipanggil justru saat paling dibutuhkan — ketika
+   * pembeli menekan "Saya Sudah Bayar — Periksa Status".
+   *
+   * Kalau Midtrans menyatakan settlement, pesanan DILUNASKAN di sini juga.
+   * Tidak ada cron yang perlu diandalkan.
+   */
   try {
     const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
+    const keputusan = res.ok ? mapTransactionStatus(res.data) : 'TUNGGU';
+
+    if (keputusan === 'LUNAS' && order.paymentStatus !== 'LUNAS') {
+      const gross = grossAmountToRupiah(res.data.gross_amount);
+      const seharusnya = Math.round(Number(order.totalAmount) || 0);
+
+      if (gross !== seharusnya) {
+        /*
+         * Tanda tangan dan status sudah sah, tetapi nominalnya beda. Jangan
+         * pernah melunaskan: ini persis kasus "pesanan Rp 300.000 dibayar
+         * Rp 1.000" yang harus ditolak.
+         */
+        console.error(
+          `[midtrans] status LUNAS tapi nominal tidak cocok untuk ${order.orderId}: ${gross} vs ${seharusnya}`
+        );
+        await recordAudit(store, {
+          action: 'pembayaran.nominal-tidak-cocok',
+          actor: 'midtrans',
+          ip: 'midtrans',
+          target: order.orderId,
+          detail: { dibayar: gross, seharusnya }
+        });
+        return ok({
+          orderId: order.orderId,
+          paymentStatus: order.paymentStatus,
+          nominalTidakCocok: true,
+          gateway: { ok: res.ok, transactionStatus: res.data?.transaction_status || null }
+        });
+      }
+
+      const paid = await markOrderPaid(order, {
+        via: 'midtrans',
+        actor: 'midtrans:status-check',
+        verifiedAmount: gross
+      });
+
+      if (paid.ok && paid.changed) {
+        const final = {
+          ...paid.order,
+          midtransTransactionStatus: res.data?.transaction_status || null,
+          midtransPaymentType: res.data?.payment_type || null
+        };
+        await store.put('orders', final);
+
+        const settings = await readSettings();
+        if (telegramConfig(settings).notifyPaid !== false) {
+          await notifySafe(settings, templatePaid(final));
+        }
+        await recordAudit(store, {
+          action: 'pembayaran.lunas-via-status-check',
+          actor: 'midtrans',
+          ip: 'midtrans',
+          target: order.orderId,
+          detail: { nominal: gross }
+        });
+
+        return ok({
+          orderId: order.orderId,
+          paymentStatus: 'LUNAS',
+          gateway: {
+            ok: res.ok,
+            transactionStatus: res.data?.transaction_status || null,
+            fraudStatus: res.data?.fraud_status || null,
+            paymentType: res.data?.payment_type || null
+          }
+        });
+      }
+    }
+
     return ok({
       orderId: order.orderId,
       paymentStatus: order.paymentStatus,
@@ -4786,100 +4871,6 @@ route('GET', '/api/cron/digest', async ({ headers }) => {
     return bad(`Digest tidak terkirim: ${result.reason}`, 502);
   }
   return ok({ ok: true, sent: true });
-});
-
-/**
- * GET /api/cron/midtrans-reconcile — jaring pengaman webhook.
- *
- * KENAPA PERLU
- * Webhook bisa gagal masuk: Midtrans sedang gangguan, deploy baru sedang
- * berjalan, atau ada galat sesaat di fungsi serverless. Kalau itu terjadi,
- * pembeli sudah membayar tetapi pesanannya tetap "menunggu pembayaran" — dan
- * pembeli akan menghubungi admin, persis beban manual yang ingin dihilangkan.
- *
- * Yang dikerjakan: ambil pesanan yang masih menunggu, tanyakan statusnya
- * langsung ke Midtrans, lalu lunaskan yang ternyata sudah settlement.
- * Tidak ada yang ditandai lunas tanpa bukti dari Midtrans sendiri.
- *
- * Hanya menyentuh pesanan berusia > 10 menit, supaya pembeli yang sedang
- * membuka popup pembayaran tidak diganggu.
- */
-route('GET', '/api/cron/midtrans-reconcile', async ({ headers }) => {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return bad('CRON_SECRET belum diisi di environment.', 503);
-
-  const provided = bearer(headers);
-  const a = Buffer.from(String(provided));
-  const b = Buffer.from(String(secret));
-  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
-    return bad('Tidak diizinkan.', 401);
-  }
-
-  const cfg = midtransConfig();
-  if (!cfg.ready) return bad('Midtrans belum dikonfigurasi.', 503);
-
-  const batas = Date.now() - 10 * 60 * 1000;
-  const semua = await readOrders();
-  const menunggu = semua.filter(
-    (o) =>
-      o.midtransOrderId &&
-      o.paymentStatus !== 'LUNAS' &&
-      o.status !== 'DIBATALKAN' &&
-      new Date(o.createdAt || 0).getTime() < batas
-  );
-
-  /* Dibatasi supaya satu eksekusi cron tidak menembak Midtrans puluhan kali. */
-  const diperiksa = menunggu.slice(0, 15);
-  const hasil = { diperiksa: diperiksa.length, dilunaskan: [], gagal: [] };
-
-  for (const order of diperiksa) {
-    try {
-      const res = await fetchTransactionStatus(order.midtransOrderId, cfg);
-      if (!res.ok) continue;
-
-      const keputusan = mapTransactionStatus(res.data);
-      if (keputusan !== 'LUNAS') continue;
-
-      const gross = grossAmountToRupiah(res.data.gross_amount);
-      const seharusnya = Math.round(Number(order.totalAmount) || 0);
-      if (gross !== seharusnya) {
-        hasil.gagal.push({ orderId: order.orderId, alasan: 'nominal-tidak-cocok' });
-        continue;
-      }
-
-      const paid = await markOrderPaid(order, {
-        via: 'midtrans',
-        actor: 'midtrans:cron-reconcile',
-        verifiedAmount: gross
-      });
-      if (paid.ok && paid.changed) {
-        await store.put('orders', {
-          ...paid.order,
-          midtransTransactionStatus: res.data.transaction_status || null,
-          midtransPaymentType: res.data.payment_type || null
-        });
-        hasil.dilunaskan.push(order.orderId);
-
-        const settings = await readSettings();
-        if (telegramConfig(settings).notifyPaid !== false) {
-          await notifySafe(settings, templatePaid(paid.order));
-        }
-      }
-    } catch (err) {
-      console.error(`[midtrans] reconcile ${order.orderId} gagal:`, err.message);
-    }
-  }
-
-  if (hasil.dilunaskan.length) {
-    await recordAudit(store, {
-      action: 'pembayaran.lunas-via-reconcile',
-      actor: 'cron',
-      ip: clientIp(headers),
-      detail: hasil
-    });
-  }
-
-  return ok({ ok: true, ...hasil });
 });
 
 /** POST /api/admin/digest — kirim digest sekarang (untuk uji coba & preview). */
