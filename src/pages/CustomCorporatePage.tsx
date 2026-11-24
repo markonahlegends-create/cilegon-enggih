@@ -6,16 +6,19 @@ import {
   Sparkles,
   FileText,
   Send,
-  MessageCircle,
+  Copy,
+  PackageSearch,
   ShieldCheck,
   Award,
   Layers
 } from 'lucide-react';
-import { formatRupiah, buildWhatsAppUrl } from '../data/products';
+import { Link } from 'react-router-dom';
+import { formatRupiah } from '../data/products';
 import { useStore } from '../context/StoreContext';
 
 export const CustomCorporatePage: React.FC = () => {
   const { pushToast, products } = useStore();
+  const [tersalin, setTersalin] = useState(false);
   const [selectedProdId, setSelectedProdId] = useState<string>(''); // default: Tumbler Sporty (prod-7)
   const [quantity, setQuantity] = useState(50);
   const [addCustomLogo, setAddCustomLogo] = useState(true);
@@ -100,20 +103,39 @@ export const CustomCorporatePage: React.FC = () => {
     }
   };
 
-  const handleSendToWhatsApp = () => {
-    const msg = `Halo Tim B2B Korporat Cilegon Enggih!\n\nKami ingin meminta penawaran resmi grosir/custom:\n• Instansi/Perusahaan: *${
-      companyName || '-'
-    }*\n• PIC: ${picName || '-'}\n• Produk Pilihan: *${
-      selectedProd.name
-    }*\n• Jumlah: *${quantity} pcs*\n• Custom Logo Instansi: ${
-      addCustomLogo ? 'Ya (Cetak Logo Acara/Perusahaan)' : 'Tanpa Tambahan Logo'
-    }\n• Upgrade Hardbox VIP: ${
-      addHardbox ? 'Ya' : 'Kemasan Standar'
-    }\n• Estimasi Simulasi Web: *${formatRupiah(
-      totalEstimate
-    )}* (${formatRupiah(finalUnitPrice)}/pcs)\n\nMohon info penawaran & mockup desainnya. Terima kasih!`;
 
-    window.open(buildWhatsAppUrl(msg), '_blank', 'noopener,noreferrer');
+  /*
+   * SALIN RINCIAN SIMULASI.
+   *
+   * Simulasi B2B bukan pesanan yang mengikat: harganya bergantung pada jumlah,
+   * logo, dan kemasan. Karena itu tombolnya TIDAK membuka jalur pemesanan
+   * WhatsApp (yang membuat semuanya berakhir di chat dan tidak tercatat),
+   * melainkan menyalin rincian agar bisa dilampirkan ke pengajuan penawaran
+   * resmi atau ke jalur dukungan.
+   */
+  const handleCopySimulasi = async () => {
+    const teks = [
+      'SIMULASI PENAWARAN B2B — CILEGON ENGGIH',
+      `Instansi: ${companyName || '-'}`,
+      `PIC: ${picName || '-'}`,
+      `Produk: ${selectedProd?.name || '-'}`,
+      `Jumlah: ${quantity} pcs`,
+      `Custom logo: ${addCustomLogo ? 'Ya' : 'Tidak'}`,
+      `Hardbox VIP: ${addHardbox ? 'Ya' : 'Tidak'}`,
+      `Harga simulasi: ${formatRupiah(finalUnitPrice)}/pcs`,
+      `Total simulasi: ${formatRupiah(totalEstimate)}`,
+      '',
+      'Simulasi ini bukan pesanan. Ajukan penawaran resmi lewat form agar tercatat di dashboard.'
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(teks);
+      setTersalin(true);
+      pushToast('Rincian Tersalin', 'Tempelkan ke pengajuan penawaran atau email Anda.', 'success');
+      window.setTimeout(() => setTersalin(false), 2500);
+    } catch {
+      pushToast('Gagal Menyalin', 'Salin rincian di layar secara manual.', 'warning');
+    }
   };
 
   return (
@@ -345,13 +367,17 @@ export const CustomCorporatePage: React.FC = () => {
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                <button
-                  type="button"
-                  onClick={handleSendToWhatsApp}
+                {/*
+                  * Dulu tombol ini membuka WhatsApp. Sekarang penawaran B2B
+                  * berjalan di jalur resmi: nomor referensi dicatat admin di
+                  * dashboard, jadi tidak ada negosiasi yang hilang di chat.
+                  */}
+                <Link
+                  to={`/lacak-pesanan?q=${encodeURIComponent(submittedQuote.quoteId)}`}
                   className="px-4 py-2.5 rounded-xl bg-forest-600 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5"
                 >
-                  <MessageCircle className="w-4 h-4" /> Lanjut Diskusi Mockup di WhatsApp
-                </button>
+                  <PackageSearch className="w-4 h-4" /> Pantau Status Penawaran
+                </Link>
                 <button
                   type="button"
                   onClick={() => setSubmittedQuote(null)}
@@ -456,13 +482,19 @@ export const CustomCorporatePage: React.FC = () => {
                   </span>
                 </button>
 
+                {/*
+                  * Simulasi ini BUKAN pesanan. Dulu tombolnya membuka WhatsApp
+                  * sehingga permintaan penawaran berakhir di chat dan tidak
+                  * tercatat. Sekarang: ajukan lewat form (masuk dashboard),
+                  * atau salin rinciannya untuk dibahas lewat jalur dukungan.
+                  */}
                 <button
                   type="button"
-                  onClick={handleSendToWhatsApp}
-                  className="w-full py-3 px-5 rounded-xl bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2"
+                  onClick={handleCopySimulasi}
+                  className="w-full py-2.5 px-5 rounded-xl bg-white border border-slate-300 hover:border-slate-400 text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-2"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span>Kirim Hasil Simulasi Ini ke WhatsApp Korporat</span>
+                  <Copy className="w-4 h-4" />
+                  <span>{tersalin ? 'Rincian Tersalin' : 'Salin Rincian Simulasi'}</span>
                 </button>
               </div>
             </form>

@@ -41,7 +41,7 @@ export const NotFoundPage: React.FC = () => {
           <PackageSearch className="w-4 h-4" /> Lihat Katalog
         </Link>
         <a
-          href={buildWhatsAppUrl('Halo, saya tidak menemukan halaman yang saya cari di website.')}
+          href={buildWhatsAppUrl('Halo, saya tersesat di website Cilegon Enggih dan butuh bantuan.')}
           target="_blank"
           rel="noopener noreferrer"
           className="px-4 py-2.5 rounded-xl bg-white border border-slate-200 hover:border-forest-400 hover:text-forest-700 text-navy-800 text-sm font-extrabold inline-flex items-center justify-center gap-2"

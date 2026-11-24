@@ -17,7 +17,7 @@ import {
   Quote,
   Truck
 } from 'lucide-react';
-import { formatRupiah, buildWhatsAppUrl } from '../data/products';
+import { formatRupiah } from '../data/products';
 import { ProductCard } from '../components/ProductCard';
 import { useStore } from '../context/StoreContext';
 
@@ -744,16 +744,16 @@ export const HomePage: React.FC = () => {
             >
               Buka Kalkulator Harga Grosir B2B →
             </Link>
-            <a
-              href={buildWhatsAppUrl(
-                'Halo Tim Korporat Cilegon Enggih! Kami ingin meminta penawaran harga grosir / custom logo instansi.'
-              )}
-              target="_blank"
-              rel="noreferrer"
+            {/*
+              * Permintaan penawaran B2B harus MASUK DASHBOARD, bukan berakhir di
+              * chat. Nomor referensi penawaran hanya lahir dari form resmi.
+              */}
+            <Link
+              to="/custom-korporat#form-penawaran"
               className="px-5 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white border border-white/20 font-bold text-xs sm:text-sm text-center"
             >
-              Konsultasi Langsung via WhatsApp
-            </a>
+              Ajukan Penawaran Resmi
+            </Link>
           </div>
         </div>
       </section>

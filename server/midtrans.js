@@ -99,9 +99,51 @@ export const midtransConfig = (env = process.env) => {
   const snapBase = isProduction ? SNAP_PRODUCTION_BASE : SNAP_SANDBOX_BASE;
   const apiBase = isProduction ? API_PRODUCTION_BASE : API_SANDBOX_BASE;
 
+  /*
+   * SIGNATURE SECRET KEY — kunci KETIGA, terpisah sejak 28 Oktober 2026.
+   *
+   * Selama bertahun-tahun tanda tangan notifikasi dihitung dengan Server Key,
+   * sehingga satu nilai cukup untuk dua pekerjaan: mengotorisasi panggilan API
+   * DAN memverifikasi notifikasi. Midtrans memisahkannya:
+   *
+   *   Server Key           → Authorization: Basic pada panggilan API
+   *   Signature Secret Key → SHA512(order_id + status_code + gross_amount + kunci ini)
+   *
+   * Untuk merchant yang mendaftar sebelum tanggal itu, kedua nilai AWALNYA
+   * SAMA — sehingga integrasi yang hanya memakai Server Key lulus semua uji
+   * dan terus bekerja... sampai salah satunya dibuat/di-generate ulang.
+   * Setelah itu panggilan API tetap sukses, uang tetap masuk, tetapi SETIAP
+   * notifikasi ditolak sebagai "tanda tangan tidak sah". Persis yang terjadi
+   * di toko ini: cek status 200, notifikasi ditolak 403.
+   *
+   * KOSONG → pakai Server Key (perilaku lama). Ini penting supaya integrasi
+   * yang belum punya Signature Secret Key tidak langsung mati; dan memang
+   * benar untuk merchant lama yang kedua nilainya masih sama.
+   */
+  const signatureKey = String(env.MIDTRANS_SIGNATURE_SECRET_KEY || '').trim() || serverKey;
+  /*
+   * Kunci lama selama masa transisi setelah "Regenerate".
+   *
+   * Midtrans menyarankan menerima tanda tangan dari kunci LAMA maupun BARU
+   * untuk sementara, karena notifikasi yang sedang di-retry masih ditandatangani
+   * kunci lama. Tanpa ini, notifikasi yang datang tepat setelah rotasi akan
+   * ditolak — dan pembeli yang sudah membayar tidak pernah dilunaskan.
+   */
+  const signatureKeyLama = String(env.MIDTRANS_SIGNATURE_SECRET_KEY_LAMA || '').trim();
+
   return {
     serverKey,
     clientKey,
+    /** Kunci untuk MEMVERIFIKASI tanda tangan notifikasi (bukan untuk API). */
+    signatureKey,
+    /** Kunci sebelumnya, diterima selama masa transisi rotasi. */
+    signatureKeyLama,
+    /*
+     * true kalau Signature Secret Key diisi terpisah dari Server Key. Dipakai
+     * diagnosa untuk memberi tahu admin kunci mana yang sebenarnya menandatangani
+     * notifikasi tanpa pernah menampilkan nilainya.
+     */
+    signatureKeyTerpisah: Boolean(signatureKey) && signatureKey !== serverKey,
     isProduction,
     snapBase,
     apiBase,
@@ -179,24 +221,41 @@ export const buildSignature = ({ orderId, statusCode, grossAmount, serverKey }) 
  * Perbandingan memakai timingSafeEqual supaya tidak bisa ditebak lewat
  * perbedaan waktu respons (timing attack).
  */
-export const verifySignature = (payload, serverKey) => {
-  if (!serverKey) return false;
+export const verifySignature = (payload, kunci) => {
   if (!payload || typeof payload !== 'object') return false;
 
   const { order_id, status_code, gross_amount, signature_key } = payload;
   if (!order_id || !status_code || gross_amount == null || !signature_key) return false;
 
-  const expected = buildSignature({
-    orderId: String(order_id),
-    statusCode: String(status_code),
-    grossAmount: String(gross_amount),
-    serverKey
-  });
+  /*
+   * `kunci` boleh satu string, atau daftar kandidat: [SignatureSecretKey,
+   * SignatureSecretKeyLama, ServerKey]. Notifikasi dinyatakan SAH kalau cocok
+   * dengan SALAH SATU. Ini yang membuat rotasi kunci tidak memutus pelunasan
+   * pesanan yang pembayarannya sudah masuk.
+   *
+   * Perbandingan tetap constant-time untuk setiap kandidat, dan tidak pernah
+   * berhenti di kandidat pertama yang cocok secara posisional.
+   */
+  const kandidat = (Array.isArray(kunci) ? kunci : [kunci])
+    .map((k) => String(k || '').trim())
+    .filter(Boolean);
+  if (kandidat.length === 0) return false;
 
-  const a = Buffer.from(expected, 'utf8');
   const b = Buffer.from(String(signature_key), 'utf8');
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
+  let cocok = false;
+  for (const k of kandidat) {
+    const expected = Buffer.from(
+      buildSignature({
+        orderId: String(order_id),
+        statusCode: String(status_code),
+        grossAmount: String(gross_amount),
+        serverKey: k
+      }),
+      'utf8'
+    );
+    if (expected.length === b.length && crypto.timingSafeEqual(expected, b)) cocok = true;
+  }
+  return cocok;
 };
 
 /** "105000.00" → 105000. Dibulatkan karena rupiah tidak punya sen. */

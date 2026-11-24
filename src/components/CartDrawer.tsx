@@ -7,12 +7,11 @@ import {
   Plus,
   Minus,
   ArrowRight,
-  MessageCircle,
   ShieldCheck,
   Sparkles
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { formatRupiah, buildWhatsAppUrl } from '../data/products';
+import { formatRupiah } from '../data/products';
 import { resolveSelection, unitPriceFor, isWholesalePrice } from '../lib/variantPricing';
 import { useBackClose } from '../hooks/useBackClose';
 
@@ -62,37 +61,7 @@ export const CartDrawer: React.FC = () => {
 
   if (!isCartOpen) return null;
 
-  const handleCheckoutViaWA = () => {
-    const lines = cart.map((item, i) => {
-      // Produk multi-dimensi: harga dari pilihan, bukan `variant`.
-      const effectivePrice = unitPriceFor({
-        price: item.product.price,
-        wholesalePrice: item.product.wholesalePrice,
-        minWholesaleQty: item.product.minWholesaleQty,
-        variantPrice: item.variant?.price,
-        optionPrice: item.options
-          ? resolveSelection(item.product, item.options).price
-          : undefined,
-        qty: item.qty
-      });
-      return `${i + 1}. ${item.product.name}${
-        item.optionsLabel
-          ? ` [${item.optionsLabel}]`
-          : item.variant
-            ? ` [${item.variant.label}]`
-            : ''
-      } x ${item.qty} pcs = ${formatRupiah(effectivePrice * item.qty)}`;
-    });
-
-    const msg = `Halo Admin Cilegon Enggih! Saya ingin memesan produk berikut:\n\n${lines.join(
-      '\n'
-    )}\n\nSubtotal Produk: *${formatRupiah(
-      cartSubtotal
-    )}*\nEstimasi Berat: ${cartWeightGrams} gram\n\nMohon info ketersediaan & total ongkirnya. Terima kasih!`;
-
-    window.open(buildWhatsAppUrl(msg), '_blank', 'noopener,noreferrer');
-  };
-
+  
   return (
     <div className="fixed inset-0 z-[60] flex justify-end">
       {/* Backdrop */}
@@ -300,14 +269,6 @@ export const CartDrawer: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </button>
 
-              <button
-                type="button"
-                onClick={handleCheckoutViaWA}
-                className="w-full py-2.5 px-4 rounded-xl bg-forest-600 hover:bg-forest-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-colors"
-              >
-                <MessageCircle className="w-4 h-4" />
-                <span>Pesan Cepat via WhatsApp Admin</span>
-              </button>
             </div>
 
             <div className="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 pt-1">

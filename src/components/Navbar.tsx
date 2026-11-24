@@ -16,6 +16,7 @@ import {
   Heart,
   Grid,
   PackageSearch,
+  UserRound,
   Lock,
   PhoneCall
 } from 'lucide-react';
@@ -230,6 +231,12 @@ export const Navbar: React.FC = () => {
               className="hover:text-amberbrand-300 transition-colors flex items-center gap-1 font-medium text-amberbrand-200"
             >
               <PackageSearch className="w-3.5 h-3.5" /> Lacak Pesanan
+            </Link>
+            <Link
+              to="/pesanan-saya"
+              className="hover:text-amberbrand-300 transition-colors flex items-center gap-1"
+            >
+              <UserRound className="w-3.5 h-3.5" /> Pesanan Saya
             </Link>
             <Link
               to="/admin"
@@ -452,16 +459,26 @@ export const Navbar: React.FC = () => {
               </span>
             </button>
 
+            {/*
+              * DUKUNGAN, BUKAN JALUR PESANAN.
+              *
+              * Semua pemesanan berjalan otomatis lewat checkout + Midtrans, dan
+              * tombol "Pesan via WhatsApp" sudah dihapus dari halaman produk,
+              * keranjang, dan B2B. Tombol ini sengaja dipertahankan HANYA untuk
+              * pertanyaan, kendala, garansi, dan pengembalian dana — hal-hal
+              * yang memang butuh manusia. Teksnya dibuat eksplisit supaya
+              * pembeli tidak mengira bisa memesan lewat chat.
+              */}
             <a
               href={buildWhatsAppUrl(
-                'Halo Admin Cilegon Enggih! Saya ingin bertanya mengenai produk merchandise resmi Landmark Cilegon.'
+                'Halo Admin Cilegon Enggih! Saya butuh BANTUAN (bukan pemesanan). Pesanan saya: '
               )}
               target="_blank"
               rel="noreferrer"
               className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amberbrand-400 hover:bg-amberbrand-500 text-navy-950 text-xs sm:text-sm font-bold shadow-sm transition-all"
             >
               <PhoneCall className="w-4 h-4" />
-              <span>Chat Admin</span>
+              <span>Bantuan</span>
             </a>
 
             <button
@@ -486,7 +503,8 @@ export const Navbar: React.FC = () => {
               { to: '/custom-korporat', label: 'Custom & Korporat (B2B)' },
               { to: '/tentang-kami', label: 'Tentang Kami' },
               { to: '/cara-order-faq', label: 'Cara Order & FAQ' },
-              { to: '/lacak-pesanan', label: 'Lacak Pesanan' }
+              { to: '/lacak-pesanan', label: 'Lacak Pesanan' },
+              { to: '/pesanan-saya', label: 'Pesanan Saya' }
             ].map((item) => {
               const active =
                 item.to.includes('?')
@@ -589,7 +607,8 @@ export const Navbar: React.FC = () => {
                 { to: '/', label: 'Beranda' },
                 { to: '/katalog', label: 'Katalog Produk' },
                 { to: '/cara-order-faq', label: 'Cara Order & FAQ' },
-                { to: '/lacak-pesanan', label: 'Lacak Pesanan' }
+                { to: '/lacak-pesanan', label: 'Lacak Pesanan' },
+                { to: '/pesanan-saya', label: 'Pesanan Saya' }
               ].map((nav) => (
                 <Link
                   key={nav.to}
@@ -666,20 +685,26 @@ export const Navbar: React.FC = () => {
             {/* Kontak langsung — paling penting di HP, jadi selalu terlihat */}
             <a
               href={buildWhatsAppUrl(
-                'Halo Admin Cilegon Enggih! Saya ingin konsultasi pemesanan merchandise.'
+                'Halo Admin Cilegon Enggih! Saya butuh BANTUAN (bukan pemesanan). Pesanan saya: '
               )}
               target="_blank"
               rel="noreferrer"
               className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amberbrand-400 active:bg-amberbrand-500 text-navy-950 font-extrabold text-sm"
             >
               <PhoneCall className="w-4 h-4" />
-              Pesan / Tanya via WhatsApp
+              Bantuan via WhatsApp
             </a>
             <Link
               to="/lacak-pesanan"
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-navy-800 text-white font-bold text-xs"
             >
               <PackageSearch className="w-4 h-4" /> Lacak Pesanan
+            </Link>
+            <Link
+              to="/pesanan-saya"
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-navy-300 text-navy-800 font-bold text-xs"
+            >
+              <UserRound className="w-4 h-4" /> Pesanan Saya
             </Link>
           </div>
         </div>

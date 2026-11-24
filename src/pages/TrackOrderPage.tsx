@@ -265,7 +265,7 @@ export const TrackOrderPage: React.FC = () => {
           <div className="space-y-1">
             <div>{errorMsg}</div>
             <a
-              href={buildWhatsAppUrlFor(settings.whatsapp, `Halo Admin, saya ingin menanyakan status pesanan saya.`)}
+              href={buildWhatsAppUrlFor(settings.whatsapp, `Halo Admin, saya butuh BANTUAN soal pesanan saya (bukan pemesanan baru): `)}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 font-bold text-forest-700 hover:underline"

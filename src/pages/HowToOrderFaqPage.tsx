@@ -188,7 +188,7 @@ export const HowToOrderFaqPage: React.FC = () => {
           <div className="pt-2">
             <a
               href={buildWhatsAppUrl(
-                'Halo Admin Cilegon Enggih! Saya punya pertanyaan terkait pemesanan.'
+                'Halo Admin Cilegon Enggih! Saya butuh BANTUAN (bukan pemesanan), terkait cara pesan / pesanan saya: '
               )}
               target="_blank"
               rel="noreferrer"
