@@ -6,16 +6,17 @@ import { hapusAsetBasi, periksaAsetSekali } from './lib/asetBasi';
 import './index.css';
 
 /*
- * Bersihkan penanda aset basi sebelum React berjalan. Kalau halaman ini
- * dimuat ulang setelah pemulihan, penandanya harus hilang agar tidak
- * memicu pemulihan berulang.
+ * PEMULIHAN "HALAMAN TANPA GAYA" — dijalankan SEBELUM React menulis apa pun.
+ *
+ * Peramban yang terlanjur menyimpan dokumen HTML lama menunjuk berkas
+ * /assets/index-<hash>.css yang sudah tidak ada di server, sehingga halaman
+ * tampil tanpa tata letak. Lihat src/lib/asetBasi.ts untuk sebab lengkapnya.
+ *
+ * Urutannya penting: `hapusAsetBasi` membersihkan penanda sesi lebih dulu
+ * (supaya pemulihan berikutnya tidak terhalang), baru `periksaAsetSekali`
+ * memeriksa apakah CSS benar-benar terpasang.
  */
 hapusAsetBasi();
-/*
- * Deteksi & pemulihan "halaman tanpa gaya": kalau CSS ternyata tidak
- * terpasang (HTML basi dari cache menunjuk aset yang sudah tidak ada),
- * muat ulang sekali melewati cache. Lihat src/lib/asetBasi.ts.
- */
 periksaAsetSekali();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
