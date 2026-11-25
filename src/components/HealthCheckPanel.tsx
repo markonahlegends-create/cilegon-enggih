@@ -56,6 +56,59 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; icon: any; label:
 };
 
 /**
+ * BACA & VALIDASI BALASAN /api/diagnose.
+ *
+ * KENAPA DIPISAH DARI KOMPONEN
+ * Inilah bagian yang pernah membuat SELURUH dashboard admin mati. Dengan
+ * dipisah, ia bisa diuji tanpa peramban maupun DOM — dan uji itu mengunci
+ * perilaku yang benar: balasan cacat harus menghasilkan PESAN, bukan
+ * pengecualian.
+ *
+ * Balasan dianggap sahih hanya bila memuat ringkasan berisi tiga angka dan
+ * daftar pemeriksaan. Apa pun selain itu → gagal, dengan alasan yang bisa
+ * dibaca admin.
+ */
+export const bacaDiagnosa = (
+  json: any
+): { ok: true; data: DiagnoseResult } | { ok: false; alasan: string } => {
+  if (!json || typeof json !== 'object') {
+    return {
+      ok: false,
+      alasan: 'Server mengirim balasan kosong atau bukan JSON. Coba lagi sebentar.'
+    };
+  }
+
+  const ringkas = json.summary;
+  const ringkasSahih =
+    ringkas &&
+    typeof ringkas === 'object' &&
+    typeof ringkas.ok === 'number' &&
+    typeof ringkas.warn === 'number' &&
+    typeof ringkas.fail === 'number';
+
+  if (!ringkasSahih || !Array.isArray(json.checks)) {
+    return {
+      ok: false,
+      alasan:
+        'Status konfigurasi tidak terbaca: balasan server tidak memuat ringkasan (summary) dan daftar pemeriksaan. ' +
+        'Coba tekan "Cek Ulang". Bila tetap, muat ulang halaman — kemungkinan peramban memakai balasan lama.'
+    };
+  }
+
+  return {
+    ok: true,
+    data: {
+      ...json,
+      ready: Boolean(json.ready),
+      storage: String(json.storage || '-'),
+      generatedAt: json.generatedAt || new Date().toISOString(),
+      note: String(json.note || ''),
+      notifikasiMidtrans: Array.isArray(json.notifikasiMidtrans) ? json.notifikasiMidtrans : []
+    } as DiagnoseResult
+  };
+};
+
+/**
  * Panel kesehatan konfigurasi produksi.
  * Hanya menampilkan STATUS (tidak pernah menampilkan nilai kunci/password).
  */
@@ -71,11 +124,48 @@ export const HealthCheckPanel: React.FC = () => {
     setError('');
     try {
       const res = await fetch('/api/diagnose', { cache: 'no-store' });
-      const json = await res.json();
+
+      /*
+       * ------------------------------------------------------------------
+       * HTTP 200 BUKAN JAMINAN ISI RESPONS BENAR.
+       * ------------------------------------------------------------------
+       *
+       * Kejadian nyata: dashboard admin menampilkan layar "Halaman ini gagal
+       * ditampilkan" dan refresh tidak pernah menolong. Sebabnya di sini —
+       * versi sebelumnya menyimpan JSON apa pun asal `res.ok`, lalu merender
+       * `data.summary.ok`. Kalau `summary` tidak ada, render melempar
+       * TypeError dan SELURUH dashboard mati.
+       *
+       * Dua keadaan yang menghasilkan itu, keduanya nyata:
+       *   - respons cache/hosting yang bentuknya berbeda dari yang diharapkan
+       *   - halaman galat HTML berstatus 200 yang gagal di-parse jadi JSON
+       *
+       * Karena itu bentuknya diperiksa lebih dulu. Data yang tidak lengkap
+       * dianggap GAGAL, dengan pesan di panel ini saja — bukan melempar ke
+       * atas dan mematikan halaman.
+       */
+      let json: any = null;
+      try {
+        json = await res.json();
+      } catch {
+        throw new Error(
+          `Server mengirim balasan yang tidak bisa dibaca (HTTP ${res.status}). Coba lagi sebentar.`
+        );
+      }
+
       if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
-      setData(json);
+
+      const hasil = bacaDiagnosa(json);
+      if (!hasil.ok) throw new Error(hasil.alasan);
+      setData(hasil.data);
     } catch (err: any) {
       setError(err?.message || 'Gagal memuat status konfigurasi.');
+      /*
+       * Data lama dibuang. Menampilkan angka dari respons sebelumnya sambil
+       * menampilkan pesan galat akan menyesatkan: pembaca mengira itu status
+       * terkini, padahal bukan.
+       */
+      setData(null);
     } finally {
       setLoading(false);
     }

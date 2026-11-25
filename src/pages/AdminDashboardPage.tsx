@@ -48,6 +48,7 @@ import DropshipPanel from '../components/DropshipPanel';
 import { QrisUploader } from '../components/QrisUploader';
 import { SecurityPanel } from '../components/SecurityPanel';
 import { HealthCheckPanel } from '../components/HealthCheckPanel';
+import { PanelAman } from '../components/ErrorBoundary';
 import {
   adminLogin,
   adminSession,
@@ -157,6 +158,16 @@ export const AdminDashboardPage: React.FC = () => {
 
   const [tab, setTab] = useState<Tab>('overview');
   const [loading, setLoading] = useState(false);
+  /**
+   * Bagian data yang gagal dimuat pada percobaan terakhir.
+   *
+   * Dulu kegagalan hanya muncul sebagai toast 4 detik. Kalau admin sedang
+   * melihat tab lain, atau toast-nya keburu hilang, daftar kosong terlihat
+   * seperti "memang tidak ada pesanan" — kesalahan tafsir yang berbahaya.
+   * Sekarang daftarnya disimpan dan ditampilkan sebagai pita yang MENETAP
+   * sampai pemuatan berikutnya berhasil.
+   */
+  const [gagalMuat, setGagalMuat] = useState<string[]>([]);
 
   const [analytics, setAnalytics] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -327,12 +338,44 @@ export const AdminDashboardPage: React.FC = () => {
     const fullV = nilai(full, 'pengaturan');
     const venV = nilai(ven, 'vendor');
 
+    /*
+     * DAFTAR WAJIB ARRAY — DIPERIKSA DI SINI, BUKAN DIPERCAYAI.
+     *
+     * `ordV.orders || []` lolos untuk nilai yang BUKAN array (objek galat,
+     * string, dsb). Nilai itu lalu masuk ke state dan meledak jauh dari sini:
+     * `orders.filter(...)` dipanggil SEBELUM panel mana pun dirender, jadi
+     * pembungkus per-tab tidak bisa menolong — seluruh dashboard mati.
+     *
+     * Sekarang bentuknya diperiksa saat data masuk. Yang bentuknya salah
+     * dilaporkan sebagai gagal dimuat, sama seperti endpoint yang error.
+     */
+    const daftar = (nilai: unknown, kunci: string, label: string): any[] | null => {
+      if (!nilai || typeof nilai !== 'object') {
+        gagal.push(label);
+        return null;
+      }
+      const isi = (nilai as any)[kunci];
+      if (isi === undefined || isi === null) return []; // tidak ada data — sah
+      if (!Array.isArray(isi)) {
+        gagal.push(label);
+        return null;
+      }
+      return isi;
+    };
+
+    const daftarPesanan = ordV ? daftar(ordV, 'orders', 'pesanan') : null;
+    const daftarB2B = b2bV ? daftar(b2bV, 'inquiries', 'B2B') : null;
+    const daftarProduk = prodV ? daftar(prodV, 'products', 'produk') : null;
+    const daftarVendor = venV ? daftar(venV, 'vendors', 'vendor') : null;
+
     if (anV) setAnalytics(anV);
-    if (ordV) setOrders(ordV.orders || []);
-    if (b2bV) setInquiries(b2bV.inquiries || []);
-    if (prodV) setProducts(prodV.products || []);
+    if (daftarPesanan) setOrders(daftarPesanan);
+    if (daftarB2B) setInquiries(daftarB2B);
+    if (daftarProduk) setProducts(daftarProduk);
     if (fullV?.settings) setDraftSettings(fullV.settings);
-    if (venV) setVendorOptions(venV.vendors || []);
+    if (daftarVendor) setVendorOptions(daftarVendor);
+
+    setGagalMuat(gagal);
 
     if (gagal.length) {
       pushToast(
@@ -983,10 +1026,27 @@ export const AdminDashboardPage: React.FC = () => {
         })}
       </div>
 
+      {/*
+        Pita peringatan data gagal dimuat — MENETAP, bukan toast sekejap.
+        Ditempatkan tepat di bawah tab supaya terbaca di tab mana pun.
+      */}
+      {gagalMuat.length > 0 && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amberbrand-600 shrink-0 mt-0.5" />
+          <div className="text-[11px] leading-snug text-amberbrand-900">
+            <strong>Sebagian data tidak bisa dimuat:</strong> {gagalMuat.join(', ')}.
+            Angka dan daftar untuk bagian tersebut mungkin kosong atau belum terbaru — bukan berarti
+            datanya tidak ada. Tekan <strong>Refresh</strong> untuk mencoba lagi.
+          </div>
+        </div>
+      )}
+
       {/* ------------------------------ OVERVIEW ------------------------------ */}
       {tab === 'overview' && (
         <div className="space-y-4">
-          <HealthCheckPanel />
+          <PanelAman bagian="Kesiapan Go-Live">
+            <HealthCheckPanel />
+          </PanelAman>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             {[
               {
@@ -1110,368 +1170,397 @@ export const AdminDashboardPage: React.FC = () => {
       )}
 
       {/* ------------------------------ INSIGHT ------------------------------ */}
-      {tab === 'insight' && <InsightsPanel />}
+      {tab === 'insight' && (
+        <PanelAman bagian="Insight">
+          <InsightsPanel />
+        </PanelAman>
+      )}
 
       {/* ------------------------------ ORDERS ------------------------------ */}
       {tab === 'orders' && (
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                value={orderQuery}
-                onChange={(e) => setOrderQuery(e.target.value)}
-                placeholder="Cari order ID, resi, nama, atau no. HP..."
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-forest-600"
-              />
-            </div>
-            <select
-              value={orderFilter}
-              onChange={(e) => setOrderFilter(e.target.value)}
-              className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold"
-            >
-              <option value="">Semua Status</option>
-              {ORDER_STATUS_OPTIONS.map((s) => (
-                <option key={s} value={s}>
-                  {s.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-            {orders.length > 0 && (
-              <button
-                type="button"
-                onClick={resetAllOrders}
-                disabled={busyId === 'reset-orders'}
-                title="Hapus seluruh pesanan (berguna setelah uji coba sebelum toko dibuka)"
-                className="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-red-600 text-[11px] font-extrabold hover:bg-red-50 inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+        <PanelAman bagian="Pesanan">
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={orderQuery}
+                  onChange={(e) => setOrderQuery(e.target.value)}
+                  placeholder="Cari order ID, resi, nama, atau no. HP..."
+                  className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs outline-none focus:border-forest-600"
+                />
+              </div>
+              <select
+                value={orderFilter}
+                onChange={(e) => setOrderFilter(e.target.value)}
+                className="px-3 py-2.5 rounded-xl border border-slate-200 text-xs font-semibold"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                {busyId === 'reset-orders' ? 'Menghapus…' : 'Bersihkan Data Uji'}
-              </button>
-            )}
-          </div>
-
-          {filteredOrders.length === 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
-              Tidak ada pesanan yang cocok dengan filter.
+                <option value="">Semua Status</option>
+                {ORDER_STATUS_OPTIONS.map((s) => (
+                  <option key={s} value={s}>
+                    {s.replace(/_/g, ' ')}
+                  </option>
+                ))}
+              </select>
+              {orders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={resetAllOrders}
+                  disabled={busyId === 'reset-orders'}
+                  title="Hapus seluruh pesanan (berguna setelah uji coba sebelum toko dibuka)"
+                  className="px-3 py-2.5 rounded-xl border border-red-200 bg-white text-red-600 text-[11px] font-extrabold hover:bg-red-50 inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {busyId === 'reset-orders' ? 'Menghapus…' : 'Bersihkan Data Uji'}
+                </button>
+              )}
             </div>
-          )}
 
-          {filteredOrders.map((order) => (
-            <OrderCard
-              key={order.orderId}
-              order={order}
-              busy={busyId === order.orderId}
-              onUpdate={updateOrder}
-              onDelete={deleteOrder}
-              onCekMidtrans={cekMidtransOrder}
-              vendors={vendorOptions}
-              onPrint={(mode) => {
-                setInvoiceOrder(order);
-                setInvoiceMode(mode);
-              }}
-            />
-          ))}
-        </div>
+            {filteredOrders.length === 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+                Tidak ada pesanan yang cocok dengan filter.
+              </div>
+            )}
+
+            {filteredOrders.map((order) => (
+              <OrderCard
+                key={order.orderId}
+                order={order}
+                busy={busyId === order.orderId}
+                onUpdate={updateOrder}
+                onDelete={deleteOrder}
+                onCekMidtrans={cekMidtransOrder}
+                vendors={vendorOptions}
+                onPrint={(mode) => {
+                  setInvoiceOrder(order);
+                  setInvoiceMode(mode);
+                }}
+              />
+            ))}
+          </div>
+        </PanelAman>
       )}
 
       {/* ------------------------------ PRODUCTS ------------------------------ */}
       {tab === 'products' && (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">
-              Perubahan di sini langsung tampil di storefront (harga, stok, diskon, badge).
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={resetCatalog}
-                disabled={busyId === 'reset-products'}
-                className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 inline-flex items-center gap-1.5"
+        <PanelAman bagian="Produk">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-xs text-slate-500">
+                Perubahan di sini langsung tampil di storefront (harga, stok, diskon, badge).
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={resetCatalog}
+                  disabled={busyId === 'reset-products'}
+                  className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 inline-flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Reset Katalog
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNewProduct(blankProduct());
+                    setShowNewProduct(true);
+                    setEditingProduct(null);
+                  }}
+                  className="px-3 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Produk Baru
+                </button>
+              </div>
+            </div>
+
+            {/* Pencarian & filter katalog */}
+            <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl border border-slate-200 p-2.5">
+              <div className="relative flex-1 min-w-[180px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                  placeholder="Cari nama, kategori, atau slug produk…"
+                  className="input-admin !pl-8 !py-1.5"
+                />
+              </div>
+              <select
+                value={productFilter}
+                onChange={(e) => setProductFilter(e.target.value)}
+                className="input-admin !text-[11px] !py-1.5 !w-auto"
               >
-                <RotateCcw className="w-3.5 h-3.5" /> Reset Katalog
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setNewProduct(blankProduct());
-                  setShowNewProduct(true);
-                  setEditingProduct(null);
+                <option value="">Semua produk ({products.length})</option>
+                <option value="preorder">Pre-Order</option>
+                <option value="bestseller">Best Seller</option>
+                <option value="bundle">Paket Bundling</option>
+                <option value="lowstock">Stok menipis (≤20)</option>
+                <option value="inactive">Nonaktif</option>
+              </select>
+            </div>
+
+            {(showNewProduct || editingProduct) && (
+              <ProductEditor
+                value={showNewProduct ? { ...newProduct, __isNew: true } : editingProduct}
+                onChange={(next) => {
+                  if (showNewProduct) setNewProduct(next);
+                  else setEditingProduct(next);
                 }}
-                className="px-3 py-2 rounded-xl bg-forest-600 hover:bg-forest-700 text-white text-xs font-bold inline-flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" /> Produk Baru
-              </button>
-            </div>
-          </div>
-
-          {/* Pencarian & filter katalog */}
-          <div className="flex flex-wrap items-center gap-2 bg-white rounded-2xl border border-slate-200 p-2.5">
-            <div className="relative flex-1 min-w-[180px]">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-              <input
-                value={productQuery}
-                onChange={(e) => setProductQuery(e.target.value)}
-                placeholder="Cari nama, kategori, atau slug produk…"
-                className="input-admin !pl-8 !py-1.5"
+                onCancel={requestCloseEditor}
+                onSave={saveProduct}
+                vendors={vendorOptions}
+                busy={
+                  busyId === (editingProduct?.id || 'new') || busyId === `dup-${editingProduct?.id}`
+                }
               />
-            </div>
-            <select
-              value={productFilter}
-              onChange={(e) => setProductFilter(e.target.value)}
-              className="input-admin !text-[11px] !py-1.5 !w-auto"
-            >
-              <option value="">Semua produk ({products.length})</option>
-              <option value="preorder">Pre-Order</option>
-              <option value="bestseller">Best Seller</option>
-              <option value="bundle">Paket Bundling</option>
-              <option value="lowstock">Stok menipis (≤20)</option>
-              <option value="inactive">Nonaktif</option>
-            </select>
-          </div>
+            )}
 
-          {(showNewProduct || editingProduct) && (
-            <ProductEditor
-              value={showNewProduct ? { ...newProduct, __isNew: true } : editingProduct}
-              onChange={(next) => {
-                if (showNewProduct) setNewProduct(next);
-                else setEditingProduct(next);
-              }}
-              onCancel={requestCloseEditor}
-              onSave={saveProduct}
-              vendors={vendorOptions}
-              busy={
-                busyId === (editingProduct?.id || 'new') || busyId === `dup-${editingProduct?.id}`
-              }
-            />
-          )}
-
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-xs">
-                <thead className="bg-slate-50 text-slate-600">
-                  <tr>
-                    <th className="text-left px-3 py-2.5 font-bold">Produk</th>
-                    <th className="text-right px-2 py-2.5 font-bold">Harga</th>
-                    <th className="text-right px-2 py-2.5 font-bold">Stok</th>
-                    <th className="text-center px-2 py-2.5 font-bold">Varian</th>
-                    <th className="text-right px-2 py-2.5 font-bold">Berat</th>
-                    <th className="text-center px-2 py-2.5 font-bold">Label</th>
-                    <th className="text-right px-3 py-2.5 font-bold">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredProducts.map((p) => (
-                    <tr key={p.id} className="border-t border-slate-100">
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={p.image}
-                            alt={p.shortName}
-                            className="w-9 h-9 rounded-lg object-cover border border-slate-200"
-                          />
-                          <div className="min-w-0">
-                            <div className="font-bold text-slate-800 truncate max-w-[220px]">
-                              {p.shortName || p.name}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              {p.categoryLabel} • {p.slug}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-2 py-2 text-right font-semibold text-navy-800 whitespace-nowrap">
-                        {formatRupiah(p.price)}
-                        {p.discountPercent > 0 && (
-                          <div className="text-[10px] text-red-500 font-bold">
-                            -{p.discountPercent}%
-                          </div>
-                        )}
-                      </td>
-                      <td
-                        className={`px-2 py-2 text-right font-extrabold ${
-                          p.stock <= 20 ? 'text-red-600' : 'text-slate-700'
-                        }`}
-                      >
-                        {p.stock}
-                      </td>
-                      <td className="px-2 py-2 text-center text-slate-600 font-semibold">
-                        {(p.variants || []).length > 0 ? (
-                          <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
-                            {(p.variants || []).length}
-                          </span>
-                        ) : (
-                          <span className="text-slate-300">–</span>
-                        )}
-                      </td>
-                      <td className="px-2 py-2 text-right text-slate-600 whitespace-nowrap">
-                        {p.weightGrams || 0} g
-                      </td>
-                      <td className="px-2 py-2 text-center">
-                        <div className="flex flex-wrap justify-center gap-1">
-                          {p.isPreOrder && (
-                            <span className="px-1.5 py-0.5 rounded bg-forest-600 text-white text-[9px] font-bold">
-                              PO
-                            </span>
-                          )}
-                          {p.isBestSeller && (
-                            <span className="px-1.5 py-0.5 rounded bg-amberbrand-100 text-amberbrand-800 text-[9px] font-bold">
-                              Best
-                            </span>
-                          )}
-                          {p.isBundle && (
-                            <span className="px-1.5 py-0.5 rounded bg-forest-100 text-forest-800 text-[9px] font-bold">
-                              Bundle
-                            </span>
-                          )}
-                          {p.active === false && (
-                            <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px] font-bold">
-                              Nonaktif
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-3 py-2 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowNewProduct(false);
-                            setEditingProduct({ ...p });
-                          }}
-                          className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => duplicateProduct(p)}
-                          disabled={busyId === `dup-${p.id}`}
-                          title="Duplikat produk"
-                          className="ml-1 p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50"
-                        >
-                          <Copy className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeProduct(p)}
-                          className="ml-1 p-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredProducts.length === 0 && (
+            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-xs">
+                  <thead className="bg-slate-50 text-slate-600">
                     <tr>
-                      <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
-                        Tidak ada produk yang cocok dengan pencarian/filter.
-                      </td>
+                      <th className="text-left px-3 py-2.5 font-bold">Produk</th>
+                      <th className="text-right px-2 py-2.5 font-bold">Harga</th>
+                      <th className="text-right px-2 py-2.5 font-bold">Stok</th>
+                      <th className="text-center px-2 py-2.5 font-bold">Varian</th>
+                      <th className="text-right px-2 py-2.5 font-bold">Berat</th>
+                      <th className="text-center px-2 py-2.5 font-bold">Label</th>
+                      <th className="text-right px-3 py-2.5 font-bold">Aksi</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {filteredProducts.map((p) => (
+                      <tr key={p.id} className="border-t border-slate-100">
+                        <td className="px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={p.image}
+                              alt={p.shortName}
+                              className="w-9 h-9 rounded-lg object-cover border border-slate-200"
+                            />
+                            <div className="min-w-0">
+                              <div className="font-bold text-slate-800 truncate max-w-[220px]">
+                                {p.shortName || p.name}
+                              </div>
+                              <div className="text-[10px] text-slate-400">
+                                {p.categoryLabel} • {p.slug}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-2 py-2 text-right font-semibold text-navy-800 whitespace-nowrap">
+                          {formatRupiah(p.price)}
+                          {p.discountPercent > 0 && (
+                            <div className="text-[10px] text-red-500 font-bold">
+                              -{p.discountPercent}%
+                            </div>
+                          )}
+                        </td>
+                        <td
+                          className={`px-2 py-2 text-right font-extrabold ${
+                            p.stock <= 20 ? 'text-red-600' : 'text-slate-700'
+                          }`}
+                        >
+                          {p.stock}
+                        </td>
+                        <td className="px-2 py-2 text-center text-slate-600 font-semibold">
+                          {(p.variants || []).length > 0 ? (
+                            <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 text-[10px] font-bold">
+                              {(p.variants || []).length}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300">–</span>
+                          )}
+                        </td>
+                        <td className="px-2 py-2 text-right text-slate-600 whitespace-nowrap">
+                          {p.weightGrams || 0} g
+                        </td>
+                        <td className="px-2 py-2 text-center">
+                          <div className="flex flex-wrap justify-center gap-1">
+                            {p.isPreOrder && (
+                              <span className="px-1.5 py-0.5 rounded bg-forest-600 text-white text-[9px] font-bold">
+                                PO
+                              </span>
+                            )}
+                            {p.isBestSeller && (
+                              <span className="px-1.5 py-0.5 rounded bg-amberbrand-100 text-amberbrand-800 text-[9px] font-bold">
+                                Best
+                              </span>
+                            )}
+                            {p.isBundle && (
+                              <span className="px-1.5 py-0.5 rounded bg-forest-100 text-forest-800 text-[9px] font-bold">
+                                Bundle
+                              </span>
+                            )}
+                            {p.active === false && (
+                              <span className="px-1.5 py-0.5 rounded bg-slate-200 text-slate-600 text-[9px] font-bold">
+                                Nonaktif
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-right whitespace-nowrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowNewProduct(false);
+                              setEditingProduct({ ...p });
+                            }}
+                            className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => duplicateProduct(p)}
+                            disabled={busyId === `dup-${p.id}`}
+                            title="Duplikat produk"
+                            className="ml-1 p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => removeProduct(p)}
+                            className="ml-1 p-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-600"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProducts.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-6 text-center text-slate-400">
+                          Tidak ada produk yang cocok dengan pencarian/filter.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        </PanelAman>
       )}
 
       {/* ------------------------------ B2B ------------------------------ */}
       {tab === 'b2b' && (
-        <div className="space-y-3">
-          {inquiries.length === 0 && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
-              Belum ada inquiry B2B masuk.
-            </div>
-          )}
-          {inquiries.map((inq) => (
-            <div
-              key={inq.quoteId}
-              className="bg-white rounded-2xl border border-slate-200 p-4 shadow-soft space-y-2"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <div className="text-sm font-extrabold text-navy-800">{inq.companyName}</div>
-                  <div className="text-[11px] text-slate-500">
-                    {inq.quoteId} • {inq.picName} • {inq.phone}
-                    {inq.email && inq.email !== '-' ? ` • ${inq.email}` : ''}
+        <PanelAman bagian="B2B">
+          <div className="space-y-3">
+            {inquiries.length === 0 && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-xs text-slate-500">
+                Belum ada inquiry B2B masuk.
+              </div>
+            )}
+            {inquiries.map((inq) => (
+              <div
+                key={inq.quoteId}
+                className="bg-white rounded-2xl border border-slate-200 p-4 shadow-soft space-y-2"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-extrabold text-navy-800">{inq.companyName}</div>
+                    <div className="text-[11px] text-slate-500">
+                      {inq.quoteId} • {inq.picName} • {inq.phone}
+                      {inq.email && inq.email !== '-' ? ` • ${inq.email}` : ''}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <a
+                      href={buildWhatsAppUrlFor(
+                        inq.phone,
+                        `Halo ${inq.picName}, terima kasih atas inquiry ${inq.quoteId} dari ${inq.companyName}. Kami siap membantu kebutuhan merchandise Anda.`
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-2.5 py-1.5 rounded-lg bg-[#25D366] text-white text-[11px] font-bold inline-flex items-center gap-1"
+                    >
+                      <MessageCircle className="w-3 h-3" /> WA PIC
+                    </a>
+                    <select
+                      value={inq.status}
+                      onChange={(e) => updateInquiry(inq.quoteId, { status: e.target.value })}
+                      className="px-2 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold"
+                    >
+                      {[...new Set([inq.status, ...B2B_STATUS_OPTIONS])].filter(Boolean).map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <a
-                    href={buildWhatsAppUrlFor(
-                      inq.phone,
-                      `Halo ${inq.picName}, terima kasih atas inquiry ${inq.quoteId} dari ${inq.companyName}. Kami siap membantu kebutuhan merchandise Anda.`
-                    )}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-2.5 py-1.5 rounded-lg bg-[#25D366] text-white text-[11px] font-bold inline-flex items-center gap-1"
-                  >
-                    <MessageCircle className="w-3 h-3" /> WA PIC
-                  </a>
-                  <select
-                    value={inq.status}
-                    onChange={(e) => updateInquiry(inq.quoteId, { status: e.target.value })}
-                    className="px-2 py-1.5 rounded-lg border border-slate-200 text-[11px] font-semibold"
-                  >
-                    {[...new Set([inq.status, ...B2B_STATUS_OPTIONS])].filter(Boolean).map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600">
+                  <div>
+                    <span className="text-slate-400">Produk:</span> {inq.productInterest}
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Qty:</span> {inq.quantity} pcs
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Budget:</span>{' '}
+                    {formatRupiah(inq.budgetPerUnit || 0)}/pcs
+                  </div>
+                  <div>
+                    <span className="text-slate-400">Deadline:</span> {inq.deadline}
+                  </div>
+                </div>
+                {inq.notes && (
+                  <div className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2">
+                    Catatan: {inq.notes}
+                  </div>
+                )}
+                <div className="text-[10px] text-slate-400">
+                  Masuk: {new Date(inq.createdAt).toLocaleString('id-ID')} • Status:{' '}
+                  <strong>{inq.status}</strong>
                 </div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-slate-600">
-                <div>
-                  <span className="text-slate-400">Produk:</span> {inq.productInterest}
-                </div>
-                <div>
-                  <span className="text-slate-400">Qty:</span> {inq.quantity} pcs
-                </div>
-                <div>
-                  <span className="text-slate-400">Budget:</span>{' '}
-                  {formatRupiah(inq.budgetPerUnit || 0)}/pcs
-                </div>
-                <div>
-                  <span className="text-slate-400">Deadline:</span> {inq.deadline}
-                </div>
-              </div>
-              {inq.notes && (
-                <div className="text-[11px] text-slate-600 bg-slate-50 rounded-lg p-2">
-                  Catatan: {inq.notes}
-                </div>
-              )}
-              <div className="text-[10px] text-slate-400">
-                Masuk: {new Date(inq.createdAt).toLocaleString('id-ID')} • Status:{' '}
-                <strong>{inq.status}</strong>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </PanelAman>
       )}
 
       {/* ------------------------------ SETTINGS ------------------------------ */}
-      {tab === 'finance' && <FinancePanel pushToast={pushToast} />}
-      {tab === 'dropship' && <DropshipPanel pushToast={pushToast} />}
+      {tab === 'finance' && (
+        <PanelAman bagian="Keuangan">
+          <FinancePanel pushToast={pushToast} />
+        </PanelAman>
+      )}
+      {tab === 'dropship' && (
+        <PanelAman bagian="Dropship">
+          <DropshipPanel pushToast={pushToast} />
+        </PanelAman>
+      )}
 
-      {tab === 'security' && <SecurityPanel pushToast={pushToast} />}
+      {tab === 'security' && (
+        <PanelAman bagian="Keamanan">
+          <SecurityPanel pushToast={pushToast} />
+        </PanelAman>
+      )}
 
+      {/*
+        Panel Pengaturan juga dibungkus. Inilah panel yang paling sering
+        berubah, dan galat di satu kolom tidak boleh mematikan seluruh
+        dashboard — admin masih harus bisa mengelola pesanan.
+      */}
       {tab === 'settings' && (
-        <SettingsPanel
-          value={draftSettings}
-          onChange={setDraftSettings}
-          onSave={saveSettings}
-          onReset={resetSettings}
-          onTestTelegram={testTelegram}
-          onRegisterWebhook={registerTelegramWebhook}
-          registeringWebhook={busyId === 'telegram-webhook'}
-          onSendDigest={sendDigestNow}
-          sendingDigest={sendingDigest}
-          testingTelegram={testingTelegram}
-          busy={busyId === 'settings' || busyId === 'reset-settings'}
-          pushToast={pushToast}
-        />
+        <PanelAman bagian="Pengaturan">
+          <SettingsPanel
+            value={draftSettings}
+            onChange={setDraftSettings}
+            onSave={saveSettings}
+            onReset={resetSettings}
+            onTestTelegram={testTelegram}
+            onRegisterWebhook={registerTelegramWebhook}
+            registeringWebhook={busyId === 'telegram-webhook'}
+            onSendDigest={sendDigestNow}
+            sendingDigest={sendingDigest}
+            testingTelegram={testingTelegram}
+            busy={busyId === 'settings' || busyId === 'reset-settings'}
+            pushToast={pushToast}
+          />
+        </PanelAman>
       )}
 
       {/* Konfirmasi tutup editor dengan perubahan belum disimpan */}
