@@ -37,7 +37,7 @@
     "test:sigkey": "node scripts/test-midtrans-signature-key.mjs",
     "test:video": "node scripts/test-video-autoplay.mjs",
     "test:vercel": "node scripts/test-vercel-validator.mjs",
-    "test:all": "npm run test:payments && npm run test:midtrans && npm run test:midtrans:flow && npm run test:midtrans:status && npm run test:midtrans:audit && npm run test:midtrans:notif && npm run test:midtrans:tertunda && npm run test:sigkey && npm run test:ongkir && npm run test:harga && npm run test:stock && npm run test:reports && npm run test:notify && npm run test:og && npm run test:crawler && npm run test:vercel && npm run test:csp && npm run test:editor && npm run test:share && npm run test:thumb && npm run test:video && npm run test:login && npm run test:buyer && npm run test:whatsapp && npm run test:button && npm run test:notify:e2e",
+    "test:all": "npm run test:payments && npm run test:midtrans && npm run test:midtrans:flow && npm run test:midtrans:status && npm run test:midtrans:audit && npm run test:midtrans:notif && npm run test:midtrans:tertunda && npm run test:sigkey && npm run test:ongkir && npm run test:harga && npm run test:stock && npm run test:reports && npm run test:notify && npm run test:og && npm run test:crawler && npm run test:vercel && npm run test:csp && npm run test:editor && npm run test:share && npm run test:thumb && npm run test:integritas && npm run test:pemulihan && npm run test:video && npm run test:login && npm run test:buyer && npm run test:whatsapp && npm run test:button && npm run test:notify:e2e",
     "test:midtrans": "node scripts/test-midtrans.mjs",
     "test:midtrans:flow": "node scripts/test-midtrans-flow.mjs",
     "test:midtrans:status": "node scripts/test-midtrans-status-check.mjs",
@@ -47,7 +47,9 @@
     "test:ongkir": "node scripts/test-ongkir-voucher-server.mjs",
     "test:harga": "node scripts/test-harga-konsisten.mjs",
     "test:midtrans:tertunda": "node scripts/test-midtrans-tagihan-tertunda.mjs",
-    "test:whatsapp": "node scripts/test-whatsapp-pembeli.mjs"
+    "test:whatsapp": "node scripts/test-whatsapp-pembeli.mjs",
+    "test:integritas": "node scripts/test-build-integrity.mjs",
+    "test:pemulihan": "node scripts/test-pemulihan-aset.mjs"
   },
   "dependencies": {
     "express": "^4.21.2",
