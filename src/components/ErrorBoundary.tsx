@@ -26,6 +26,13 @@ interface Props {
   children: React.ReactNode;
   /** Nama bagian, untuk membedakan galat halaman vs galat satu panel. */
   bagian?: string;
+  /**
+   * true = tampilan RINGKAS untuk panel kecil di dalam halaman (mis. satu
+   * kartu dashboard). Tampilan besar hanya cocok untuk kegagalan satu
+   * halaman penuh; memakainya di dalam grid akan mendorong seluruh tata
+   * letak dan terlihat seperti seluruh dashboard rusak.
+   */
+  ringkas?: boolean;
 }
 
 interface State {
@@ -76,6 +83,28 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
   render() {
     if (!this.state.galat) return this.props.children;
+
+    /* ---- Varian ringkas: satu kartu kecil, halaman tetap utuh. ---- */
+    if (this.props.ringkas) {
+      return (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center space-y-2">
+          <div className="text-base">⚠️</div>
+          <div className="text-[11.5px] font-extrabold text-navy-800">
+            Bagian ini gagal ditampilkan
+          </div>
+          <p className="text-[10.5px] leading-snug text-slate-600">
+            Bagian lain di halaman ini tetap berfungsi. Coba muat ulang bagian ini.
+          </p>
+          <button
+            type="button"
+            onClick={() => this.setState({ galat: null, kunciSesi: '' })}
+            className="rounded-lg bg-white border border-amber-300 px-3 py-1.5 text-[10.5px] font-bold text-slate-700 hover:bg-amber-100"
+          >
+            Coba Lagi
+          </button>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-6">
@@ -129,9 +158,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
  * Galat di satu panel (mis. kalkulator ongkir) tidak boleh mengosongkan
  * seluruh halaman produk — pembeli masih bisa membaca dan memesan.
  */
-export const PanelAman: React.FC<{ children: React.ReactNode; bagian?: string }> = ({
-  children,
-  bagian
-}) => (
-  <ErrorBoundary bagian={bagian}>{children}</ErrorBoundary>
+export const PanelAman: React.FC<{
+  children: React.ReactNode;
+  bagian?: string;
+  ringkas?: boolean;
+}> = ({ children, bagian, ringkas = true }) => (
+  <ErrorBoundary bagian={bagian} ringkas={ringkas}>
+    {children}
+  </ErrorBoundary>
 );
